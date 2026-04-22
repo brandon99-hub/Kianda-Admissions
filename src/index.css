@@ -1,0 +1,60 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif:wght@400;700&family=Manrope:wght@400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-headline: "Noto Serif", serif;
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+
+  --color-primary: #18216D;
+  --color-primary-container: #0D164F;
+  --color-primary-light: rgba(24, 33, 109, 0.05);
+  --color-secondary: #FFC425;
+  --color-secondary-container: rgba(255, 196, 37, 0.1);
+  --color-surface: #f8f9fa;
+  --color-surface-container: #edeeef;
+  --color-surface-container-low: #f3f4f5;
+  --color-surface-container-lowest: #ffffff;
+  --color-on-surface: #191c1d;
+  --color-on-surface-variant: #44474f;
+  --color-outline-variant: #c4c6d0;
+}
+
+
+@layer base {
+  body {
+    @apply bg-surface text-on-surface font-sans;
+  }
+  
+  h1, h2, h3, h4, .serif {
+    @apply font-headline;
+  }
+
+  /* Custom Premium Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-primary/5;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-primary/20 rounded-full transition-colors;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-secondary/80;
+  }
+  
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(24, 33, 109, 0.2) transparent;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply bg-surface/80 backdrop-blur-xl;
+  }
+}
