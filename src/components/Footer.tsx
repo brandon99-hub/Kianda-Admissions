@@ -4,7 +4,7 @@ export default function Footer() {
       <div className="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
         <div className="flex flex-col gap-2 text-center md:text-left">
           <span className="font-headline text-xl text-primary">Kianda School</span>
-          <p className="text-sm text-on-surface-variant">In Veritate et Caritate</p>
+
         </div>
         <div className="flex gap-8 text-xs font-bold uppercase tracking-widest text-on-surface-variant">
           <a href="#" className="hover:text-secondary transition-colors">Privacy Policy</a>

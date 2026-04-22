@@ -134,8 +134,17 @@ export default function DocumentUploadForm({ onNext, onBack, onCancel, consentGi
               </div>
               <div className="flex-1">
                  <h4 className="text-sm font-black text-primary tracking-tight mb-2 italic">Data Usage Acknowledgement</h4>
-                 <p className="text-[11px] text-on-surface-variant font-medium leading-relaxed opacity-60">
-                    I hereby acknowledge and consent to the use of the data shared in this application for the sole purpose of admission processing at Kianda School. I understand that this information will be handled in accordance with the school's privacy policy and data protection guidelines.
+                 <p className="text-[11px] font-medium text-primary/70 leading-relaxed">
+                    I consent to Kianda School using my data for this application as described in the{" "}
+                    <a 
+                      href="/data-protection-policy-kianda-school.pdf" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-primary font-black underline underline-offset-4 decoration-secondary/30 hover:decoration-secondary transition-all"
+                    >
+                      Data Protection Policy
+                    </a>. 
+                    I understand I can withdraw this consent at any time.
                  </p>
               </div>
            </div>
