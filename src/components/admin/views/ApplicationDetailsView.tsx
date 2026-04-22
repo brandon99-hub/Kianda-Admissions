@@ -266,7 +266,24 @@ export default function ApplicationDetailsView({ app, onBack, onUpdate, showResu
                </div>
             </div>
 
-
+            {/* Rejection / Administrative Record */}
+            {app.rejectionRemarks && (
+              <div className="bg-red-50/30 rounded-[32px] p-8 shadow-sm border border-red-100/50 animate-in fade-in slide-in-from-top-4 duration-500">
+                 <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-red-500 mb-6 border-b border-red-500/10 pb-4 flex items-center gap-3 w-fit pr-12">
+                   <X size={14} strokeWidth={3} /> Rejection Remarks
+                 </h3>
+                 <div className="pl-4">
+                    <div className="text-[13px] leading-relaxed font-bold text-primary italic bg-white/50 p-6 rounded-2xl border border-red-100 shadow-inner">
+                      "{app.rejectionRemarks}"
+                    </div>
+                    {app.rejectionDate && (
+                      <div className="mt-4 text-[10px] font-black uppercase tracking-widest text-primary/30 flex items-center gap-2">
+                        <Clock size={12} /> Recorded on {new Date(app.rejectionDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      </div>
+                    )}
+                 </div>
+              </div>
+            )}
 
          </div>
 
@@ -277,20 +294,51 @@ export default function ApplicationDetailsView({ app, onBack, onUpdate, showResu
             <div className="bg-white rounded-[32px] p-8 shadow-sm border border-outline-variant/10">
                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/40 mb-6">Administrative Actions</h3>
                <div className="space-y-3">
-                 <button 
-                    onClick={() => handleUpdateStatus('assessment_scheduled')} 
-                    disabled={isProcessing || currentAppStatus === 'assessment_scheduled' || currentAppStatus === 'rejected'}
-                    className="w-full py-4 text-xs font-bold bg-green-50 text-green-600 rounded-xl hover:bg-green-100 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
-                  >
-                   <BookOpen size={14} /> {currentAppStatus === 'assessment_scheduled' ? 'Accepted for Test' : 'Accept Application'}
-                 </button>
-                 <button 
-                    onClick={() => setIsRejectModalOpen(true)}
-                    disabled={isProcessing || currentAppStatus === 'rejected'}
-                    className="w-full py-4 text-xs font-bold bg-red-50 text-red-600 rounded-xl hover:bg-red-100 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
-                  >
-                   Reject Application
-                 </button>
+                 {/* Accepted State */}
+                 {currentAppStatus === 'accepted' ? (
+                   <>
+                     <div className="w-full py-4 bg-green-50 text-green-600 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 border border-green-100">
+                       <CheckCircle size={14} /> Accepted Student
+                     </div>
+                     <button 
+                        onClick={() => setIsRejectModalOpen(true)}
+                        disabled={isProcessing}
+                        className="w-full py-4 text-xs font-bold bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors flex items-center justify-center gap-2"
+                      >
+                       <X size={14} /> Revoke & Reject
+                     </button>
+                   </>
+                 ) : currentAppStatus === 'rejected' ? (
+                   <>
+                     <div className="w-full py-4 bg-red-50 text-red-600 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 border border-red-100">
+                       <X size={14} strokeWidth={3} /> Rejected Candidate
+                     </div>
+                     <button 
+                        onClick={() => handleUpdateStatus('assessment_scheduled')} 
+                        disabled={isProcessing}
+                        className="w-full py-4 text-xs font-bold bg-green-50 text-green-600 rounded-xl hover:bg-green-100 transition-colors flex items-center justify-center gap-2 border border-green-100/50"
+                      >
+                       <CheckCircle size={14} /> Grant Admission
+                     </button>
+                   </>
+                 ) : (
+                   <>
+                     <button 
+                        onClick={() => handleUpdateStatus('assessment_scheduled')} 
+                        disabled={isProcessing}
+                        className="w-full py-4 text-xs font-bold bg-green-50 text-green-600 rounded-xl hover:bg-green-100 transition-colors flex items-center justify-center gap-2 border border-green-100/50"
+                      >
+                       <CheckCircle size={14} /> Accept Application
+                     </button>
+                     <button 
+                        onClick={() => setIsRejectModalOpen(true)}
+                        disabled={isProcessing}
+                        className="w-full py-4 text-xs font-bold bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors flex items-center justify-center gap-2"
+                      >
+                       <X size={14} /> Reject Application
+                     </button>
+                   </>
+                 )}
                </div>
             </div>
 

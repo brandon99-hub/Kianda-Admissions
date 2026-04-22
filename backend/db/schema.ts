@@ -13,6 +13,8 @@ export const applications = pgTable('applications', {
   applicationFeePaidAt: timestamp('application_fee_paid_at'),
   acceptanceFeePaidAt: timestamp('acceptance_fee_paid_at'),
   academicYear: integer('academic_year'),
+  rejectionRemarks: text('rejection_remarks'),
+  rejectionDate: timestamp('rejection_date'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });

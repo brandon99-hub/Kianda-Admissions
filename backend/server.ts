@@ -224,11 +224,21 @@ app.get('/api/admin/applications', async (req, res) => {
 // Update Application Status (Accept / Reject)
 app.post('/api/admin/applications/status', async (req, res) => {
   try {
-    const { applicationId, status, reason } = req.body;
+    let { applicationId, status, reason } = req.body;
     
     // Update Application record
+    const updateData: any = { status };
+    if (status === 'rejected') {
+      updateData.rejectionRemarks = reason;
+      updateData.rejectionDate = new Date();
+    } else if (status === 'accepted' || status === 'passed_assessment') {
+      // Clear rejection info if re-accepted
+      updateData.rejectionRemarks = null;
+      updateData.rejectionDate = null;
+    }
+
     await db.update(schema.applications)
-      .set({ status })
+      .set(updateData)
       .where(eq(schema.applications.id, applicationId));
       
     // Fetch deep candidate data to construct emails
@@ -252,6 +262,30 @@ app.post('/api/admin/applications/status', async (req, res) => {
         emailContent = getAssessmentInvitationEmail(appData.candidate.fullName, assessmentDate);
       } else if (status === 'rejected') {
         emailContent = getApplicationRejectionEmail(appData.candidate.fullName, reason || 'Did not meet requirements');
+      } else if (status === 'accepted') {
+        const grade = await db.query.gradeManagement.findFirst({
+          where: eq(schema.gradeManagement.gradeName, appData.candidate.grade)
+        });
+
+        if (grade && grade.vacantSpots > 0) {
+          emailContent = getAdmissionOfferEmail(appData.candidate.fullName);
+          // 1. Double check status matches
+          await db.update(schema.applications)
+            .set({ status: 'accepted' })
+            .where(eq(schema.applications.id, applicationId));
+
+          // 2. Decrement vacancies
+          await db.update(schema.gradeManagement)
+            .set({ vacantSpots: grade.vacantSpots - 1 })
+            .where(eq(schema.gradeManagement.id, grade.id));
+        } else {
+          // No slots left, force waitlist
+          status = 'waitlisted';
+          emailContent = getWaitlistEmail(appData.candidate.fullName);
+          await db.update(schema.applications)
+            .set({ status: 'waitlisted' })
+            .where(eq(schema.applications.id, applicationId));
+        }
       }
       
       if (emailContent) {
@@ -620,9 +654,18 @@ app.post('/api/admin/interviews/outcome', async (req, res) => {
   try {
     const { applicationId, outcome, reason } = req.body; // outcome: 'accepted' | 'rejected'
     
-    // 1. Update Application Status
+    // 1. Update Application Status & Persistence
+    const updateData: any = { status: outcome };
+    if (outcome === 'rejected') {
+      updateData.rejectionRemarks = reason;
+      updateData.rejectionDate = new Date();
+    } else if (outcome === 'accepted') {
+      updateData.rejectionRemarks = null;
+      updateData.rejectionDate = null;
+    }
+
     await db.update(schema.applications)
-      .set({ status: outcome })
+      .set(updateData)
       .where(eq(schema.applications.id, applicationId));
 
     const appData = await db.query.applications.findFirst({
@@ -641,11 +684,6 @@ app.post('/api/admin/interviews/outcome', async (req, res) => {
 
         if (grade && grade.vacantSpots > 0) {
           emailContent = getAdmissionOfferEmail(appData.candidate.fullName);
-          // 1. Update Application Status to accepted
-          await db.update(schema.applications)
-            .set({ status: 'accepted' })
-            .where(eq(schema.applications.id, applicationId));
-
           // 2. Decrement vacancies
           await db.update(schema.gradeManagement)
             .set({ vacantSpots: grade.vacantSpots - 1 })
@@ -659,18 +697,23 @@ app.post('/api/admin/interviews/outcome', async (req, res) => {
         }
       } else {
         emailContent = getApplicationRejectionEmail(appData.candidate.fullName, reason || 'Did not meet requirements');
-        await db.update(schema.applications)
-          .set({ status: 'rejected' })
-          .where(eq(schema.applications.id, applicationId));
       }
 
-      if (emailContent && process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-        await transporter.sendMail({
-          from: `"Kianda Admissions" <${process.env.EMAIL_USER}>`,
-          to: parentEmails,
-          subject: emailContent.subject,
-          text: emailContent.body
-        });
+      if (emailContent) {
+        if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+          try {
+            await transporter.sendMail({
+              from: `"Kianda Admissions" <${process.env.EMAIL_USER}>`,
+              to: parentEmails,
+              subject: emailContent.subject,
+              text: emailContent.body
+            });
+          } catch (e) {
+            console.error('[EMAIL ERROR]', e);
+          }
+        } else {
+          console.log(`[MOCK OUTCOME EMAIL] To: ${parentEmails}\nSubject: ${emailContent.subject}\nBody:\n${emailContent.body}`);
+        }
       }
     }
 

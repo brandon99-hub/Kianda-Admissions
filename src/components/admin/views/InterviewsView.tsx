@@ -15,9 +15,10 @@ interface ScheduledInterviewRowProps {
   onViewDetails: (app: any) => void;
   isProcessing: boolean;
   vacantSpots: number;
+  index: number;
 }
 
-function ScheduledInterviewRow({ slot, onAccept, onReject, onViewDetails, isProcessing, vacantSpots }: ScheduledInterviewRowProps) {
+function ScheduledInterviewRow({ slot, onAccept, onReject, onViewDetails, isProcessing, vacantSpots, index }: ScheduledInterviewRowProps) {
   const [parentToggle, setParentToggle] = useState<'mother' | 'father'>('mother');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -108,10 +109,10 @@ function ScheduledInterviewRow({ slot, onAccept, onReject, onViewDetails, isProc
                <AnimatePresence>
                  {isDropdownOpen && (
                    <motion.div 
-                     initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                     initial={{ opacity: 0, y: index === 0 ? 10 : -10, scale: 0.95 }}
                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                     className="absolute right-0 top-full mt-2 w-48 bg-white rounded-2xl shadow-2xl border border-outline-variant/10 py-2 z-50 overflow-hidden"
+                     exit={{ opacity: 0, y: index === 0 ? 10 : -10, scale: 0.95 }}
+                     className={`absolute right-0 ${index === 0 ? 'top-full mt-2' : 'bottom-full mb-2'} w-48 bg-white rounded-2xl shadow-2xl border border-outline-variant/10 py-2 z-50 overflow-hidden`}
                    >
                      <button 
                        onClick={() => { setIsDropdownOpen(false); onAccept(slot.applicationId); }}
@@ -152,9 +153,10 @@ interface AwaitingInterviewRowProps {
   onViewDetails: (app: any) => void;
   isProcessing: boolean;
   vacantSpots: number;
+  index: number;
 }
 
-function AwaitingInterviewRow({ app, onSchedule, onAccept, onReject, onViewDetails, isProcessing, vacantSpots }: AwaitingInterviewRowProps) {
+function AwaitingInterviewRow({ app, onSchedule, onAccept, onReject, onViewDetails, isProcessing, vacantSpots, index }: AwaitingInterviewRowProps) {
   const [parentToggle, setParentToggle] = useState<'mother' | 'father'>('mother');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -235,10 +237,10 @@ function AwaitingInterviewRow({ app, onSchedule, onAccept, onReject, onViewDetai
                <AnimatePresence>
                  {isDropdownOpen && (
                    <motion.div 
-                     initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                     initial={{ opacity: 0, y: index === 0 ? 10 : -10, scale: 0.95 }}
                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                     className="absolute right-0 top-full mt-2 w-48 bg-white rounded-2xl shadow-2xl border border-outline-variant/10 py-2 z-50 overflow-hidden text-left"
+                     exit={{ opacity: 0, y: index === 0 ? 10 : -10, scale: 0.95 }}
+                     className={`absolute right-0 ${index === 0 ? 'top-full mt-2' : 'bottom-full mb-2'} w-48 bg-white rounded-2xl shadow-2xl border border-outline-variant/10 py-2 z-50 overflow-hidden text-left`}
                    >
                      <button 
                        onClick={() => { setIsDropdownOpen(false); onSchedule(app.id); }}
@@ -445,7 +447,7 @@ export default function InterviewsView() {
             <Loader2 size={32} className="animate-spin text-primary/20" />
           </div>
         )}
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto min-h-[400px]">
           <table className="w-full text-left whitespace-nowrap min-w-[1000px]">
              <thead className="bg-surface-container-low/50 border-b border-outline-variant/10">
                 <tr>
@@ -472,6 +474,7 @@ export default function InterviewsView() {
                   filteredInterviews.map((slot: any, i: number) => (
                     <ScheduledInterviewRow 
                       key={i} 
+                      index={i}
                       slot={slot} 
                       isProcessing={recordOutcomeMutation.isPending}
                       vacantSpots={grades.find((g: any) => g.gradeName === slot.application?.candidate?.grade)?.vacantSpots || 0}
@@ -489,6 +492,7 @@ export default function InterviewsView() {
                   filteredAwaiting.map((app: any, i: number) => (
                     <AwaitingInterviewRow 
                       key={i} 
+                      index={i}
                       app={app} 
                       isProcessing={recordOutcomeMutation.isPending}
                       vacantSpots={grades.find((g: any) => g.gradeName === app.candidate?.grade)?.vacantSpots || 0}

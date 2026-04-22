@@ -264,15 +264,12 @@ export default function AssessmentBookView() {
                      })}
                      <td className="px-8 py-6">
                         <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${
-                          ['passed_assessment', 'interview_scheduled', 'accepted'].includes(app.status)
+                          isPassed
                           ? 'bg-green-50 text-green-600 border-green-100' 
-                          : ['failed', 'rejected'].includes(app.status)
-                          ? 'bg-red-50 text-red-500 border-red-100'
-                          : 'bg-surface-container text-on-surface-variant/40 border-outline-variant/10'
+                          : 'bg-red-50 text-red-500 border-red-100'
                         }`}>
-                           {['passed_assessment', 'interview_scheduled', 'accepted'].includes(app.status) ? <><CheckCircle2 size={12} /> Passed</> : 
-                            ['failed', 'rejected'].includes(app.status) ? <><XCircle size={12} /> Failed</> : 
-                            <><AlertCircle size={12} /> Pending Result</>}
+                           {isPassed ? <><CheckCircle2 size={12} /> Passed</> : 
+                            <><XCircle size={12} /> Failed</>}
                         </div>
                      </td>
                    </tr>
