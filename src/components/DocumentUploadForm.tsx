@@ -40,7 +40,7 @@ export default function DocumentUploadForm({ onNext, onBack, onCancel, consentGi
       const formData = new FormData();
       formData.append('file', file);
       
-      const response = await fetch(`http://localhost:5000/api/upload?candidateName=${encodeURIComponent(candidateName || 'Unknown')}`, {
+      const response = await fetch(`/api/upload?candidateName=${encodeURIComponent(candidateName || 'Unknown')}`, {
         method: 'POST',
         body: formData,
       });

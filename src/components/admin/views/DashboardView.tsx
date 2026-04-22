@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import AdminPageHeader from '../AdminPageHeader';
 import { LayoutDashboard, Calendar, Bell, ChevronLeft, ChevronRight, CheckCircle2, UserPlus, Award, Clock, ArrowUpRight, GraduationCap, MapPin, ChevronDown } from 'lucide-react';
 import { useApplications, useInterviews, useAssessments, useGrades } from '../../../hooks/useAdminData';
+import { authFetch } from '../../../utils/auth';
 
 export default function DashboardView() {
   const { data: applications = [] } = useApplications();
@@ -21,7 +22,7 @@ export default function DashboardView() {
   const [viewDate, setViewDate] = useState(new Date());
 
   useEffect(() => {
-    fetch(`/api/admin/stats?year=${selectedYear}`)
+    authFetch(`/api/admin/stats?year=${selectedYear}`)
       .then(res => res.json())
       .then(setStats)
       .catch(console.error);
@@ -147,7 +148,7 @@ export default function DashboardView() {
 
       {/* Top Stats Row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <StatCard title="Total Applications" value={stats.totalApplications} subValue={`${stats.totalVacantSpots} Vacancies`} color="blue" />
+        <StatCard title="Total Applications" value={stats.totalApplications || 0} subValue={`${stats.totalVacantSpots || 0} Vacancies`} color="blue" />
         <StatCard title="Interviews Today" value={stats.interviewsToday} color="secondary" />
         <StatCard title="Acceptance Rate" value={stats.acceptanceRate} isPercentage color="green" />
       </div>

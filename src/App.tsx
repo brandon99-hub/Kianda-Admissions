@@ -14,6 +14,7 @@ import PaymentConfirmationForm from './components/PaymentConfirmationForm';
 import { ApplicationState, Step } from './types';
 import { LayoutDashboard, Users, GraduationCap, Calendar, LogOut, Search, Filter, ArrowUpRight, Clock, MapPin, ChevronLeft, ChevronRight, ListChecks } from 'lucide-react';
 import { AdminContentView } from './components/AdminViews';
+import { saveToken, removeToken, isTokenValid } from './utils/auth';
 
 const EXPIRY_DURATION_MS = 2 * 60 * 60 * 1000; // 2 Hours
 
@@ -78,6 +79,13 @@ export default function App() {
     const stateToSave = { ...state, lastUpdated: new Date().toISOString() };
     localStorage.setItem('kianda_admission_state', JSON.stringify(stateToSave));
   }, [state]);
+
+  // Session persistence check
+  useEffect(() => {
+    if (isTokenValid()) {
+      setView('admin');
+    }
+  }, []);
 
   const resetApplication = () => {
     if (confirm('Are you sure you want to cancel? All progress will be lost.')) {
@@ -148,7 +156,8 @@ export default function App() {
       });
       const data = await response.json();
       if (response.ok) {
-        toast.success(`Welcome back, ${data.email.split('@')[0]}!`, { icon: '👋' });
+        saveToken(data.token);
+        toast.success(`Welcome back!`, { icon: '👋' });
         setView('admin');
       } else {
         toast.error(data.error || 'Login failed');
@@ -252,7 +261,7 @@ export default function App() {
       {/* Redesigned Sidebar - White BG, Collapsible */}
       <motion.div 
         animate={{ width: isSidebarCollapsed ? 80 : 300 }}
-        className="h-screen bg-white flex flex-col py-8 shadow-[10px_0_40px_rgba(0,0,0,0.02)] relative z-20 border-r border-outline-variant/5"
+        className="sticky top-0 h-screen bg-white flex flex-col py-8 shadow-[10px_0_40px_rgba(0,0,0,0.02)] relative z-20 border-r border-outline-variant/5"
       >
         <div className={`flex items-center justify-between mb-12 px-6 ${isSidebarCollapsed ? 'flex-col gap-4' : ''}`}>
            <div className="flex items-center gap-3">
@@ -303,7 +312,10 @@ export default function App() {
 
         <div className="px-3 pt-6 border-t border-outline-variant/10">
            <button 
-             onClick={() => setView('portal')} 
+             onClick={() => {
+               removeToken();
+               setView('portal');
+             }} 
              className="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-on-surface-variant/30 hover:text-red-600 hover:bg-red-50 transition-all font-bold group"
            >
               <LogOut size={20} className="group-hover:rotate-12 transition-transform" />

@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Download, Upload, CheckCircle2, XCircle, AlertCircle, ChevronDown, Table as TableIcon, Mail, Loader2 } from 'lucide-react';
+import { authFetch } from '../../../utils/auth';
 import * as XLSX from 'xlsx';
 import toast from 'react-hot-toast';
 import { getRejectionEmail, getAssessmentPassEmail } from '../../../utils/emailTemplates';
@@ -145,7 +146,7 @@ export default function AssessmentBookView() {
 
         for (const app of rejectedApps) {
           const emailData = getRejectionEmail(app.candidate?.fullName, "The candidate did not achieve the required benchmark scores during the assessment examination.");
-          await fetch('/api/admin/send-status-email', {
+          await authFetch('/api/admin/send-status-email', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -164,7 +165,7 @@ export default function AssessmentBookView() {
 
         for (const app of passedApps) {
           const emailData = getAssessmentPassEmail(app.candidate?.fullName);
-          await fetch('/api/admin/send-status-email', {
+          await authFetch('/api/admin/send-status-email', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

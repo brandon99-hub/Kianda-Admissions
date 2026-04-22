@@ -269,7 +269,7 @@ export default function ApplicationsView() {
   const statusMetrics: Record<string, number> = {
     all: apps.filter((a: any) => a.academicYear === selectedYear).length,
     pending: apps.filter((a: any) => a.status === 'pending' && a.academicYear === selectedYear).length,
-    assessment_scheduled: apps.filter((a: any) => a.status === 'assessment_scheduled' && a.academicYear === selectedYear).length,
+    assessment_scheduled: apps.filter((a: any) => ['assessment_scheduled', 'accepted'].includes(a.status) && a.academicYear === selectedYear).length,
     passed_assessment: apps.filter((a: any) => ['passed_assessment', 'interview_scheduled'].includes(a.status) && a.academicYear === selectedYear).length,
     rejected: apps.filter((a: any) => a.status === 'rejected' && a.academicYear === selectedYear).length,
     failed: apps.filter((a: any) => a.status === 'failed' && a.academicYear === selectedYear).length,
@@ -279,6 +279,7 @@ export default function ApplicationsView() {
   const filteredApps = apps.filter((app: any) => {
     const matchesYear = app.academicYear === selectedYear;
     let matchesStatus = statusFilter === 'all' || app.status === statusFilter;
+    if (statusFilter === 'assessment_scheduled') matchesStatus = ['assessment_scheduled', 'accepted'].includes(app.status);
     if (statusFilter === 'passed_assessment') matchesStatus = ['passed_assessment', 'interview_scheduled'].includes(app.status);
     const matchesSearch = !searchQuery || app.candidate?.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) || app.id.toString().includes(searchQuery);
     return matchesYear && matchesStatus && matchesSearch;

@@ -1,12 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
+import { authFetch } from '../utils/auth';
 
 // API Fetchers
-const fetchApplications = () => fetch('/api/admin/applications').then(res => res.json());
-const fetchGrades = () => fetch('/api/admin/grades').then(res => res.json());
-const fetchAssessments = () => fetch('/api/admin/assessments').then(res => res.json());
-const fetchInterviews = () => fetch('/api/admin/interviews').then(res => res.json());
-const fetchResults = () => fetch('/api/admin/results').then(res => res.json());
+const fetchApplications = () => authFetch('/api/admin/applications').then(res => res.json());
+const fetchGrades = () => authFetch('/api/admin/grades').then(res => res.json());
+const fetchAssessments = () => authFetch('/api/admin/assessments').then(res => res.json());
+const fetchInterviews = () => authFetch('/api/admin/interviews').then(res => res.json());
+const fetchResults = () => authFetch('/api/admin/results').then(res => res.json());
 
 // Main Data Hooks
 export const useApplications = () => useQuery({
@@ -44,7 +45,7 @@ export const useUpdateApplicationStatus = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ applicationId, status, reason }: { applicationId: number, status: string, reason?: string }) => {
-      const res = await fetch('/api/admin/applications/status', {
+      const res = await authFetch('/api/admin/applications/status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ applicationId, status, reason })
@@ -66,7 +67,7 @@ export const useBulkSync = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (results: any[]) => {
-      const res = await fetch('/api/admin/results/bulk', {
+      const res = await authFetch('/api/admin/results/bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ results })
@@ -89,7 +90,7 @@ export const useCreateInterview = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: any) => {
-      const res = await fetch('/api/admin/interviews', {
+      const res = await authFetch('/api/admin/interviews', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -109,7 +110,7 @@ export const useRecordInterviewOutcome = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: any) => {
-      const res = await fetch('/api/admin/interviews/outcome', {
+      const res = await authFetch('/api/admin/interviews/outcome', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -130,7 +131,7 @@ export const useCreateGrade = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: any) => {
-      const res = await fetch('/api/admin/grades', {
+      const res = await authFetch('/api/admin/grades', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -149,7 +150,7 @@ export const useDeleteGrade = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: number) => {
-      const res = await fetch(`/api/admin/grades/${id}`, { method: 'DELETE' });
+      const res = await authFetch(`/api/admin/grades/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to delete grade');
       return res.json();
     },
@@ -164,7 +165,7 @@ export const useCreateAssessment = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: any) => {
-      const res = await fetch('/api/admin/assessments', {
+      const res = await authFetch('/api/admin/assessments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -183,7 +184,7 @@ export const useDeleteAssessment = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: number) => {
-      const res = await fetch(`/api/admin/assessments/${id}`, { method: 'DELETE' });
+      const res = await authFetch(`/api/admin/assessments/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to delete assessment');
       return res.json();
     },

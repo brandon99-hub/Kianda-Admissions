@@ -9,6 +9,7 @@ import bcrypt from 'bcrypt';
 import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
+import jwt from 'jsonwebtoken';
 
 import { 
   getSuccessEmail, 
@@ -26,7 +27,28 @@ const port = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
-app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
+// --- Security Middleware ---
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-for-dev-only';
+
+const authenticateAdmin = (req: any, res: any, next: any) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Unauthorized: No token provided' });
+  }
+
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    (req as any).admin = decoded;
+    next();
+  } catch (error) {
+    return res.status(401).json({ error: 'Unauthorized: Invalid or expired token' });
+  }
+};
+
+// Secure uploads - only admins can view documents
+app.use('/uploads', authenticateAdmin, express.static(path.join(process.cwd(), 'uploads')));
 
 // Multer Config
 const storage = multer.diskStorage({
@@ -178,7 +200,7 @@ app.post('/api/applications', async (req, res) => {
 
 // --- Admin Routes ---
 
-// Real Admin Login
+// Real Admin Login with JWT
 app.post('/api/admin/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -188,7 +210,12 @@ app.post('/api/admin/login', async (req, res) => {
     });
 
     if (admin && await bcrypt.compare(password, admin.passwordHash)) {
-      res.json({ token: 'mock-jwt-token', email: admin.email });
+      const token = jwt.sign(
+        { id: admin.id, email: admin.email },
+        JWT_SECRET,
+        { expiresIn: '8h' }
+      );
+      res.json({ token, email: admin.email });
     } else {
       res.status(401).json({ error: 'Invalid credentials' });
     }
@@ -198,7 +225,7 @@ app.post('/api/admin/login', async (req, res) => {
 });
 
 // Get Applications with Full Info
-app.get('/api/admin/applications', async (req, res) => {
+app.get('/api/admin/applications', authenticateAdmin, async (req, res) => {
   try {
     const allApps = await db.query.applications.findMany({
       with: {
@@ -222,7 +249,7 @@ app.get('/api/admin/applications', async (req, res) => {
 });
 
 // Update Application Status (Accept / Reject)
-app.post('/api/admin/applications/status', async (req, res) => {
+app.post('/api/admin/applications/status', authenticateAdmin, async (req, res) => {
   try {
     let { applicationId, status, reason } = req.body;
     
@@ -314,7 +341,7 @@ app.post('/api/admin/applications/status', async (req, res) => {
 });
 
 // GET Dashboard Stats
-app.get('/api/admin/stats', async (req, res) => {
+app.get('/api/admin/stats', authenticateAdmin, async (req, res) => {
   try {
     const year = parseInt(req.query.year as string) || new Date().getFullYear();
     
@@ -359,7 +386,7 @@ app.get('/api/admin/stats', async (req, res) => {
 });
 
 // GET Grade Management
-app.get('/api/admin/grades', async (req, res) => {
+app.get('/api/admin/grades', authenticateAdmin, async (req, res) => {
   try {
     const grades = await db.select().from(schema.gradeManagement).orderBy(schema.gradeManagement.gradeName);
     res.json(grades);
@@ -369,7 +396,7 @@ app.get('/api/admin/grades', async (req, res) => {
 });
 
 // CREATE/UPDATE Grade
-app.post('/api/admin/grades', async (req, res) => {
+app.post('/api/admin/grades', authenticateAdmin, async (req, res) => {
   try {
     const { id, gradeName, vacantSpots, assessmentDate, academicYear } = req.body;
     const year = academicYear || new Date().getFullYear();
@@ -397,7 +424,7 @@ app.post('/api/admin/grades', async (req, res) => {
 });
 
 // DELETE Grade
-app.delete('/api/admin/grades/:id', async (req, res) => {
+app.delete('/api/admin/grades/:id', authenticateAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     await db.delete(schema.gradeManagement).where(eq(schema.gradeManagement.id, parseInt(id)));
@@ -410,7 +437,7 @@ app.delete('/api/admin/grades/:id', async (req, res) => {
 // --- Assessment & Results ---
 
 // GET Assessments
-app.get('/api/admin/assessments', async (req, res) => {
+app.get('/api/admin/assessments', authenticateAdmin, async (req, res) => {
   try {
     const data = await db.query.assessments.findMany({
       with: { grade: true }
@@ -422,7 +449,7 @@ app.get('/api/admin/assessments', async (req, res) => {
 });
 
 // CREATE/UPDATE Assessment
-app.post('/api/admin/assessments', async (req, res) => {
+app.post('/api/admin/assessments', authenticateAdmin, async (req, res) => {
   try {
     const { id, gradeId, title, maxMarks } = req.body;
     if (id) {
@@ -443,7 +470,7 @@ app.post('/api/admin/assessments', async (req, res) => {
 });
 
 // DELETE Assessment
-app.delete('/api/admin/assessments/:id', async (req, res) => {
+app.delete('/api/admin/assessments/:id', authenticateAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     await db.delete(schema.assessments).where(eq(schema.assessments.id, parseInt(id)));
@@ -454,7 +481,7 @@ app.delete('/api/admin/assessments/:id', async (req, res) => {
 });
 
 // GET Results
-app.get('/api/admin/results', async (req, res) => {
+app.get('/api/admin/results', authenticateAdmin, async (req, res) => {
   try {
     const results = await db.query.assessmentResults.findMany({
       with: {
@@ -469,7 +496,7 @@ app.get('/api/admin/results', async (req, res) => {
 });
 
 // RECORD Result
-app.post('/api/admin/results', async (req, res) => {
+app.post('/api/admin/results', authenticateAdmin, async (req, res) => {
   try {
     const { id, applicationId, assessmentId, marksObtained, passed } = req.body;
     if (id) {
@@ -503,7 +530,7 @@ app.post('/api/admin/results', async (req, res) => {
 });
 
 // BULK Sync Results
-app.post('/api/admin/results/bulk', async (req, res) => {
+app.post('/api/admin/results/bulk', authenticateAdmin, async (req, res) => {
   try {
     const { results } = req.body; // Array of { applicationId, assessmentId, marksObtained, passed }
     
@@ -542,7 +569,7 @@ app.post('/api/admin/results/bulk', async (req, res) => {
 });
 
 // PRODUCTION Status Email Sender
-app.post('/api/admin/send-status-email', async (req, res) => {
+app.post('/api/admin/send-status-email', authenticateAdmin, async (req, res) => {
   try {
     const { email, subject, content } = req.body;
     
@@ -566,7 +593,7 @@ app.post('/api/admin/send-status-email', async (req, res) => {
 });
 
 // GET Interview Slots
-app.get('/api/admin/interviews', async (req, res) => {
+app.get('/api/admin/interviews', authenticateAdmin, async (req, res) => {
   try {
     const slots = await db.query.interviewSlots.findMany({
       with: {
@@ -594,7 +621,7 @@ app.get('/api/admin/interviews', async (req, res) => {
 });
 
 // CREATE Interview Slot (Bulk)
-app.post('/api/admin/interviews', async (req, res) => {
+app.post('/api/admin/interviews', authenticateAdmin, async (req, res) => {
   try {
     const { applicationIds, slotTime, endTime, location } = req.body;
     
@@ -650,7 +677,7 @@ app.post('/api/admin/interviews', async (req, res) => {
 });
 
 // RECORD Interview Outcome
-app.post('/api/admin/interviews/outcome', async (req, res) => {
+app.post('/api/admin/interviews/outcome', authenticateAdmin, async (req, res) => {
   try {
     const { applicationId, outcome, reason } = req.body; // outcome: 'accepted' | 'rejected'
     

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ArrowLeft, User, MapPin, Phone, Mail, Hash, BookOpen, Clock, HeartPulse, GraduationCap, Download, FileText, CheckCircle, Users, X, Loader2 } from 'lucide-react';
+import { authFetch } from '../../../utils/auth';
 import { motion, AnimatePresence } from 'motion/react';
 import toast from 'react-hot-toast';
 import { buildApplicationPDF } from '../../../utils/buildApplicationPDF';
@@ -33,7 +34,7 @@ export default function ApplicationDetailsView({ app, onBack, onUpdate, showResu
     setIsProcessing(true);
     const toastId = toast.loading(`Updating status to ${status.replace('_', ' ')}...`);
     try {
-      const res = await fetch('/api/admin/applications/status', {
+      const res = await authFetch('/api/admin/applications/status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ applicationId: app.id, status, reason })
