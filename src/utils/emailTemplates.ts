@@ -137,9 +137,9 @@ Dear Parents,
 
 Congratulations! We are delighted to formally offer ${candidateName} a place at Kianda School. 
 
-To secure this position, we kindly request you to pay a commitment fee of KES 25,000. This amount is non-refundable and will be credited towards the first term's fees.
+To secure this position, we kindly request you to pay the admissions fees of Ksh 25,000. Please note that this payment should be made directly through the unique student account assigned to ${candidateName} by our Finance Department. 
 
-Please make the payment through the portal or via our official finance channels and upload the confirmation.
+The Finance Office will contact you shortly with the specific account details and instructions to finalize the enrollment. Kindly note that all subsequent payments are handled through these official finance channels rather than the admissions portal.
 
 Welcome to the Kianda School family!
 

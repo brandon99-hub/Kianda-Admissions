@@ -28,7 +28,9 @@ export default function AssessmentBookView() {
 
   const activeGrade = grades.find((g: any) => g.id === activeGradeId);
   const gradeAssessments = assessments.filter((a: any) => a.gradeId === activeGradeId);
-  const gradeApps = applications.filter((app: any) => app.candidate?.grade === activeGrade?.gradeName);
+  const gradeApps = applications
+    .filter((app: any) => app.candidate?.grade === activeGrade?.gradeName)
+    .sort((a: any, b: any) => (a.candidate?.fullName || '').localeCompare(b.candidate?.fullName || ''));
 
   const handleExport = () => {
     if (!activeGrade) return;
@@ -141,7 +143,7 @@ export default function AssessmentBookView() {
         
         const rejectedApps = gradeApps.filter(app => {
           const syncRes = pending.find((p: any) => p.applicationId === app.id);
-          return syncRes && !syncRes.passed && app.status !== 'rejected' && app.status !== 'failed';
+          return syncRes && !syncRes.passed && ['pending', 'assessment_scheduled'].includes(app.status);
         });
 
         for (const app of rejectedApps) {
@@ -160,7 +162,7 @@ export default function AssessmentBookView() {
 
         const passedApps = gradeApps.filter(app => {
           const syncRes = pending.find((p: any) => p.applicationId === app.id);
-          return syncRes && syncRes.passed && app.status !== 'passed_assessment';
+          return syncRes && syncRes.passed && ['pending', 'assessment_scheduled'].includes(app.status);
         });
 
         for (const app of passedApps) {
@@ -219,7 +221,7 @@ export default function AssessmentBookView() {
               onClick={() => fileInputRef.current?.click()}
               className="flex items-center gap-2 px-6 py-3 bg-primary text-secondary rounded-xl font-black uppercase tracking-widest text-[9px] hover:scale-105 transition-all shadow-lg shadow-primary/10"
             >
-              <Upload size={14} /> Sync
+              <Upload size={14} /> Import
             </button>
           </div>
         </div>
@@ -237,6 +239,7 @@ export default function AssessmentBookView() {
                       {ass.title} <span className="opacity-30 ml-1">/{ass.maxMarks}</span>
                    </th>
                  ))}
+                 <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-primary/40">AVG</th>
                  <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-primary/40">Final Verdict</th>
               </tr>
             </thead>
@@ -264,6 +267,17 @@ export default function AssessmentBookView() {
                         );
                      })}
                      <td className="px-8 py-6">
+                        <div className="text-sm font-mono font-black text-secondary">
+                          {(() => {
+                            const appRes = gradeAssessments.map(ass => results.find((r: any) => r.applicationId === app.id && r.assessmentId === ass.id)?.marksObtained || 0);
+                            const hasRes = gradeAssessments.some(ass => results.find((r: any) => r.applicationId === app.id && r.assessmentId === ass.id));
+                            if (!hasRes) return '—';
+                            const total = appRes.reduce((a, b) => a + b, 0);
+                            return (total / gradeAssessments.length).toFixed(1);
+                          })()}
+                        </div>
+                     </td>
+                     <td className="px-8 py-6">
                         <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${
                           isPassed
                           ? 'bg-green-50 text-green-600 border-green-100' 
@@ -278,7 +292,7 @@ export default function AssessmentBookView() {
               })}
               {gradeApps.length === 0 && (
                 <tr>
-                  <td colSpan={gradeAssessments.length + 2} className="px-8 py-24 text-center">
+                  <td colSpan={gradeAssessments.length + 3} className="px-8 py-24 text-center">
                      <div className="flex flex-col items-center gap-3 opacity-20">
                         <TableIcon size={48} />
                         <p className="font-bold text-primary italic">No active applications for this grade level.</p>

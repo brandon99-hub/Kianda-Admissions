@@ -54,10 +54,13 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
   ];
 
   const religionOptions = ['Christian', 'Hindu', 'Muslim', 'Other'];
-  const denominationOptions = ['Catholic', 'Anglican', 'PCEA'];
+  const denominationOptions = ['Catholic', 'Anglican', 'PCEA', 'SDA', 'Other'];
 
   const isPredefinedReligion = religionOptions.includes(data.religion);
   const showSpecifyReligion = data.religion === 'Other' || (!isPredefinedReligion && data.religion !== '');
+
+  const isPredefinedDenomination = denominationOptions.includes(data.denomination);
+  const showSpecifyDenomination = data.denomination === 'Other' || (!isPredefinedDenomination && data.denomination !== '');
 
   return (
     <motion.div
@@ -269,7 +272,7 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
                     <div className="flex items-center gap-3">
                        <Church size={16} className={`${data.denomination ? 'text-secondary' : 'text-primary/20'}`} />
                        <span className={`text-sm font-black tracking-tight ${data.denomination ? 'text-primary' : 'text-primary/30'}`}>
-                         {denominationOptions.includes(data.denomination) ? data.denomination : 'Select Denomination'}
+                         {isPredefinedDenomination ? data.denomination : (data.denomination ? 'Other' : 'Select Denomination')}
                        </span>
                     </div>
                     <ChevronDown size={14} className={`text-primary/20 transition-transform ${activeDropdown === 'denomination' ? 'rotate-180 text-secondary' : ''}`} />
@@ -288,12 +291,34 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
                             key={opt}
                             type="button"
                             onClick={() => { updateData({ denomination: opt }); setActiveDropdown(null); }}
-                            className={`w-full px-6 py-3 text-left text-xs font-black tracking-widest hover:bg-secondary/10 transition-colors flex items-center justify-between ${data.denomination === opt ? 'bg-secondary/5 text-secondary' : 'text-primary'}`}
+                            className={`w-full px-6 py-3 text-left text-xs font-black tracking-widest hover:bg-secondary/10 transition-colors flex items-center justify-between ${data.denomination === opt || (!isPredefinedDenomination && opt === 'Other' && data.denomination !== '') ? 'bg-secondary/5 text-secondary' : 'text-primary'}`}
                           >
                             {opt}
-                            {data.denomination === opt && <div className="w-1.5 h-1.5 rounded-full bg-secondary" />}
+                            {(data.denomination === opt || (!isPredefinedDenomination && opt === 'Other' && data.denomination !== '')) && <div className="w-1.5 h-1.5 rounded-full bg-secondary" />}
                           </button>
                         ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  <AnimatePresence>
+                    {showSpecifyDenomination && (
+                      <motion.div 
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="pt-3">
+                          <input
+                            type="text"
+                            placeholder="Please specify denomination"
+                            value={isPredefinedDenomination ? '' : data.denomination}
+                            onChange={(e) => updateData({ denomination: e.target.value })}
+                            className="w-full bg-secondary/[0.03] border-2 border-secondary/10 rounded-xl p-4 focus:ring-2 focus:ring-secondary focus:border-secondary transition-all text-sm font-black text-primary tracking-tight"
+                            required
+                          />
+                        </div>
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -309,9 +334,19 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
               {(['kindergarten', 'primary', 'junior'] as const)
                 .filter(type => {
                   if (type === 'kindergarten') return true;
+                  if (!data.grade) return true; // Show all if no grade selected
+
                   const gradeNum = parseInt(data.grade.replace(/\D/g, ''));
-                  if (type === 'primary') return gradeNum > 1 || isNaN(gradeNum);
-                  if (type === 'junior') return gradeNum >= 7 || data.grade.includes('JSS') || isNaN(gradeNum);
+                  const isNumeric = /\d/.test(data.grade);
+
+                  if (type === 'primary') {
+                    if (!isNumeric) return false;
+                    return gradeNum > 1;
+                  }
+                  if (type === 'junior') {
+                    if (!isNumeric) return false;
+                    return gradeNum >= 8;
+                  }
                   return true;
                 })
                 .map((type) => (
@@ -322,7 +357,9 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
                     key={type} 
                     className="space-y-3 p-6 bg-surface-container-low rounded-[24px] border border-outline-variant/5 shadow-sm"
                   >
-                    <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-secondary mb-1 capitalize italic">{type} Stage</span>
+                    <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-secondary mb-1 capitalize italic text-nowrap">
+                      {type === 'junior' ? 'Junior Secondary' : `${type} Stage`}
+                    </span>
                     <input
                       type="text"
                       placeholder="Name of School"

@@ -50,7 +50,7 @@ export default function ParentInfoForm({ data, updateData, onNext, onBack, onCan
                     value={(data as any)[`father${f.key}`]}
                     onChange={(e) => updateData({ [`father${f.key}`]: e.target.value })}
                     className="w-full bg-surface-container-low border-none rounded-xl p-4 focus:ring-2 focus:ring-primary transition-all text-sm font-medium"
-                    required={f.key !== 'Work'}
+                    required={false}
                   />
                 </div>
               ))}
@@ -69,7 +69,7 @@ export default function ParentInfoForm({ data, updateData, onNext, onBack, onCan
                     value={(data as any)[`mother${f.key}`]}
                     onChange={(e) => updateData({ [`mother${f.key}`]: e.target.value })}
                     className="w-full bg-surface-container-low border-none rounded-xl p-4 focus:ring-2 focus:ring-primary transition-all text-sm font-medium"
-                    required={f.key !== 'Work'}
+                    required={false}
                   />
                 </div>
               ))}

@@ -105,6 +105,12 @@ export default function ApplicationDetailsView({ app, onBack, onUpdate, showResu
              </div>
              <div className="flex flex-wrap items-center gap-6 text-sm font-semibold text-on-surface-variant/70">
                 <span className="font-mono text-[10px] uppercase font-black tracking-widest text-primary/40 bg-primary/5 px-3 py-1 rounded border border-primary/5">Application ID: APP-{app.id.toString().padStart(4, '0')}</span>
+                <div className="flex items-center gap-2 text-primary/60">
+                   <Clock size={12} className="text-secondary" />
+                   <span className="text-[10px] font-black uppercase tracking-widest">
+                     Applied On: {app.createdAt ? new Date(app.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}
+                   </span>
+                </div>
              </div>
            </div>
         </div>
@@ -153,7 +159,6 @@ export default function ApplicationDetailsView({ app, onBack, onUpdate, showResu
                        <DetailItem inline label="Full Name" value={candidate.fullName} />
                        <DetailItem inline label="Applying Grade" value={candidate.grade} />
                        <DetailItem inline label="Date of Birth" value={formattedDob} />
-                       <DetailItem inline label="Gender" value={candidate.gender} />
                        <DetailItem inline label="Birth Order" value={candidate.birthOrder} />
                        <DetailItem inline label="Religion" value={`${candidate.religion || ''} ${candidate.denomination ? `(${candidate.denomination})` : ''}`} />
                      </div>
@@ -260,7 +265,17 @@ export default function ApplicationDetailsView({ app, onBack, onUpdate, showResu
                  {/* Smaller context flags */}
                  <div className="grid grid-cols-1 gap-8 pt-4 border-t border-primary/5">
                    <div className="space-y-5">
-                      <DetailItem inline label="Source" value={additional.source} />
+                      {(() => {
+                          const sourceMap: any = {
+                            'Parent': 'Parent',
+                            'School': "Through daughter's school",
+                            'Friend': 'Relative / Friend',
+                            'Website': 'Kianda Website',
+                            'SocialMedia': 'Social Media',
+                            'Other': additional.sourceOther || 'Other'
+                          };
+                          return <DetailItem inline label="How did you hear about us?" value={sourceMap[additional.source || ''] || additional.source} />;
+                       })()}
                       <DetailItem inline label="Applied Before?" value={additional.hasAppliedBefore ? `Yes, in ${additional.previousApplicationYear}` : 'No'} />
                    </div>
                  </div>

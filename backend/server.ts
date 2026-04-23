@@ -258,7 +258,7 @@ app.post('/api/admin/applications/status', authenticateAdmin, async (req, res) =
     if (status === 'rejected') {
       updateData.rejectionRemarks = reason;
       updateData.rejectionDate = new Date();
-    } else if (status === 'accepted' || status === 'passed_assessment') {
+    } else if (status === 'passed_assessment') {
       // Clear rejection info if re-accepted
       updateData.rejectionRemarks = null;
       updateData.rejectionDate = null;
@@ -554,11 +554,14 @@ app.post('/api/admin/results/bulk', authenticateAdmin, async (req, res) => {
         });
       }
 
-      // Update Application status
-      if (item.passed) {
-        await db.update(schema.applications).set({ status: 'passed_assessment' }).where(eq(schema.applications.id, item.applicationId));
-      } else {
-        await db.update(schema.applications).set({ status: 'failed' }).where(eq(schema.applications.id, item.applicationId));
+      // Update Application status ONLY if it hasn't progressed yet
+      const [currentApp] = await db.select().from(schema.applications).where(eq(schema.applications.id, item.applicationId));
+      if (currentApp && ['pending', 'assessment_scheduled'].includes(currentApp.status || '')) {
+          if (item.passed) {
+            await db.update(schema.applications).set({ status: 'passed_assessment' }).where(eq(schema.applications.id, item.applicationId));
+          } else {
+            await db.update(schema.applications).set({ status: 'failed' }).where(eq(schema.applications.id, item.applicationId));
+          }
       }
     }
     

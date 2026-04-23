@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Users, Search, User, Mail, ChevronRight, Loader2, ChevronDown, Archive, CheckSquare, Square, X, Filter, FileDown } from 'lucide-react';
 import AdminPageHeader from '../AdminPageHeader';
 import ApplicationDetailsView from './ApplicationDetailsView';
+import TablePagination from '../TablePagination';
+import SchoolSwitcher from '../SchoolSwitcher';
 import { useApplications, useUpdateApplicationStatus } from '../../../hooks/useAdminData';
 import { buildApplicationPDF } from '../../../utils/buildApplicationPDF';
 import JSZip from 'jszip';
@@ -46,7 +48,28 @@ const ApplicationRow: React.FC<{
         <div className="font-bold text-primary text-sm">{app.candidate?.fullName}</div>
         <div className="text-[10px] text-on-surface-variant font-medium opacity-40">APP-{app.id.toString().padStart(4, '0')}</div>
       </td>
-      <td className="px-6 py-6 text-sm font-bold text-on-surface-variant/60 italic">{app.candidate?.religion || 'N/A'}</td>
+      <td className="px-6 py-6">
+        <div className="flex flex-col">
+            <div className="font-bold text-primary text-sm whitespace-nowrap">
+                {app.candidate?.dob ? new Date(app.candidate.dob).toLocaleDateString('en-GB') : 'N/A'}
+            </div>
+            <div className="text-[10px] font-black text-secondary uppercase tracking-widest">
+                ({(() => {
+                    if (!app.candidate?.dob) return '0';
+                    const birth = new Date(app.candidate.dob);
+                    const now = new Date();
+                    let age = now.getFullYear() - birth.getFullYear();
+                    const m = now.getMonth() - birth.getMonth();
+                    if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--;
+                    return age;
+                })()} yrs)
+            </div>
+        </div>
+      </td>
+      <td className="px-6 py-6 text-sm font-bold text-on-surface-variant/60 italic">
+        {app.candidate?.religion || 'N/A'} 
+        {app.candidate?.denomination && <span className="text-secondary ml-1">({app.candidate.denomination})</span>}
+      </td>
       <td className="px-6 py-6 text-sm font-black text-secondary">{app.candidate?.grade}</td>
       <td className="px-6 py-6">
         <div className="flex flex-col gap-2">
@@ -75,6 +98,25 @@ const ApplicationRow: React.FC<{
         </div>
       </td>
       <td className="px-6 py-6">
+          <SchoolSwitcher schools={app.schoolsAttended || []} />
+      </td>
+      <td className="px-6 py-6">
+          <div className="relative group/motivation cursor-help">
+            <div className="text-[10px] font-bold text-primary/60 line-clamp-2 max-w-[150px] leading-relaxed">
+              {app.additionalInfo?.motivation || 'No motivation provided.'}
+            </div>
+            {app.additionalInfo?.motivation && (
+              <div className="absolute bottom-full left-0 mb-4 opacity-0 group-hover/motivation:opacity-100 transition-all pointer-events-none z-[60] w-64">
+                <div className="bg-white p-4 rounded-2xl shadow-2xl border border-secondary/20 shadow-primary/20">
+                  <div className="text-[9px] font-black uppercase tracking-widest text-secondary mb-2">Motivation Statement</div>
+                  <p className="text-[11px] leading-relaxed font-medium text-primary italic whitespace-normal break-words">"{app.additionalInfo.motivation}"</p>
+                </div>
+                <div className="w-3 h-3 bg-white rotate-45 border-r border-b border-secondary/20 -mt-1.5 ml-6 shadow-sm" />
+              </div>
+            )}
+          </div>
+      </td>
+      <td className="px-6 py-6">
         <div className="text-xs font-mono font-black tracking-[0.2em] text-primary/80 bg-primary/5 px-3 py-1 rounded-md border border-primary/10 w-fit">
           {app.mpesaCode || 'N/A'}
         </div>
@@ -93,6 +135,14 @@ const ApplicationRow: React.FC<{
           {['passed_assessment', 'interview_scheduled'].includes(app.status) ? 'Passed' :
            app.status === 'assessment_scheduled' ? 'Accepted' :
            app.status.replace('_', ' ')}
+        </div>
+      </td>
+      <td className="px-6 py-6">
+        <div className="flex flex-col">
+          <div className="text-[11px] font-bold text-primary">
+            {app.createdAt ? new Date(app.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}
+          </div>
+          <div className="text-[8px] font-black uppercase tracking-widest text-primary/30">Applied On</div>
         </div>
       </td>
       <td className="px-6 py-6 text-right">
@@ -123,19 +173,23 @@ const BulkExportModal: React.FC<{
 
   const filtered = apps.filter((a: any) => {
     const y = filterYear === 'all' || a.academicYear === filterYear;
-    const s = filterStatus === 'all' || a.status === filterStatus;
     const g = filterGrade === 'all' || a.candidate?.grade === filterGrade;
-    return y && s && g;
+    
+    let matchesStatus = filterStatus === 'all' || a.status === filterStatus;
+    if (filterStatus === 'assessment_scheduled') matchesStatus = ['assessment_scheduled', 'accepted'].includes(a.status);
+    if (filterStatus === 'passed_assessment') matchesStatus = ['passed_assessment', 'interview_scheduled'].includes(a.status);
+    
+    return y && g && matchesStatus;
   });
 
   const statusOptions = [
-    { id: 'all', label: 'All Statuses' },
+    { id: 'all', label: 'All' },
     { id: 'pending', label: 'Pending' },
-    { id: 'assessment_scheduled', label: 'Accepted for Test' },
-    { id: 'passed_assessment', label: 'Passed Assessment' },
-    { id: 'rejected', label: 'Rejected' },
+    { id: 'assessment_scheduled', label: 'Accepted' },
+    { id: 'passed_assessment', label: 'Passed' },
+    { id: 'waitlisted', label: 'Waitlist' },
     { id: 'failed', label: 'Failed' },
-    { id: 'waitlisted', label: 'Waitlisted' },
+    { id: 'rejected', label: 'Rejected' },
   ];
 
   return (
@@ -255,12 +309,19 @@ export default function ApplicationsView() {
   const [selectedYear, setSelectedYear] = useState<number>(2026);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   // Bulk select state
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const [isBulkExporting, setIsBulkExporting] = useState(false);
+
+  // Reset pagination on filter changes
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedYear, statusFilter, searchQuery]);
 
   if (selectedApp) {
     return <ApplicationDetailsView app={selectedApp} onBack={() => { setSelectedApp(null); refetch(); }} onUpdate={refetch} />;
@@ -283,15 +344,21 @@ export default function ApplicationsView() {
     if (statusFilter === 'passed_assessment') matchesStatus = ['passed_assessment', 'interview_scheduled'].includes(app.status);
     const matchesSearch = !searchQuery || app.candidate?.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) || app.id.toString().includes(searchQuery);
     return matchesYear && matchesStatus && matchesSearch;
-  });
+  }).sort((a: any, b: any) => b.id - a.id);
 
-  const allVisibleSelected = filteredApps.length > 0 && filteredApps.every((a: any) => selectedIds.has(a.id));
+  const totalPages = Math.ceil(filteredApps.length / itemsPerPage);
+  const paginatedApps = filteredApps.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const allVisibleSelected = paginatedApps.length > 0 && paginatedApps.every((a: any) => selectedIds.has(a.id));
 
   const toggleSelectAll = () => {
     if (allVisibleSelected) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(filteredApps.map((a: any) => a.id)));
+      setSelectedIds(new Set(paginatedApps.map((a: any) => a.id)));
     }
   };
 
@@ -445,7 +512,7 @@ export default function ApplicationsView() {
           </div>
         )}
         <div className="overflow-x-auto">
-          <table className="w-full text-left whitespace-nowrap min-w-[1100px]">
+          <table className="w-full text-left whitespace-nowrap min-w-[1600px]">
             <thead className="bg-surface-container-low/50 border-b border-outline-variant/10">
               <tr>
                 <th className="pl-6 pr-2 py-5 w-10">
@@ -454,7 +521,7 @@ export default function ApplicationsView() {
                       <motion.button
                         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                         onClick={toggleSelectAll}
-                        className="text-primary/40 hover:text-primary transition-colors"
+                        className="text-primary/40 hover:text-primary transition-colors whitespace-normal"
                         title={allVisibleSelected ? 'Deselect all' : 'Select all visible'}
                       >
                         {allVisibleSelected
@@ -465,16 +532,20 @@ export default function ApplicationsView() {
                   </AnimatePresence>
                 </th>
                 <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-primary/40">Candidate</th>
+                <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-primary/40">DOB (Age)</th>
                 <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-primary/40">Religion</th>
                 <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-primary/40">Grade</th>
                 <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-primary/40">Parent Info</th>
+                <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-primary/40">Prev. Schools</th>
+                <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-primary/40">Motivation</th>
                 <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-primary/40">Code</th>
                 <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-primary/40">Status</th>
+                <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-primary/40">Date</th>
                 <th className="px-6 py-5 text-right"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/5">
-              {filteredApps.map((app: any) => (
+              {paginatedApps.map((app: any) => (
                 <ApplicationRow
                   key={app.id}
                   app={app}
@@ -493,6 +564,14 @@ export default function ApplicationsView() {
               )}
             </tbody>
           </table>
+          
+          <TablePagination 
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredApps.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+          />
         </div>
       </div>
 

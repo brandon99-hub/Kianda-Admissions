@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import AdminPageHeader from '../AdminPageHeader';
-import { LayoutDashboard, Calendar, Bell, ChevronLeft, ChevronRight, CheckCircle2, UserPlus, Award, Clock, ArrowUpRight, GraduationCap, MapPin, ChevronDown } from 'lucide-react';
+import { LayoutDashboard, Calendar, Bell, ChevronLeft, ChevronRight, CheckCircle2, UserPlus, Award, Clock, ArrowUpRight, GraduationCap, MapPin, ChevronDown, XCircle, TrendingUp } from 'lucide-react';
 import { useApplications, useInterviews, useAssessments, useGrades } from '../../../hooks/useAdminData';
 import { authFetch } from '../../../utils/auth';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart, Area, Line, Cell, Legend } from 'recharts';
 
 export default function DashboardView() {
   const { data: applications = [] } = useApplications();
@@ -20,6 +21,8 @@ export default function DashboardView() {
   const [selectedYear, setSelectedYear] = useState(2026);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewDate, setViewDate] = useState(new Date());
+  const [activityPage, setActivityPage] = useState(1);
+  const itemsPerActivityPage = 10;
 
   useEffect(() => {
     authFetch(`/api/admin/stats?year=${selectedYear}`)
@@ -32,7 +35,16 @@ export default function DashboardView() {
   const activities = useMemo(() => {
     const events: any[] = [];
     const yearApps = applications.filter((a: any) => a.academicYear === selectedYear);
-    
+
+    const PRIORITY: Record<string, number> = {
+      success: 5,
+      warning: 4,
+      error: 4,
+      interview: 3,
+      passed: 2,
+      new: 1
+    };
+
     yearApps.forEach((app: any) => {
       // New Application
       events.push({
@@ -45,6 +57,19 @@ export default function DashboardView() {
         color: 'bg-blue-50'
       });
       
+      // Assessment Failed
+      if (app.status === 'failed' || app.status === 'rejected') {
+        events.push({
+          id: `failed-${app.id}`,
+          type: 'error',
+          title: 'Assessment Failed',
+          candidate: app.candidate?.fullName || 'Unknown Candidate',
+          date: new Date(app.updatedAt),
+          icon: <XCircle className="text-red-500" size={14} />,
+          color: 'bg-red-50'
+        });
+      }
+
       // Waitlisted
       if (app.status === 'waitlisted') {
         events.push({
@@ -71,6 +96,20 @@ export default function DashboardView() {
         });
       }
 
+      // Interview Scheduled
+      const interview = interviews.find((i: any) => i.applicationId === app.id);
+      if (interview) {
+        events.push({
+          id: `interview-${app.id}`,
+          type: 'interview',
+          title: 'Interview Scheduled',
+          candidate: app.candidate?.fullName || 'Unknown Candidate',
+          date: new Date(interview.createdAt || app.updatedAt),
+          icon: <Calendar className="text-primary" size={14} />,
+          color: 'bg-primary/5'
+        });
+      }
+
       // Accepted
       if (app.status === 'accepted') {
         events.push({
@@ -85,8 +124,50 @@ export default function DashboardView() {
       }
     });
 
-    return events.sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 10);
-  }, [applications, selectedYear]);
+    return events.sort((a, b) => {
+      const dateDiff = b.date.getTime() - a.date.getTime();
+      if (dateDiff !== 0) return dateDiff;
+      // If same second, use journey priority
+      return (PRIORITY[b.type] || 0) - (PRIORITY[a.type] || 0);
+    });
+  }, [applications, selectedYear, interviews]);
+
+  const totalActivityPages = Math.ceil(activities.length / itemsPerActivityPage);
+  const paginatedActivities = activities.slice(
+    (activityPage - 1) * itemsPerActivityPage,
+    activityPage * itemsPerActivityPage
+  );
+
+  const chartData = useMemo(() => {
+    return grades.map((g: any) => {
+      const gradeApps = applications.filter((app: any) => {
+        const matchesYear = Number(app.academicYear) === Number(selectedYear);
+        const appGrade = String(app.candidate?.grade || '').toLowerCase().trim();
+        const gName = String(g.gradeName || '').toLowerCase().trim();
+        const gId = String(g.id || '');
+        
+        const matchesGrade = appGrade === gName || appGrade === gId || appGrade.replace(/\s+/g, '') === gName.replace(/\s+/g, '');
+        return matchesYear && matchesGrade;
+      });
+      
+      const admittedCount = gradeApps.filter(a => a.status === 'accepted').length;
+      const trueCapacity = (Number(g.vacantSpots) || 0) + admittedCount;
+      
+      return {
+        name: g.gradeName,
+        applied: gradeApps.length,
+        admitted: admittedCount,
+        capacity: trueCapacity,
+        vacancies: Number(g.vacantSpots) || 0
+      };
+    }).sort((a, b) => {
+      const getNum = (s: string) => {
+        const match = s.match(/\d+/);
+        return match ? parseInt(match[0]) : 999;
+      };
+      return getNum(a.name) - getNum(b.name);
+    });
+  }, [grades, applications, selectedYear]);
 
   // Calendar Logic
   const daysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
@@ -123,7 +204,7 @@ export default function DashboardView() {
     return { dayInterviews, dayAssessments };
   };
 
-  const selectedDayData = useMemo(() => selectedDate ? getDayEvents(selectedDate) : null, [selectedDate, interviews, assessments]);
+  const selectedDayData = useMemo(() => selectedDate ? getDayEvents(selectedDate) : null, [selectedDate, interviews, assessments, grades]);
 
   return (
     <div className="space-y-12">
@@ -138,7 +219,7 @@ export default function DashboardView() {
             onChange={(e) => setSelectedYear(parseInt(e.target.value))}
             className="appearance-none w-full bg-white px-6 py-3 rounded-xl font-black text-primary border border-outline-variant/10 focus:ring-4 focus:ring-primary/5 cursor-pointer transition-all pr-12 shadow-sm text-xs"
           >
-            {Array.from({ length: 5 }, (_, i) => 2026 + i).map(y => (
+            {[2024, 2025, 2026].map(y => (
               <option key={y} value={y}>Cycle {y}</option>
             ))}
           </select>
@@ -258,7 +339,7 @@ export default function DashboardView() {
 
           <div className="space-y-6 overflow-y-auto pr-2 custom-scrollbar flex-1">
              <AnimatePresence mode="popLayout">
-               {activities.length > 0 ? activities.map((act, i) => (
+               {paginatedActivities.length > 0 ? paginatedActivities.map((act, i) => (
                  <motion.div 
                   key={act.id} 
                   initial={{ opacity: 0, x: 20 }}
@@ -267,7 +348,7 @@ export default function DashboardView() {
                   className="relative pl-8 group"
                  >
                    {/* Vertical Line */}
-                   {i !== activities.length - 1 && <div className="absolute left-[7px] top-6 bottom-[-24px] w-0.5 bg-outline-variant/10 group-hover:bg-secondary/20 transition-colors" />}
+                   {i !== paginatedActivities.length - 1 && <div className="absolute left-[7px] top-6 bottom-[-24px] w-0.5 bg-outline-variant/10 group-hover:bg-secondary/20 transition-colors" />}
                    
                    {/* Icon */}
                    <div className={`absolute left-0 top-0 w-4 h-4 rounded-full ${act.color} border border-white shadow-sm flex items-center justify-center z-10 group-hover:scale-125 transition-transform`}>
@@ -290,7 +371,143 @@ export default function DashboardView() {
              </AnimatePresence>
           </div>
 
-          <button className="w-full py-4 mt-8 bg-primary/5 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] text-primary/40 hover:bg-primary hover:text-white transition-all">View All Activity</button>
+          <div className="flex items-center justify-between pt-6 border-t border-outline-variant/5">
+             <div className="text-[9px] font-bold text-primary/30 uppercase tracking-widest">Page {activityPage} of {totalActivityPages || 1}</div>
+             <div className="flex gap-2">
+                <button 
+                  disabled={activityPage === 1}
+                  onClick={() => setActivityPage(p => p - 1)}
+                  className="p-2 bg-primary/5 rounded-lg text-primary hover:bg-primary hover:text-white transition-all disabled:opacity-20"
+                >
+                  <ChevronLeft size={12} />
+                </button>
+                <button 
+                   disabled={activityPage === totalActivityPages || totalActivityPages === 0}
+                   onClick={() => setActivityPage(p => p + 1)}
+                   className="p-2 bg-primary/5 rounded-lg text-primary hover:bg-primary hover:text-white transition-all disabled:opacity-20"
+                >
+                  <ChevronRight size={12} />
+                </button>
+             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Institutional Demand Profile - Area/Line Chart */}
+      <div className="bg-white rounded-[40px] p-10 shadow-[0_20px_50px_rgba(0,0,0,0.03)] border border-outline-variant/10">
+        <div className="flex items-center justify-between mb-10">
+          <div>
+            <h3 className="text-xl font-headline font-black text-primary flex items-center gap-3">
+              <TrendingUp size={20} className="text-secondary" /> Academic Demand Profile
+            </h3>
+            <p className="text-[10px] font-bold text-on-surface-variant/50 uppercase tracking-widest mt-1">Grade-wise Interest Wave vs. Institutional Ceiling</p>
+          </div>
+          <div className="flex items-center gap-8">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-0.5 bg-primary" />
+              <span className="text-[9px] font-black uppercase tracking-widest text-primary/50">Demand (Apps)</span>
+            </div>
+            <div className="flex items-center gap-2">
+               <div className="w-8 h-4 bg-secondary/20 border border-secondary/30 rounded-sm" />
+               <span className="text-[9px] font-black uppercase tracking-widest text-primary/50">Enrollment</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-0.5 border-t-2 border-dashed border-primary/20" />
+              <span className="text-[9px] font-black uppercase tracking-widest text-primary/50">Capacity Ceiling</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="h-[400px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <ComposedChart
+              data={chartData}
+              margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+            >
+              <defs>
+                <linearGradient id="colorAdmitted" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#FFC425" stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor="#FFC425" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
+              <XAxis 
+                dataKey="name" 
+                axisLine={false} 
+                tickLine={false} 
+                tick={{ fill: '#18216D', fontSize: 10, fontWeight: 900 }}
+              />
+              <YAxis 
+                axisLine={false} 
+                tickLine={false} 
+                tick={{ fill: '#18216D', fontSize: 10, fontWeight: 900 }}
+                width={30}
+              />
+              <Tooltip 
+                cursor={{ stroke: '#18216D', strokeWidth: 1, strokeDasharray: '4 4' }}
+                content={({ active, payload, label }) => {
+                  if (active && payload && payload.length) {
+                    const data = payload[0].payload;
+                    const demandPercent = data.capacity > 0 ? Math.round((data.applied / data.capacity) * 100) : 0;
+                    return (
+                      <div className="bg-white/95 p-5 rounded-[24px] shadow-2xl border border-outline-variant/10 backdrop-blur-xl">
+                        <p className="text-xs font-black text-primary uppercase tracking-[0.2em] mb-4">{label}</p>
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center bg-primary/[0.02] p-3 rounded-xl">
+                            <div>
+                               <p className="text-[9px] font-bold text-primary/30 uppercase tracking-widest">Enrolled</p>
+                               <p className="text-xs font-black text-primary mt-1">{data.admitted} <span className="text-primary/20">/ {data.capacity}</span></p>
+                            </div>
+                            <div className="text-right">
+                               <p className="text-[9px] font-bold text-secondary uppercase tracking-widest">Fill Rate</p>
+                               <p className="text-xs font-black text-secondary mt-1">{Math.round((data.admitted/data.capacity)*100)}%</p>
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center border-t border-primary/5 pt-3">
+                             <span className="text-[10px] font-bold text-primary/40 uppercase tracking-widest">Candidate Demand</span>
+                             <span className="text-xs font-black text-primary">{data.applied} APPS</span>
+                          </div>
+                          {demandPercent > 100 && (
+                            <div className="pt-2 flex items-center gap-2">
+                               <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                               <span className="text-[9px] font-bold text-red-600/60 uppercase tracking-widest">Exceeds Ceiling (+{data.applied - data.capacity})</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                }}
+              />
+              <Area 
+                type="monotone" 
+                dataKey="admitted" 
+                stroke="#FFC425" 
+                fillOpacity={1} 
+                fill="url(#colorAdmitted)" 
+                strokeWidth={2}
+              />
+              <Line 
+                type="monotone" 
+                dataKey="applied" 
+                stroke="#18216D" 
+                strokeWidth={3} 
+                dot={{ fill: '#18216D', strokeWidth: 2, r: 4, stroke: '#fff' }}
+                activeDot={{ r: 6, strokeWidth: 0, fill: '#FFC425' }}
+              />
+              <Line 
+                type="step" 
+                dataKey="capacity" 
+                stroke="#18216D" 
+                strokeWidth={1} 
+                strokeDasharray="6 6" 
+                opacity={0.2}
+                dot={false}
+                activeDot={false}
+              />
+            </ComposedChart>
+          </ResponsiveContainer>
         </div>
       </div>
     </div>

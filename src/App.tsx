@@ -291,38 +291,53 @@ export default function App() {
              { id: 'assessments', label: 'Assessments', icon: ListChecks },
              { id: 'interviews', label: 'Interviews', icon: Calendar },
            ].map(item => (
-             <button
-               key={item.id}
-               onClick={() => setActiveAdminTab(item.id as any)}
-               className={`w-full flex items-center gap-4 px-5 py-4 rounded-xl transition-all duration-300 font-bold group ${
-                 activeAdminTab === item.id 
-                 ? 'bg-secondary text-primary shadow-lg shadow-secondary/20' 
-                 : 'text-on-surface-variant/40 hover:bg-secondary-container/30 hover:text-primary'
-               }`}
-             >
-                <div className="flex-shrink-0">
-                  <item.icon size={20} className={activeAdminTab === item.id ? 'opacity-100' : 'opacity-40 group-hover:opacity-100'} />
-                </div>
-                {!isSidebarCollapsed && (
-                  <span className="text-[13px] tracking-wide whitespace-nowrap">{item.label}</span>
-                )}
-             </button>
+             <div key={item.id} className="relative group/tooltip">
+               <button
+                 onClick={() => setActiveAdminTab(item.id as any)}
+                 className={`w-full flex items-center gap-4 px-5 py-4 rounded-xl transition-all duration-300 font-bold group ${
+                   activeAdminTab === item.id 
+                   ? 'bg-secondary text-primary shadow-lg shadow-secondary/20' 
+                   : 'text-on-surface-variant/40 hover:bg-secondary-container/30 hover:text-primary'
+                 }`}
+               >
+                  <div className="flex-shrink-0">
+                    <item.icon size={20} className={activeAdminTab === item.id ? 'opacity-100' : 'opacity-40 group-hover:opacity-100'} />
+                  </div>
+                  {!isSidebarCollapsed && (
+                    <span className="text-[13px] tracking-wide whitespace-nowrap">{item.label}</span>
+                  )}
+               </button>
+               
+               {isSidebarCollapsed && (
+                 <div className="absolute left-[calc(100%+12px)] top-1/2 -translate-y-1/2 px-3 py-2 bg-white text-primary text-[10px] font-black uppercase tracking-widest rounded-xl opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-all duration-200 whitespace-nowrap z-50 shadow-xl border border-outline-variant/10 group-hover/tooltip:translate-x-1">
+                    {item.label}
+                 </div>
+               )}
+             </div>
            ))}
         </nav>
 
         <div className="px-3 pt-6 border-t border-outline-variant/10">
-           <button 
-             onClick={() => {
-               removeToken();
-               setView('portal');
-             }} 
-             className="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-on-surface-variant/30 hover:text-red-600 hover:bg-red-50 transition-all font-bold group"
-           >
-              <LogOut size={20} className="group-hover:rotate-12 transition-transform" />
-              {!isSidebarCollapsed && (
-                <span className="text-[13px] tracking-wide">Sign Out</span>
-              )}
-           </button>
+           <div className="relative group/tooltip">
+             <button 
+               onClick={() => {
+                 removeToken();
+                 setView('portal');
+               }} 
+               className="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-on-surface-variant/30 hover:text-red-600 hover:bg-red-50 transition-all font-bold group"
+             >
+                <LogOut size={20} className="group-hover:rotate-12 transition-transform" />
+                {!isSidebarCollapsed && (
+                  <span className="text-[13px] tracking-wide">Sign Out</span>
+                )}
+             </button>
+
+             {isSidebarCollapsed && (
+               <div className="absolute left-[calc(100%+12px)] top-1/2 -translate-y-1/2 px-3 py-2 bg-white text-red-600 text-[10px] font-black uppercase tracking-widest rounded-xl opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-all duration-200 whitespace-nowrap z-50 shadow-xl border border-red-100 group-hover/tooltip:translate-x-1">
+                  Sign Out
+               </div>
+             )}
+           </div>
         </div>
       </motion.div>
 

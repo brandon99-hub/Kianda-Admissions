@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import AdminPageHeader from '../AdminPageHeader';
 import DatePicker from '../../DatePicker';
 import MultiSelect from '../MultiSelect';
+import TablePagination from '../TablePagination';
 import { useApplications, useInterviews, useCreateInterview, useRecordInterviewOutcome, useResults, useGrades } from '../../../hooks/useAdminData';
 import ApplicationDetailsView from './ApplicationDetailsView';
 
@@ -289,6 +290,8 @@ export default function InterviewsView() {
 
   const [activeTab, setActiveTab] = useState<'scheduled' | 'awaiting'>('scheduled');
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const [selectedApp, setSelectedApp] = useState<any | null>(null);
 
   const [selectedSlot, setSelectedSlot] = useState<string>('All Slots');
@@ -297,6 +300,11 @@ export default function InterviewsView() {
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [showOutcomeModal, setShowOutcomeModal] = useState<any | null>(null);
   
+  // Reset pagination on tab or filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, searchQuery, selectedSlot]);
+
   // Schedule Form State
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [scheduleData, setScheduleData] = useState({
@@ -339,11 +347,24 @@ export default function InterviewsView() {
                           int.applicationId.toString().includes(searchQuery);
     const matchesSlot = selectedSlot === 'All Slots' || getSlotString(int) === selectedSlot;
     return matchesSearch && matchesSlot;
-  });
+  }).sort((a: any, b: any) => new Date(a.slotTime).getTime() - new Date(b.slotTime).getTime());
 
   const filteredAwaiting = awaitingScheduling.filter((app: any) => 
     app.candidate?.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     app.id.toString().includes(searchQuery)
+  );
+
+  const totalItems = activeTab === 'scheduled' ? filteredInterviews.length : filteredAwaiting.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+
+  const paginatedInterviews = filteredInterviews.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const paginatedAwaiting = filteredAwaiting.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
   );
 
   const handleSchedule = (e: React.FormEvent) => {
@@ -471,7 +492,7 @@ export default function InterviewsView() {
              </thead>
              <tbody className="divide-y divide-outline-variant/5">
                 {activeTab === 'scheduled' ? (
-                  filteredInterviews.map((slot: any, i: number) => (
+                  paginatedInterviews.map((slot: any, i: number) => (
                     <ScheduledInterviewRow 
                       key={i} 
                       index={i}
@@ -489,7 +510,7 @@ export default function InterviewsView() {
                     />
                   ))
                 ) : (
-                  filteredAwaiting.map((app: any, i: number) => (
+                  paginatedAwaiting.map((app: any, i: number) => (
                     <AwaitingInterviewRow 
                       key={i} 
                       index={i}
@@ -521,6 +542,14 @@ export default function InterviewsView() {
                 )}
              </tbody>
           </table>
+          
+          <TablePagination 
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+          />
         </div>
       </div>
 

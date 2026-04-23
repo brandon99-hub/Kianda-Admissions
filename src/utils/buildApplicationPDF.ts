@@ -66,8 +66,8 @@ function drawField(
   y: number,
   maxWidth?: number
 ): number {
-  drawText(doc, label.toUpperCase(), x, y, { size: 6.5, color: MUTED, bold: true });
-  return drawText(doc, value || 'N/A', x, y + 4.5, { size: 9, bold: true, color: PRIMARY, maxWidth });
+  drawText(doc, label.toUpperCase(), x, y, { size: 7.5, color: MUTED, bold: true });
+  return drawText(doc, value || 'N/A', x, y + 5, { size: 9.5, bold: true, color: PRIMARY, maxWidth });
 }
 
 /** Draw a horizontal rule. */
@@ -79,13 +79,9 @@ function drawRule(doc: jsPDF, y: number, x1 = MARGIN, x2 = PAGE_W - MARGIN, weig
 
 /** Draw a filled section-header bar. Returns y after bar. */
 function drawSectionHeader(doc: jsPDF, title: string, y: number): number {
-  doc.setFillColor(...LIGHT_GREY);
-  doc.roundedRect(MARGIN, y, PAGE_W - MARGIN * 2, 8, 1.5, 1.5, 'F');
-  // Gold accent dot
-  doc.setFillColor(...SECONDARY);
-  doc.circle(MARGIN + 5, y + 4, 1.5, 'F');
-  drawText(doc, title, MARGIN + 10, y + 5.2, { size: 7.5, bold: true, color: PRIMARY });
-  return y + 12;
+  drawText(doc, title, MARGIN, y + 5, { size: 9, bold: true, color: PRIMARY });
+  drawRule(doc, y + 7.5, MARGIN, PAGE_W - MARGIN, 0.8); // Professional full-width underline
+  return y + 15;
 }
 
 /** Check if we need a new page and add one if so. Returns updated y. */
@@ -165,8 +161,8 @@ export async function buildApplicationPDF(app: any): Promise<jsPDF> {
   drawRule(doc, y);
   y += 8;
 
-  // ── SECTION A: CANDIDATE PROFILE ──────────────────────────────────────────
-  y = drawSectionHeader(doc, 'Section A: Candidate Profile & Scholastic Background', y);
+  // ── SECTION I: CANDIDATE PROFILE ───────────────────────────────────────────
+  y = drawSectionHeader(doc, 'Section I: Personal & Academic Profile', y);
 
   // Left column: personal details
   const sA_startY = y;
@@ -187,17 +183,15 @@ export async function buildApplicationPDF(app: any): Promise<jsPDF> {
 
   if (schools.length > 0) {
     schools.forEach((s: any) => {
-      doc.setFillColor(250, 250, 252);
-      doc.roundedRect(rightX, rightY, COL_W, 10, 1.5, 1.5, 'F');
-      drawText(doc, s.schoolName, rightX + 3, rightY + 4, { size: 8.5, bold: true, color: PRIMARY });
+      drawText(doc, s.schoolName, rightX, rightY + 4, { size: 9, bold: true, color: PRIMARY });
       drawText(
         doc,
         `${s.schoolType || ''} • ${s.yearsRange || 'Dates N/A'}`.toUpperCase(),
-        rightX + 3,
+        rightX,
         rightY + 8,
-        { size: 6, color: MUTED }
+        { size: 7, color: MUTED, bold: true }
       );
-      rightY += 13;
+      rightY += 12;
     });
   } else {
     drawText(doc, 'No previous schools recorded.', rightX, rightY, { size: 8, color: MUTED });
@@ -208,111 +202,112 @@ export async function buildApplicationPDF(app: any): Promise<jsPDF> {
   drawRule(doc, y);
   y += 8;
 
-  // ── SECTION B: PARENT / GUARDIAN ─────────────────────────────────────────
+  // ── PART II: PARENTAL & GUARDIANSHIP DETAILS ────────────────────────────
   y = checkPage(doc, y, 55);
-  y = drawSectionHeader(doc, 'Section B: Parent / Guardian Information', y);
+  y = drawSectionHeader(doc, 'PART II: PARENT & GUARDIAN DETAILS', y);
 
   const sB_startY = y;
   let mY = sB_startY;
   let fY = sB_startY;
 
-  // Mother card
-  doc.setFillColor(254, 252, 245);
-  doc.roundedRect(leftX, mY - 2, COL_W, 38, 2, 2, 'F');
-  drawText(doc, "MOTHER'S RECORD", leftX + 3, mY + 4, { size: 6.5, bold: true, color: SECONDARY });
+  // Mother record
+  drawText(doc, "MOTHER'S RECORD", leftX, mY + 4, { size: 8, bold: true, color: SECONDARY });
   mY += 9;
-  mY = drawText(doc, parent.motherName || 'Not Provided', leftX + 3, mY, { size: 10, bold: true, color: PRIMARY });
-  mY = drawText(doc, parent.motherPhone, leftX + 3, mY + 1, { size: 7.5, color: MUTED, maxWidth: COL_W - 6 });
-  mY = drawText(doc, parent.motherEmail, leftX + 3, mY, { size: 7.5, color: MUTED, maxWidth: COL_W - 6 });
-  drawText(doc, parent.motherProfession, leftX + 3, mY + 1, { size: 7.5, color: MUTED, bold: true });
+  mY = drawText(doc, parent.motherName || 'Not Provided', leftX, mY, { size: 10, bold: true, color: PRIMARY });
+  mY += 1;
+  
+  // Labelled data
+  const labelW = 18; // Increased to accommodate larger labels
+  doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(...MUTED);
+  doc.text('MOB:', leftX, mY + 1);
+  mY = drawText(doc, parent.motherPhone, leftX + labelW, mY + 1, { size: 9, color: PRIMARY });
+  
+  doc.text('MAIL:', leftX, mY);
+  mY = drawText(doc, parent.motherEmail, leftX + labelW, mY, { size: 9, color: PRIMARY });
+  
+  doc.text('CRAFT:', leftX, mY + 1);
+  drawText(doc, parent.motherProfession, leftX + labelW, mY + 1, { size: 9, color: PRIMARY, bold: true });
 
-  // Father card
-  doc.setFillColor(246, 247, 252);
-  doc.roundedRect(rightX, fY - 2, COL_W, 38, 2, 2, 'F');
-  drawText(doc, "FATHER'S RECORD", rightX + 3, fY + 4, { size: 6.5, bold: true, color: MUTED });
+  // Father record
+  drawText(doc, "FATHER'S RECORD", rightX, fY + 4, { size: 8, bold: true, color: MUTED });
   fY += 9;
-  fY = drawText(doc, parent.fatherName || 'Not Provided', rightX + 3, fY, { size: 10, bold: true, color: PRIMARY });
-  fY = drawText(doc, parent.fatherPhone, rightX + 3, fY + 1, { size: 7.5, color: MUTED, maxWidth: COL_W - 6 });
-  fY = drawText(doc, parent.fatherEmail, rightX + 3, fY, { size: 7.5, color: MUTED, maxWidth: COL_W - 6 });
-  drawText(doc, parent.fatherProfession, rightX + 3, fY + 1, { size: 7.5, color: MUTED, bold: true });
+  fY = drawText(doc, parent.fatherName || 'Not Provided', rightX, fY, { size: 10, bold: true, color: PRIMARY });
+  fY += 1;
+  
+  doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(...MUTED);
+  doc.text('MOB:', rightX, fY + 1);
+  fY = drawText(doc, parent.fatherPhone, rightX + labelW, fY + 1, { size: 9, color: PRIMARY });
+  
+  doc.text('MAIL:', rightX, fY);
+  fY = drawText(doc, parent.fatherEmail, rightX + labelW, fY, { size: 9, color: PRIMARY });
+  
+  doc.text('CRAFT:', rightX, fY + 1);
+  drawText(doc, parent.fatherProfession, rightX + labelW, fY + 1, { size: 9, color: PRIMARY, bold: true });
 
   y = sB_startY + 42;
   drawRule(doc, y);
   y += 8;
 
-  // ── SECTION C: SUPPLEMENTARY CONTEXT ─────────────────────────────────────
-  y = checkPage(doc, y, 40);
-  y = drawSectionHeader(doc, 'Section C: Supplementary Context & Medical History', y);
+  // ── Section III: Background & Health Disclosures ────────────────────────
+  y = checkPage(doc, y, 50);
+  y = drawSectionHeader(doc, 'Section III: Background & Health Disclosures', y);
 
-  let cLeftY = y;
-  let cRightY = y;
+  // 1. Motivation First - FULL WIDTH NARRATIVE
+  const mtvText = additional.motivation || 'Not provided.';
+  const mtvLines = doc.splitTextToSize(mtvText, PAGE_W - MARGIN * 2 - 14);
+  const mtvHeight = mtvLines.length * (8.5 * 0.352778 + 2) + 12;
+  
+  y = checkPage(doc, y, mtvHeight + 5);
 
-  // Medical
-  drawText(doc, 'MEDICAL HISTORY', leftX, cLeftY, { size: 6.5, bold: true, color: MUTED });
-  cLeftY += 5;
-  cLeftY = drawText(doc, candidate.medicalInfo || 'No medical conditions recorded.', leftX, cLeftY, {
-    size: 8.5,
-    color: PRIMARY,
-    maxWidth: COL_W,
-  });
+  doc.setFillColor(248, 250, 255);
+  doc.roundedRect(MARGIN, y, PAGE_W - MARGIN * 2, mtvHeight, 2, 2, 'F');
+  doc.setDrawColor(...SECONDARY);
+  doc.setLineWidth(0.8);
+  doc.line(MARGIN + 4, y + 4, MARGIN + 4, y + mtvHeight - 4); // Accent line
+  
+  drawText(doc, 'CANDIDATE MOTIVATION STATEMENT', MARGIN + 8, y + 5, { size: 6.5, bold: true, color: SECONDARY });
+  y = drawText(doc, mtvText, MARGIN + 8, y + 10, { size: 8.5, color: PRIMARY, maxWidth: PAGE_W - MARGIN * 2 - 16 });
+  y += 10;
 
-  // Motivation + source
-  drawText(doc, 'MOTIVATION TO JOIN KIANDA', rightX, cRightY, { size: 6.5, bold: true, color: MUTED });
-  cRightY += 5;
-  cRightY = drawText(doc, additional.motivation || 'Not provided.', rightX, cRightY, {
-    size: 8.5,
-    color: PRIMARY,
-    maxWidth: COL_W,
-  });
-  cRightY += 3;
-  drawText(doc, 'APPLICATION SOURCE', rightX, cRightY, { size: 6.5, bold: true, color: MUTED });
-  drawText(doc, additional.source || 'N/A', rightX, cRightY + 4.5, { size: 9, bold: true, color: SECONDARY });
+  // 2. Health and Source below in split view
+  y = checkPage(doc, y, 20);
+  drawField(doc, 'MEDICAL HISTORY', candidate.medicalInfo || 'No conditions recorded.', leftX, y, COL_W);
 
-  y = Math.max(cLeftY, cRightY + 10) + 6;
-  drawRule(doc, y, MARGIN, PAGE_W - MARGIN, 1);
+  // Map source value to full label
+  const sourceMap: any = {
+    'Parent': 'Parent',
+    'School': "Through daughter's school",
+    'Friend': 'Relative / Friend',
+    'Website': 'Kianda Website',
+    'SocialMedia': 'Social Media',
+    'Other': additional.sourceOther || 'Other'
+  };
+  const sourceDisplay = sourceMap[additional.source || ''] || additional.source || 'N/A';
+  
+  drawField(doc, 'How did you hear about us?', sourceDisplay, rightX, y, COL_W);
+  y += 18;
+
+  
+  y += 6;
+  drawRule(doc, y);
   y += 8;
 
-  // ── SUPPORTING DOCUMENTS ─────────────────────────────────────────────────
-  y = checkPage(doc, y, 20);
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...MUTED);
-  doc.text('SUPPORTING DOCUMENTS & ATTACHMENTS', PAGE_W / 2, y, { align: 'center' });
-  y += 7;
 
-  if (documents.length > 0) {
-    documents.forEach((d: any, i: number) => {
-      y = checkPage(doc, y, 12);
-      const rowX = i % 2 === 0 ? leftX : rightX;
-      const rowY = i % 2 === 0 ? y : y;
-      // Draw a subtle card
-      doc.setFillColor(250, 250, 252);
-      doc.roundedRect(rowX, rowY - 1, COL_W, 10, 1.5, 1.5, 'F');
-      drawText(doc, d.documentType || 'Uploaded File', rowX + 4, rowY + 4.5, { size: 8, bold: true, color: PRIMARY });
-      doc.setFontSize(6.5);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(...SECONDARY);
-      doc.text('✓ RECORDED', rowX + COL_W - 3, rowY + 4.5, { align: 'right' });
-      if (i % 2 === 1 || i === documents.length - 1) {
-        y += 13;
-      }
-    });
-  } else {
-    drawText(doc, 'No documents were uploaded with this application.', MARGIN, y, {
-      size: 8,
-      color: MUTED,
-    });
-    y += 10;
+
+  // ── FOOTER & PAGINATION ──────────────────────────────────────────────────
+  const totalPages = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    const footerY = 285;
+    drawRule(doc, footerY - 4, MARGIN, PAGE_W - MARGIN, 0.3);
+    doc.setFontSize(6.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...MUTED);
+    doc.text('Institutional Record • Kianda School Admissions Board', MARGIN, footerY);
+    
+    const pageText = `Institutional Record | Page ${i} of ${totalPages}`;
+    doc.text(pageText, PAGE_W - MARGIN, footerY, { align: 'right' });
   }
-
-  // ── FOOTER ────────────────────────────────────────────────────────────────
-  const footerY = 285;
-  drawRule(doc, footerY - 4, MARGIN, PAGE_W - MARGIN, 0.3);
-  doc.setFontSize(6.5);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(...MUTED);
-  doc.text('Institutional Record • Kianda School Admissions Board', MARGIN, footerY);
-  doc.text(new Date().toLocaleDateString('en-GB'), PAGE_W - MARGIN, footerY, { align: 'right' });
 
   return doc;
 }
