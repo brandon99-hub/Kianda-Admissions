@@ -8,20 +8,25 @@ interface AdminViewsProps {
   activeTab: 'dashboard' | 'applications' | 'grades' | 'interviews' | 'assessments';
   setView: (view: 'portal' | 'login' | 'admin') => void;
   setActiveTab: (tab: 'dashboard' | 'applications' | 'grades' | 'interviews' | 'assessments') => void;
+  preSelectedGradeId: number | null;
+  setPreSelectedGradeId: (id: number | null) => void;
 }
 
-export function AdminContentView({ activeTab, setActiveTab }: AdminViewsProps) {
+export function AdminContentView({ activeTab, setActiveTab, preSelectedGradeId, setPreSelectedGradeId }: AdminViewsProps) {
   switch (activeTab) {
     case 'dashboard':
       return <DashboardView />;
     case 'applications':
       return <ApplicationsView />;
     case 'grades':
-      return <GradesView onGoToAssessments={() => setActiveTab('assessments')} />;
+      return <GradesView onGoToAssessments={(gradeId) => {
+        setPreSelectedGradeId(gradeId);
+        setActiveTab('assessments');
+      }} />;
     case 'interviews':
       return <InterviewsView />;
     case 'assessments':
-      return <AssessmentBookView />;
+      return <AssessmentBookView initialGradeId={preSelectedGradeId} />;
     default:
       return <DashboardView />;
   }

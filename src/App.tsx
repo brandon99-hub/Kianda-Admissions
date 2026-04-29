@@ -74,6 +74,7 @@ export default function App() {
   });
 
   const [activeAdminTab, setActiveAdminTab] = useState<'dashboard' | 'applications' | 'grades' | 'interviews' | 'assessments'>('dashboard');
+  const [preSelectedGradeId, setPreSelectedGradeId] = useState<number | null>(null);
 
   useEffect(() => {
     const stateToSave = { ...state, lastUpdated: new Date().toISOString() };
@@ -343,7 +344,13 @@ export default function App() {
 
       {/* Content Area */}
       <div className="flex-grow p-12 overflow-y-auto bg-surface-container-lowest/30">
-        <AdminContentView activeTab={activeAdminTab} setView={setView} setActiveTab={setActiveAdminTab} />
+        <AdminContentView 
+          activeTab={activeAdminTab} 
+          setView={setView} 
+          setActiveTab={setActiveAdminTab} 
+          preSelectedGradeId={preSelectedGradeId}
+          setPreSelectedGradeId={setPreSelectedGradeId}
+        />
       </div>
     </div>
   );

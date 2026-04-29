@@ -100,7 +100,10 @@ export default function ApplicationDetailsView({ app, onBack, onUpdate, showResu
                   currentAppStatus === 'pending' ? 'bg-secondary/10 text-primary border-secondary/20' :
                   'bg-primary/5 text-primary border-primary/10'
                }`}>
-                 {['passed_assessment', 'interview_scheduled'].includes(currentAppStatus) ? 'Passed' : currentAppStatus.replace('_', ' ')}
+                 {['passed_assessment', 'interview_scheduled'].includes(currentAppStatus) ? 'Passed' : 
+                  currentAppStatus === 'assessment_scheduled' ? 'Pending' :
+                  currentAppStatus === 'waitlisted' ? 'Waitlist' :
+                  currentAppStatus.replace('_', ' ')}
                </span>
              </div>
              <div className="flex flex-wrap items-center gap-6 text-sm font-semibold text-on-surface-variant/70">
@@ -329,18 +332,18 @@ export default function ApplicationDetailsView({ app, onBack, onUpdate, showResu
                      <div className="w-full py-4 bg-red-50 text-red-600 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 border border-red-100">
                        <X size={14} strokeWidth={3} /> Rejected Candidate
                      </div>
-                     <button 
-                        onClick={() => handleUpdateStatus('assessment_scheduled')} 
-                        disabled={isProcessing}
-                        className="w-full py-4 text-xs font-bold bg-green-50 text-green-600 rounded-xl hover:bg-green-100 transition-colors flex items-center justify-center gap-2 border border-green-100/50"
-                      >
-                       <CheckCircle size={14} /> Grant Admission
-                     </button>
+                      <button 
+                         onClick={() => handleUpdateStatus('accepted')} 
+                         disabled={isProcessing}
+                         className="w-full py-4 text-xs font-bold bg-green-50 text-green-600 rounded-xl hover:bg-green-100 transition-colors flex items-center justify-center gap-2 border border-green-100/50"
+                       >
+                        <CheckCircle size={14} /> Grant Admission
+                      </button>
                    </>
                  ) : (
                    <>
                      <button 
-                        onClick={() => handleUpdateStatus('assessment_scheduled')} 
+                        onClick={() => handleUpdateStatus('accepted')} 
                         disabled={isProcessing}
                         className="w-full py-4 text-xs font-bold bg-green-50 text-green-600 rounded-xl hover:bg-green-100 transition-colors flex items-center justify-center gap-2 border border-green-100/50"
                       >

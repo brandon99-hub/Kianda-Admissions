@@ -3,7 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { db } from './db';
 import * as schema from './db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 import nodemailer from 'nodemailer';
 import bcrypt from 'bcrypt';
 import multer from 'multer';
@@ -13,11 +13,11 @@ import jwt from 'jsonwebtoken';
 
 import { 
   getSuccessEmail, 
-  getApplicationRejectionEmail, 
   getAssessmentInvitationEmail, 
   getInterviewInviteEmail, 
   getAdmissionOfferEmail,
-  getWaitlistEmail
+  getWaitlistEmail,
+  getRejectionEmail
 } from '../src/utils/emailTemplates';
 
 dotenv.config();
@@ -172,7 +172,7 @@ app.post('/api/applications', async (req, res) => {
     }
 
     // Prepare Email
-    const emailContent = getSuccessEmail(candidate.fullName, gradeDetails?.assessmentDate?.toISOString());
+    const emailContent = getSuccessEmail(candidate.fullName, candidate.grade, newApp.academicYear || new Date().getFullYear(), gradeDetails?.assessmentDate?.toISOString(), gradeDetails?.location);
     const parentEmails = [parent.fatherEmail, parent.motherEmail].filter(Boolean).join(', ');
 
     if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
@@ -181,7 +181,7 @@ app.post('/api/applications', async (req, res) => {
           from: `"Kianda Admissions" <${process.env.EMAIL_USER}>`,
           to: parentEmails,
           subject: emailContent.subject,
-          text: emailContent.body
+          html: emailContent.body
         });
         console.log(`[EMAIL SENT] Success email sent to ${parentEmails}`);
       } catch (e) {
@@ -288,14 +288,18 @@ app.post('/api/admin/applications/status', authenticateAdmin, async (req, res) =
           : 'To be communicated';
         emailContent = getAssessmentInvitationEmail(appData.candidate.fullName, assessmentDate);
       } else if (status === 'rejected') {
-        emailContent = getApplicationRejectionEmail(appData.candidate.fullName, reason || 'Did not meet requirements');
+        emailContent = getRejectionEmail(appData.candidate.fullName, appData.academicYear || new Date().getFullYear());
       } else if (status === 'accepted') {
         const grade = await db.query.gradeManagement.findFirst({
           where: eq(schema.gradeManagement.gradeName, appData.candidate.grade)
         });
 
         if (grade && grade.vacantSpots > 0) {
-          emailContent = getAdmissionOfferEmail(appData.candidate.fullName);
+          const deadline = new Date();
+          deadline.setDate(deadline.getDate() + 14);
+          const deadlineStr = deadline.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+          
+          emailContent = getAdmissionOfferEmail(appData.candidate.fullName, appData.candidate.grade, appData.academicYear || new Date().getFullYear(), deadlineStr);
           // 1. Double check status matches
           await db.update(schema.applications)
             .set({ status: 'accepted' })
@@ -322,7 +326,7 @@ app.post('/api/admin/applications/status', authenticateAdmin, async (req, res) =
               from: `"Kianda Admissions" <${process.env.EMAIL_USER}>`,
               to: parentEmails,
               subject: emailContent.subject,
-              text: emailContent.body
+              html: emailContent.body
             });
           } catch (e) {
             console.error('[EMAIL ERROR]', e);
@@ -398,27 +402,77 @@ app.get('/api/admin/grades', authenticateAdmin, async (req, res) => {
 // CREATE/UPDATE Grade
 app.post('/api/admin/grades', authenticateAdmin, async (req, res) => {
   try {
-    const { id, gradeName, vacantSpots, assessmentDate, academicYear } = req.body;
+    const { id, gradeName, vacantSpots, assessmentDate, academicYear, location } = req.body;
     const year = academicYear || new Date().getFullYear();
+    const finalDate = assessmentDate ? new Date(assessmentDate) : null;
     
     if (id) {
        await db.update(schema.gradeManagement)
-        .set({ 
+         .set({ 
           vacantSpots, 
-          assessmentDate: assessmentDate ? new Date(assessmentDate) : null,
-          academicYear: year
+          assessmentDate: finalDate,
+          academicYear: year,
+          location
         })
         .where(eq(schema.gradeManagement.id, id));
     } else {
-       await db.insert(schema.gradeManagement).values({
-         gradeName,
-         vacantSpots,
-         assessmentDate: assessmentDate ? new Date(assessmentDate) : null,
-         academicYear: year
-       });
+        await db.insert(schema.gradeManagement).values({
+          gradeName,
+          vacantSpots,
+          assessmentDate: finalDate,
+          academicYear: year,
+          location
+        });
     }
+
+    // --- AUTOMATION TRIGGER: Batch Scheduling ---
+    // Only trigger if notifyCandidates is explicitly true
+    if (finalDate && req.body.notifyCandidates) {
+      const dateStr = finalDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+      
+      const studentsToNotify = await db.query.applications.findMany({
+        where: (app, { eq, and, or, inArray }) => and(
+          or(
+            eq(app.status, 'pending'),
+            eq(app.status, 'assessment_scheduled')
+          ),
+          eq(app.academicYear, year)
+        ),
+        with: {
+          candidate: true,
+          parentDetails: true
+        }
+      });
+
+      const targetedApps = studentsToNotify.filter(app => app.candidate?.grade === gradeName);
+
+      if (targetedApps.length > 0) {
+        const appIds = targetedApps.map(a => a.id);
+        
+        // 1. Update technical status to scheduled (if they were pending)
+        await db.update(schema.applications)
+          .set({ status: 'assessment_scheduled' })
+          .where(inArray(schema.applications.id, appIds));
+
+        // 2. Dispatch invitation/update emails
+        for (const appOfGrade of targetedApps) {
+          const recipient = appOfGrade.parentDetails.motherEmail || appOfGrade.parentDetails.fatherEmail;
+          if (recipient) {
+            const email = getAssessmentInvitationEmail(appOfGrade.candidate.fullName, dateStr);
+            transporter.sendMail({
+              from: `"Kianda Admissions" <${process.env.EMAIL_USER}>`,
+              to: recipient,
+              subject: email.subject,
+              html: email.body
+            }).catch(e => console.error('Failed to send batch invite:', e));
+          }
+        }
+      }
+    }
+
     res.json({ success: true });
   } catch (error) {
+    console.error('Grade update error:', error);
     res.status(500).json({ error: 'Failed to update grade' });
   }
 });
@@ -581,7 +635,7 @@ app.post('/api/admin/send-status-email', authenticateAdmin, async (req, res) => 
         from: `"Kianda Admissions" <${process.env.EMAIL_USER}>`,
         to: email,
         subject: subject,
-        text: content
+        html: content
       });
       console.log(`[EMAIL SENT] Status email sent to ${email}`);
     } else {
@@ -659,7 +713,7 @@ app.post('/api/admin/interviews', authenticateAdmin, async (req, res) => {
         const endTimeStr = endTime ? new Date(endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
         
         const timeStr = endTimeStr ? `${startTimeStr} - ${endTimeStr}` : startTimeStr;
-        const emailContent = getInterviewInviteEmail(appData.candidate.fullName, dateStr, timeStr, location);
+        const emailContent = getInterviewInviteEmail(appData.candidate.fullName, appData.candidate.grade, appData.academicYear || new Date().getFullYear(), dateStr, timeStr, location);
         
         if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
           await transporter.sendMail({
@@ -713,7 +767,11 @@ app.post('/api/admin/interviews/outcome', authenticateAdmin, async (req, res) =>
         });
 
         if (grade && grade.vacantSpots > 0) {
-          emailContent = getAdmissionOfferEmail(appData.candidate.fullName);
+          const deadline = new Date();
+          deadline.setDate(deadline.getDate() + 14);
+          const deadlineStr = deadline.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+
+          emailContent = getAdmissionOfferEmail(appData.candidate.fullName, appData.candidate.grade, appData.academicYear || new Date().getFullYear(), deadlineStr);
           // 2. Decrement vacancies
           await db.update(schema.gradeManagement)
             .set({ vacantSpots: grade.vacantSpots - 1 })
@@ -726,7 +784,7 @@ app.post('/api/admin/interviews/outcome', authenticateAdmin, async (req, res) =>
             .where(eq(schema.applications.id, applicationId));
         }
       } else {
-        emailContent = getApplicationRejectionEmail(appData.candidate.fullName, reason || 'Did not meet requirements');
+        emailContent = getRejectionEmail(appData.candidate.fullName, appData.academicYear || new Date().getFullYear());
       }
 
       if (emailContent) {
@@ -736,7 +794,7 @@ app.post('/api/admin/interviews/outcome', authenticateAdmin, async (req, res) =>
               from: `"Kianda Admissions" <${process.env.EMAIL_USER}>`,
               to: parentEmails,
               subject: emailContent.subject,
-              text: emailContent.body
+              html: emailContent.body
             });
           } catch (e) {
             console.error('[EMAIL ERROR]', e);

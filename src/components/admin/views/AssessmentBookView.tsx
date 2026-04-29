@@ -8,14 +8,18 @@ import { getRejectionEmail, getAssessmentPassEmail } from '../../../utils/emailT
 import AdminPageHeader from '../AdminPageHeader';
 import { useGrades, useAssessments, useApplications, useResults, useBulkSync } from '../../../hooks/useAdminData';
 
-export default function AssessmentBookView() {
+interface Props {
+  initialGradeId?: number | null;
+}
+
+export default function AssessmentBookView({ initialGradeId }: Props) {
   const { data: grades = [] } = useGrades();
   const { data: assessments = [] } = useAssessments();
   const { data: applications = [] } = useApplications();
   const { data: results = [] } = useResults();
   const bulkSyncMutation = useBulkSync();
 
-  const [activeGradeId, setActiveGradeId] = useState<number | null>(null);
+  const [activeGradeId, setActiveGradeId] = useState<number | null>(initialGradeId || null);
   const [syncStatus, setSyncStatus] = useState<{ qualified: number, rejected: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 

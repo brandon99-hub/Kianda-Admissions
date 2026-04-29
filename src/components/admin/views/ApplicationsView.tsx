@@ -124,16 +124,17 @@ const ApplicationRow: React.FC<{
       <td className="px-6 py-6">
         <div className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-md border w-fit ${
           app.status === 'accepted' ? 'bg-green-50 text-green-600 border-green-100' :
-          app.status === 'passed_assessment' ? 'bg-green-50 text-green-600 border-green-100' :
-          app.status === 'interview_scheduled' ? 'bg-green-50 text-green-600 border-green-100' :
-          app.status === 'assessment_scheduled' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+          ['passed_assessment', 'interview_scheduled'].includes(app.status) ? 'bg-green-50 text-green-600 border-green-100' :
+          app.status === 'waitlisted' ? 'bg-amber-50 text-amber-600 border-amber-100' :
+          app.status === 'assessment_scheduled' ? 'bg-secondary/10 text-primary border-secondary/20' :
           app.status === 'rejected' ? 'bg-red-50 text-red-600 border-red-100' :
           app.status === 'failed' ? 'bg-orange-50 text-orange-600 border-orange-100' :
           app.status === 'pending' ? 'bg-secondary/10 text-primary border-secondary/20' :
           'bg-primary/5 text-primary border-primary/10'
         }`}>
           {['passed_assessment', 'interview_scheduled'].includes(app.status) ? 'Passed' :
-           app.status === 'assessment_scheduled' ? 'Accepted' :
+           app.status === 'assessment_scheduled' ? 'Pending' :
+           app.status === 'waitlisted' ? 'Waitlist' :
            app.status.replace('_', ' ')}
         </div>
       </td>
@@ -176,7 +177,7 @@ const BulkExportModal: React.FC<{
     const g = filterGrade === 'all' || a.candidate?.grade === filterGrade;
     
     let matchesStatus = filterStatus === 'all' || a.status === filterStatus;
-    if (filterStatus === 'assessment_scheduled') matchesStatus = ['assessment_scheduled', 'accepted'].includes(a.status);
+    if (filterStatus === 'pending') matchesStatus = ['pending', 'assessment_scheduled'].includes(a.status);
     if (filterStatus === 'passed_assessment') matchesStatus = ['passed_assessment', 'interview_scheduled'].includes(a.status);
     
     return y && g && matchesStatus;
@@ -185,10 +186,10 @@ const BulkExportModal: React.FC<{
   const statusOptions = [
     { id: 'all', label: 'All' },
     { id: 'pending', label: 'Pending' },
-    { id: 'assessment_scheduled', label: 'Accepted' },
     { id: 'passed_assessment', label: 'Passed' },
     { id: 'waitlisted', label: 'Waitlist' },
     { id: 'failed', label: 'Failed' },
+    { id: 'accepted', label: 'Accepted' },
     { id: 'rejected', label: 'Rejected' },
   ];
 
@@ -329,9 +330,9 @@ export default function ApplicationsView() {
 
   const statusMetrics: Record<string, number> = {
     all: apps.filter((a: any) => a.academicYear === selectedYear).length,
-    pending: apps.filter((a: any) => a.status === 'pending' && a.academicYear === selectedYear).length,
-    assessment_scheduled: apps.filter((a: any) => ['assessment_scheduled', 'accepted'].includes(a.status) && a.academicYear === selectedYear).length,
+    pending: apps.filter((a: any) => ['pending', 'assessment_scheduled'].includes(a.status) && a.academicYear === selectedYear).length,
     passed_assessment: apps.filter((a: any) => ['passed_assessment', 'interview_scheduled'].includes(a.status) && a.academicYear === selectedYear).length,
+    accepted: apps.filter((a: any) => a.status === 'accepted' && a.academicYear === selectedYear).length,
     rejected: apps.filter((a: any) => a.status === 'rejected' && a.academicYear === selectedYear).length,
     failed: apps.filter((a: any) => a.status === 'failed' && a.academicYear === selectedYear).length,
     waitlisted: apps.filter((a: any) => a.status === 'waitlisted' && a.academicYear === selectedYear).length,
@@ -340,7 +341,7 @@ export default function ApplicationsView() {
   const filteredApps = apps.filter((app: any) => {
     const matchesYear = app.academicYear === selectedYear;
     let matchesStatus = statusFilter === 'all' || app.status === statusFilter;
-    if (statusFilter === 'assessment_scheduled') matchesStatus = ['assessment_scheduled', 'accepted'].includes(app.status);
+    if (statusFilter === 'pending') matchesStatus = ['pending', 'assessment_scheduled'].includes(app.status);
     if (statusFilter === 'passed_assessment') matchesStatus = ['passed_assessment', 'interview_scheduled'].includes(app.status);
     const matchesSearch = !searchQuery || app.candidate?.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) || app.id.toString().includes(searchQuery);
     return matchesYear && matchesStatus && matchesSearch;
@@ -478,10 +479,10 @@ export default function ApplicationsView() {
             {[
               { id: 'all', label: 'All' },
               { id: 'pending', label: 'Pending' },
-              { id: 'assessment_scheduled', label: 'Accepted' },
               { id: 'passed_assessment', label: 'Passed' },
               { id: 'waitlisted', label: 'Waitlist' },
               { id: 'failed', label: 'Failed' },
+              { id: 'accepted', label: 'Accepted' },
               { id: 'rejected', label: 'Rejected' },
             ].map((f) => (
               <button

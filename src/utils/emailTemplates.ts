@@ -2,168 +2,169 @@
  * Drafts for automated emails sent during the admissions process.
  */
 
-export const getRejectionEmail = (candidateName: string, reason: string) => ({
-  subject: `Update on your application to Kianda School - ${candidateName}`,
-  body: `
-Dear Parents,
+const getBaseLayout = (subject: string, content: string) => `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f7f9; }
+        .container { max-width: 600px; margin: 20px auto; background: #ffffff; border-radius: 12px; overflow: hidden; shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .header { background-color: #18216d; padding: 30px; text-align: center; border-bottom: 4px solid #ffc425; }
+        .content { padding: 40px; }
+        .footer { background-color: #f8f9fa; padding: 30px; text-align: center; font-size: 12px; color: #666; border-top: 1px solid #eee; }
+        .info-card { background: #f0f4f8; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ffc425; }
+        .info-card strong { color: #18216d; }
+        .button { display: inline-block; padding: 12px 24px; background-color: #ffc425; color: #18216d; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 20px; }
+        .signature { margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; }
+        .signature p { margin: 2px 0; font-size: 14px; }
+        ul { padding-left: 20px; }
+        li { margin-bottom: 8px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2 style="color: #ffffff; margin: 0; font-size: 24px; letter-spacing: 1px;">KIANDA SCHOOL</h2>
+            <p style="color: #ffc425; margin: 5px 0 0 0; font-size: 12px; text-transform: uppercase; letter-spacing: 2px;">Admissions Portal</p>
+        </div>
+        <div class="content">
+            <h3 style="color: #18216d; margin-top: 0; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px;">${subject}</h3>
+            ${content}
+            <div class="signature">
+                <p>Yours sincerely,</p>
+                <p><strong>Yvette Odero (Miss)</strong></p>
+                <p>Admissions Secretary</p>
+                <p style="color: #666; font-size: 12px; margin-top: 10px;">Kianda School | Admissions Office</p>
+            </div>
+        </div>
+        <div class="footer">
+            <p><strong>Kianda School</strong><br>Email: info@kiandaschool.ac.ke | Enquiries: 020 8077381, 0733-846959<br>www.kiandaschool.ac.ke</p>
+            <div style="margin-top: 15px; opacity: 0.6;">
+                &copy; ${new Date().getFullYear()} Kianda School. All rights reserved.
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+`;
 
-Thank you for your interest in Kianda School. 
+export const getRejectionEmail = (candidateName: string, academicYear: number) => {
+  const subject = `Admission Decision - ${candidateName} (${academicYear})`;
+  const content = `
+    <p>Dear Parents,</p>
+    <p>I hope this message finds you well.</p>
+    <p>Thank you for applying for a place for your daughter and for bringing her for the Assessment for the ${academicYear} academic year. We truly appreciate the time and effort you invested in the process.</p>
+    <p>Thank you for your interest in Kianda School. We appreciate the time and effort you invested in the application and assessment process for the ${academicYear} academic year.</p>
+    <p>After careful consideration, we regret to inform you that we are unable to offer your daughter a place at Kianda School at this time.</p>
+    <p>We are grateful for the interest you have shown in our school and wish your daughter every success in her future endeavours.</p>
+  `;
+  return { subject, body: getBaseLayout(subject, content) };
+};
 
-After careful review of the recent assessments, we regret to inform you that we are unable to progress ${candidateName}'s application. 
+export const getAssessmentPassEmail = (candidateName: string) => {
+  const subject = `Assessment Stage Cleared - ${candidateName}`;
+  const content = `
+    <p>Dear Parents,</p>
+    <p>We are pleased to inform you that <strong>${candidateName}</strong> has successfully cleared the entrance assessment stage. Congratulations to her on this achievement!</p>
+    <p>Our admissions office will reach out to you shortly regarding the scheduling of the interview, which is the final stage of our admissions process.</p>
+    <p>Thank you for your continued interest in Kianda School.</p>
+  `;
+  return { subject, body: getBaseLayout(subject, content) };
+};
 
-Decision Notes:
-${reason}
 
-We wish her the best in her future academic endeavors.
 
-Kind regards,
-The Admissions Team
-Kianda School
-  `.trim()
-});
-
-export const getAssessmentPassEmail = (candidateName: string) => ({
-  subject: `Congratulations! Assessment Stage Cleared - ${candidateName}`,
-  body: `
-Dear Parents,
-
-We are pleased to inform you that ${candidateName} has successfully cleared the entrance assessment stage.
-
-Congratulations to her on this achievement! 
-
-Our admissions office will reach out to you shortly regarding the scheduling of the interview, which is the final stage of our admissions process.
-
-Thank you for your continued interest in Kianda School.
-
-Kind regards,
-The Admissions Team
-Kianda School
-  `.trim()
-});
-
-export const getApplicationRejectionEmail = (candidateName: string, reason: string) => ({
-  subject: `Application Update - Kianda School - ${candidateName}`,
-  body: `
-Dear Parents,
-
-Thank you for applying to Kianda School and paying the application fee.
-
-After an initial administrative review of your application, we regret to inform you that we cannot proceed with ${candidateName}'s application at this time.
-
-Decision Notes:
-${reason}
-
-We deeply appreciate your interest in our institution and wish you the best.
-
-Kind regards,
-The Admissions Team
-Kianda School
-  `.trim()
-});
-
-export const getSuccessEmail = (candidateName: string, assessmentDate?: string) => {
+export const getSuccessEmail = (candidateName: string, grade: string, academicYear: number, assessmentDate?: string, location?: string) => {
   const dateObj = assessmentDate ? new Date(assessmentDate) : null;
   const formattedDate = dateObj ? dateObj.toLocaleDateString('en-GB', { 
     weekday: 'long', 
     day: 'numeric', 
     month: 'long', 
     year: 'numeric' 
-  }) : null;
+  }) : 'To be communicated';
 
-  return {
-    subject: `Application Received - Kianda School - ${candidateName}`,
-    body: `
-Dear Parents,
-
-We have successfully received your application and application fee for ${candidateName}.
-
-Your application is currently under administrative review. ${formattedDate ? `The assessment for this grade is scheduled for ${formattedDate}. Kindly ensure to avail yourself and candidate during this day for the set tests.` : 'You will be notified via email shortly regarding the outcome of the review and any subsequent assessment schedules.'}
-
-Thank you for choosing Kianda School.
-
-Kind regards,
-The Admissions Team
-Kianda School
-    `.trim()
-  };
+  const subject = `KIANDA ENTRANCE ASSESSMENT – ${grade.toUpperCase()} (${academicYear})`;
+  const content = `
+    <p>Dear Parents,</p>
+    <p>Thank you for applying for a ${grade} (${academicYear}) slot in Kianda School for your daughter, <strong>${candidateName}</strong>.</p>
+    <p>The assessment will be on <strong>${formattedDate}</strong>${location ? ` in the <strong>${location}</strong>` : ''}. It will begin at 8:00 a.m. and end at 11:00 a.m. Parents will be required to leave the children and come back for them at 11:00 a.m.</p>
+    <p>You will need to register your daughter at <strong>7:45 a.m.</strong> on the day of the assessment${location ? `, outside the ${location},` : ''} and pick her from the same place after the assessment.</p>
+    <div class="info-card">
+        <strong>Your daughter should come with:</strong>
+        <ul>
+            <li>2 pencils</li>
+            <li>An eraser</li>
+            <li>Coloured pencils (pack of 12, not crayons)</li>
+            <li>A sharpener</li>
+            <li>A healthy snack</li>
+        </ul>
+    </div>
+    <p>Your daughter will be given a reference number on the day of the assessment.</p>
+    <p>Those who are shortlisted will be invited for an oral interview together with their parents. We will communicate to the shortlisted parents via email.</p>
+  `;
+  return { subject, body: getBaseLayout(subject, content) };
 };
 
-export const getAssessmentInvitationEmail = (candidateName: string, assessmentDate: string) => ({
-  subject: `Application Accepted & Assessment Scheduled - ${candidateName}`,
-  body: `
-Dear Parents,
+export const getAssessmentInvitationEmail = (candidateName: string, assessmentDate: string) => {
+  const subject = `Entrance Assessment Invitation - ${candidateName}`;
+  const content = `
+    <p>Dear Parents,</p>
+    <p>Following the successful administrative review of your application, we are pleased to officially invite ${candidateName} for the Kianda School Entrance Assessment.</p>
+    <div class="info-card">
+        <strong>Scheduled Assessment Date:</strong><br>
+        ${assessmentDate}
+    </div>
+    <p>Kindly ensure the candidate arrives punctually and is well-prepared for the evaluation. We look forward to welcoming ${candidateName} to our campus.</p>
+  `;
+  return { subject, body: getBaseLayout(subject, content) };
+};
 
-Congratulations! We have completed the administrative review for ${candidateName}'s application.
+export const getInterviewInviteEmail = (candidateName: string, grade: string, academicYear: number, date: string, time: string, location: string) => {
+  const subject = `Oral Interview Invitation - ${candidateName}`;
+  const content = `
+    <p>Dear Parent,</p>
+    <p>I hope this message finds you well.</p>
+    <p>We are pleased to inform you that your daughter, <strong>${candidateName}</strong>, has been shortlisted for an Oral Interview for <strong>${grade}</strong> entry in <strong>${academicYear}</strong>. Kindly note that <strong>both parents are required to accompany her</strong> for the interview.</p>
+    <div class="info-card">
+        <strong>Interview Details:</strong><br>
+        Date: ${date}<br>
+        Time Slot: ${time}<br>
+        Location: ${location}
+    </div>
+    <p>Please confirm your appointment by calling our receptionist on <strong>0716 875838</strong> or <strong>0721 547572</strong>.</p>
+    <p>We look forward to welcoming you.</p>
+  `;
+  return { subject, body: getBaseLayout(subject, content) };
+};
 
-We are pleased to inform you that the application has been accepted to advance to the testing stage. Please take note of the formally scheduled assessment date for the candidate:
+export const getAdmissionOfferEmail = (candidateName: string, grade: string, academicYear: number, deadlineDate: string) => {
+  const subject = `Admission Offer - ${candidateName} - ${academicYear}`;
+  const content = `
+    <p>Dear Parents,</p>
+    <p>We are pleased to inform you that your daughter, <strong>${candidateName}</strong>, has been offered admission into <strong>${grade}</strong> for the year <strong>${academicYear}</strong>.</p>
+    <p>To secure this place, kindly pay a <strong>non-refundable acceptance fee of Kshs 25,000</strong> on or before <strong>${deadlineDate}</strong>. <strong>PLEASE NOTE:</strong> To finalize the registration, you must email a copy of the payment receipt or M-Pesa confirmation message to the Accounts Department at <a href="mailto:accounts@kiandaschool.ac.ke">accounts@kiandaschool.ac.ke</a>, and copy <a href="mailto:info@kiandaschool.ac.ke">info@kiandaschool.ac.ke</a>.</p>
+    <div class="info-card">
+        <strong>Payment Instructions:</strong><br>
+        <strong>Paybill Number:</strong> 34104<br>
+        <strong>Account Name:</strong> ${candidateName} – ${grade}<br>
+        <span style="font-size: 12px; color: #666;">(e.g., Account: Ann Susan Brown – Grade 3)</span>
+    </div>
+    <p>Upon receipt of your confirmation and payment, your daughter will be issued with an admission number. The school fee structure and further admission details will then be shared with you.</p>
+    <p>Thank you for choosing Kianda School. We look forward to welcoming your daughter to our community.</p>
+  `;
+  return { subject, body: getBaseLayout(subject, content) };
+};
 
-Assessment Date: ${assessmentDate}
+export const getWaitlistEmail = (candidateName: string) => {
+  const subject = `Waitlist Notification - ${candidateName}`;
+  const content = `
+    <p>Dear Parent,</p>
+    <p>I hope this message finds you well.</p>
+    <p>Thank you for bringing your daughter for the Oral interview. We truly appreciate the time, effort, and interest you have shown in our school.</p>
+    <p>Regrettably, we are unable to offer your daughter a place at this time due to limited vacancies. However, we have placed her on our waiting list and will be happy to reconsider her application should a vacancy arise.</p>
+    <p>We remain grateful for your engagement with our school and wish your daughter every success in her future endeavours.</p>
+  `;
+  return { subject, body: getBaseLayout(subject, content) };
+};
 
-We will follow up with logistical instructions closer to the date. Ensure the candidate arrives on time.
-
-Kind regards,
-The Admissions Team
-Kianda School
-  `.trim()
-});
-
-export const getInterviewInviteEmail = (candidateName: string, date: string, time: string, location: string) => ({
-  subject: `Interview Invitation - Kianda School - ${candidateName}`,
-  body: `
-Dear Parents,
-
-We are pleased to invite ${candidateName} for an oral interview as the final stage of the Kianda School admissions process.
-
-Please find the scheduled details below:
-
-Date: ${date}
-Time Slot: ${time}
-Location: ${location}
-
-Please ensure that you arrive at the school at least 15 minutes before the scheduled time.
-
-We look forward to meeting you and your daughter.
-
-Kind regards,
-The Admissions Team
-Kianda School
-  `.trim()
-});
-
-export const getAdmissionOfferEmail = (candidateName: string) => ({
-  subject: `Admission Offer - Kianda School - ${candidateName}`,
-  body: `
-Dear Parents,
-
-Congratulations! We are delighted to formally offer ${candidateName} a place at Kianda School. 
-
-To secure this position, we kindly request you to pay the admissions fees of Ksh 25,000. Please note that this payment should be made directly through the unique student account assigned to ${candidateName} by our Finance Department. 
-
-The Finance Office will contact you shortly with the specific account details and instructions to finalize the enrollment. Kindly note that all subsequent payments are handled through these official finance channels rather than the admissions portal.
-
-Welcome to the Kianda School family!
-
-Kind regards,
-The Admissions Team
-Kianda School
-  `.trim()
-});
-
-export const getWaitlistEmail = (candidateName: string) => ({
-  subject: `Waitlist Notification - Kianda School - ${candidateName}`,
-  body: `
-Dear Parents,
-
-Thank you for participating in the recent oral interview for ${candidateName}.
-
-We are pleased to inform you that ${candidateName} has successfully met our admission requirements. However, as our current vacancies for this grade level are fully depleted at this time, we have placed her on our **Waiting List**.
-
-Should a spot become available due to standard admissions flux, we will reach out to you immediately with a formal admission offer.
-
-We appreciate your patience and your interest in Kianda School.
-
-Kind regards,
-The Admissions Team
-Kianda School
-  `.trim()
-});
