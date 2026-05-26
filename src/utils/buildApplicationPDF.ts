@@ -208,9 +208,10 @@ export async function buildApplicationPDF(app: any): Promise<jsPDF> {
 
   if (schools.length > 0) {
     schools.forEach((s: any) => {
+      const typeStr = s.schoolType ? `${s.schoolType.toUpperCase()} • ` : '';
       drawText(
         doc,
-        `${(s.schoolType || 'Unknown Stage').toUpperCase()} • ${s.schoolName || 'Unknown School'} • ${s.yearsRange || 'Dates N/A'}`,
+        `${typeStr}${s.schoolName || 'Unknown School'} • ${s.yearsRange || 'Dates N/A'}`,
         s1LeftX,
         leftY,
         { size: 8, color: PRIMARY, bold: true }

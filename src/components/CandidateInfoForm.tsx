@@ -43,9 +43,9 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
     updateData({ schools: newSchools });
   };
   
-  const addSchool = (type: string) => {
+  const addSchool = () => {
     const schools = Array.isArray(data.schools) ? data.schools : [];
-    updateData({ schools: [...schools, { type, name: '', years: '' }] });
+    updateData({ schools: [...schools, { type: '', name: '', years: '' }] });
   };
   
   const removeSchool = (index: number) => {
@@ -438,80 +438,92 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
 
           {/* Schools History */}
           <div className="space-y-8 pt-6 border-t border-outline-variant/10">
-            <div>
-              <h4 className="text-lg font-bold text-primary italic mb-1">Previous Education History</h4>
-              <p className="text-xs text-on-surface-variant font-medium">Please add all schools attended for each applicable stage.</p>
+            <div className="flex justify-between items-center mb-1">
+              <div>
+                <h4 className="text-lg font-bold text-primary italic mb-1">Previous Education History</h4>
+                <p className="text-xs text-on-surface-variant font-medium">Please add all schools attended.</p>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => addSchool()}
+                className="text-[10px] font-bold uppercase tracking-widest text-secondary flex items-center gap-1 hover:text-primary transition-colors bg-white px-3 py-1.5 rounded-full shadow-sm border border-black/5 shrink-0"
+              >
+                <Plus size={14} /> Add School
+              </button>
             </div>
 
             {(() => {
               const g = (data.grade || '').toLowerCase();
-              let stages = ['Kindergarten', 'Primary'];
-              if (g.includes('7') || g.includes('8') || g.includes('9') || g.includes('junior')) {
-                stages = ['Kindergarten', 'Primary', 'Junior'];
-              } else if (g.includes('pp') || g.includes('playgroup') || g.includes('nursery')) {
-                stages = ['Kindergarten'];
+              let stages: string[] = ['Pre-Primary'];
+
+              if (!g.includes('pp') && !g.includes('playgroup') && !g.includes('nursery')) {
+                 const match = g.match(/\d+/);
+                 if (match) {
+                    const num = parseInt(match[0], 10);
+                    if (num >= 2) stages.push('Lower Primary');
+                    if (num >= 5) stages.push('Upper Primary');
+                    if (num >= 8) stages.push('Junior Secondary');
+                 }
               }
               
-              return stages.map(stage => {
-                const stageSchools = (Array.isArray(data.schools) ? data.schools : []).map((school, i) => ({ ...school, originalIndex: i })).filter(s => s.type === stage);
+              const stageOptions = [...stages, 'Multiple Stages'];
+              const schools = Array.isArray(data.schools) ? data.schools : [];
 
-                return (
-                  <div key={stage} className="space-y-3 bg-surface-container-low/30 p-5 rounded-3xl border border-primary/5">
-                    <div className="flex justify-between items-center mb-2">
-                      <h5 className="text-sm font-black uppercase tracking-widest text-primary/70">{stage}</h5>
-                      <button 
-                        type="button" 
-                        onClick={() => addSchool(stage)}
-                        className="text-[10px] font-bold uppercase tracking-widest text-secondary flex items-center gap-1 hover:text-primary transition-colors bg-white px-3 py-1.5 rounded-full shadow-sm border border-black/5"
-                      >
-                        <Plus size={14} /> Add School
-                      </button>
-                    </div>
-                    
-                    <div className="space-y-3">
-                      {stageSchools.map((school) => (
-                          <motion.div 
-                            layout
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            key={school.originalIndex} 
-                            className="flex flex-col sm:flex-row items-center gap-3 p-2 bg-white rounded-[20px] border border-primary/5 shadow-sm group hover:border-primary/20 transition-all"
-                          >
-                            <div className="flex-1 flex w-full gap-3">
-                              <input
-                                type="text"
-                                placeholder="Name of School"
-                                value={school.name}
-                                onChange={(e) => updateSchool(school.originalIndex, 'name', e.target.value)}
-                                className="flex-1 bg-surface-container-low/50 border-none rounded-xl p-3.5 text-sm font-semibold focus:ring-2 focus:ring-primary/20 focus:bg-primary/5 transition-colors placeholder:text-primary/30 text-primary"
-                              />
+              return (
+                <div className="space-y-3 bg-surface-container-low/30 p-5 rounded-3xl border border-primary/5">
+                  <div className="space-y-3">
+                    {schools.map((school, index) => (
+                        <motion.div 
+                          layout
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          key={index} 
+                          className="flex flex-col sm:flex-row items-center gap-3 p-2 bg-white rounded-[20px] border border-primary/5 shadow-sm group hover:border-primary/20 transition-all"
+                        >
+                          <div className="flex-1 flex flex-col sm:flex-row w-full gap-3">
+                            <input
+                              type="text"
+                              placeholder="Name of School"
+                              value={school.name}
+                              onChange={(e) => updateSchool(index, 'name', e.target.value)}
+                              className="flex-1 bg-surface-container-low/50 border-none rounded-xl p-3.5 text-sm font-semibold focus:ring-2 focus:ring-primary/20 focus:bg-primary/5 transition-colors placeholder:text-primary/30 text-primary"
+                            />
+                            <div className="flex flex-row gap-3 w-full sm:w-auto">
+                              <select
+                                value={school.type || ''}
+                                onChange={(e) => updateSchool(index, 'type', e.target.value)}
+                                className="w-full sm:w-[160px] bg-surface-container-low/50 border-none rounded-xl p-3.5 text-xs font-semibold focus:ring-2 focus:ring-primary/20 focus:bg-primary/5 transition-colors text-primary cursor-pointer"
+                              >
+                                <option value="" disabled hidden>Stage(s) Attended</option>
+                                {stageOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                              </select>
                               <input
                                 type="text"
                                 placeholder="Years (e.g. 2020-2022)"
                                 value={school.years}
-                                onChange={(e) => updateSchool(school.originalIndex, 'years', e.target.value)}
-                                className="w-1/3 min-w-[120px] bg-surface-container-low/50 border-none rounded-xl p-3.5 text-sm font-semibold focus:ring-2 focus:ring-primary/20 focus:bg-primary/5 transition-colors placeholder:text-primary/30 text-primary"
+                                onChange={(e) => updateSchool(index, 'years', e.target.value)}
+                                className="w-[120px] bg-surface-container-low/50 border-none rounded-xl p-3.5 text-sm font-semibold focus:ring-2 focus:ring-primary/20 focus:bg-primary/5 transition-colors placeholder:text-primary/30 text-primary"
                               />
                             </div>
-                            <button 
-                              type="button" 
-                              onClick={() => removeSchool(school.originalIndex)}
-                              className="w-full sm:w-12 h-12 flex items-center justify-center rounded-xl text-red-400 hover:bg-red-50 hover:text-red-500 transition-colors shrink-0"
-                              title="Remove School"
-                            >
-                              <Trash2 size={18} />
-                            </button>
-                          </motion.div>
-                      ))}
-                    </div>
-                    {stageSchools.length === 0 && (
-                      <div className="text-[11px] font-medium text-primary/40 italic py-3 bg-white/50 border border-primary/5 rounded-2xl px-5 text-center">
-                        No {stage.toLowerCase()} schools added.
-                      </div>
-                    )}
+                          </div>
+                          <button 
+                            type="button" 
+                            onClick={() => removeSchool(index)}
+                            className="w-full sm:w-12 h-12 flex items-center justify-center rounded-xl text-red-400 hover:bg-red-50 hover:text-red-500 transition-colors shrink-0"
+                            title="Remove School"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </motion.div>
+                    ))}
                   </div>
-                );
-              });
+                  {schools.length === 0 && (
+                    <div className="text-[11px] font-medium text-primary/40 italic py-3 bg-white/50 border border-primary/5 rounded-2xl px-5 text-center">
+                      No previous schools added.
+                    </div>
+                  )}
+                </div>
+              );
             })()}
           </div>
 
