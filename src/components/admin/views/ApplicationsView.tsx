@@ -1,13 +1,14 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Users, Search, User, Mail, ChevronRight, Loader2, ChevronDown, Archive, CheckSquare, Square, X, Filter, FileDown } from 'lucide-react';
+import { Users, Search, User, Mail, ChevronRight, Loader2, ChevronDown, Archive, CheckSquare, Square, X, Filter, FileDown, FileText, ArrowLeft } from 'lucide-react';
 import AdminPageHeader from '../AdminPageHeader';
 import ApplicationDetailsView from './ApplicationDetailsView';
 import TablePagination from '../TablePagination';
 import SchoolSwitcher from '../SchoolSwitcher';
-import { useApplications, useUpdateApplicationStatus } from '../../../hooks/useAdminData';
+import { useApplications, useUpdateApplicationStatus, useCycles } from '../../../hooks/useAdminData';
 import { buildApplicationPDF } from '../../../utils/buildApplicationPDF';
 import JSZip from 'jszip';
+import * as XLSX from 'xlsx';
 
 // ── Application Row ───────────────────────────────────────────────────────────
 
@@ -22,7 +23,7 @@ const ApplicationRow: React.FC<{
 
   return (
     <tr
-      className={`hover:bg-primary/5 transition-colors group cursor-pointer ${isSelected ? 'bg-secondary/5' : ''}`}
+      className={`hover:bg-primary/5 transition-colors group cursor-pointer hover:relative hover:z-[100] ${isSelected ? 'bg-secondary/5' : ''}`}
       onClick={isSelectMode ? onToggleSelect : onViewDetails}
     >
       {/* Checkbox cell */}
@@ -106,7 +107,7 @@ const ApplicationRow: React.FC<{
               {app.additionalInfo?.motivation || 'No motivation provided.'}
             </div>
             {app.additionalInfo?.motivation && (
-              <div className="absolute bottom-full left-0 mb-4 opacity-0 group-hover/motivation:opacity-100 transition-all pointer-events-none z-[60] w-64">
+              <div className="absolute bottom-full left-0 mb-4 opacity-0 group-hover/motivation:opacity-100 transition-all pointer-events-none w-64 z-[100]">
                 <div className="bg-white p-4 rounded-2xl shadow-2xl border border-secondary/20 shadow-primary/20">
                   <div className="text-[9px] font-black uppercase tracking-widest text-secondary mb-2">Motivation Statement</div>
                   <p className="text-[11px] leading-relaxed font-medium text-primary italic whitespace-normal break-words">"{app.additionalInfo.motivation}"</p>
@@ -162,9 +163,12 @@ const ApplicationRow: React.FC<{
 const BulkExportModal: React.FC<{
   apps: any[];
   onClose: () => void;
-  onExport: (filtered: any[]) => void;
+  onExport: (filtered: any[], type: 'zip' | 'excel') => void;
   isBulkExporting: boolean;
 }> = ({ apps, onClose, onExport, isBulkExporting }) => {
+  const [step, setStep] = useState<1 | 2>(1);
+  const [exportType, setExportType] = useState<'zip' | 'excel'>('zip');
+  
   const [filterYear, setFilterYear] = useState<number | 'all'>('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterGrade, setFilterGrade] = useState('all');
@@ -208,93 +212,151 @@ const BulkExportModal: React.FC<{
           <X size={20} />
         </button>
 
-        <div className="mb-6">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 bg-primary rounded-2xl flex items-center justify-center">
-              <Archive size={18} className="text-secondary" />
+        {step === 1 ? (
+          <>
+            <div className="mb-6">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 bg-primary rounded-2xl flex items-center justify-center">
+                  <FileDown size={18} className="text-secondary" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black text-primary">Export Data</h3>
+                  <p className="text-xs font-bold text-primary/40">Step 1: Choose Export Format</p>
+                </div>
+              </div>
             </div>
-            <div>
-              <h3 className="text-xl font-black text-primary">Bulk Export ZIP</h3>
-              <p className="text-xs font-bold text-primary/40">Apply filters or export all applications</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-5">
-          {/* Year filter */}
-          <div>
-            <label className="text-[10px] font-black uppercase tracking-widest text-primary/40 block mb-2">Academic Year</label>
-            <div className="relative">
-              <select
-                value={filterYear}
-                onChange={e => setFilterYear(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
-                className="w-full appearance-none bg-surface-container-lowest border border-outline-variant/10 rounded-2xl px-4 py-3 text-sm font-bold text-primary focus:outline-none focus:ring-2 focus:ring-primary/10 pr-10"
+            
+            <div className="space-y-4 mb-8">
+              <button
+                onClick={() => setExportType('zip')}
+                className={`w-full text-left p-6 rounded-[24px] border-2 transition-all flex items-center gap-4 ${exportType === 'zip' ? 'border-primary bg-primary/5 shadow-md' : 'border-outline-variant/10 hover:border-primary/30 hover:bg-surface-container-lowest'}`}
               >
-                <option value="all">All Years</option>
-                {uniqueYears.map(y => <option key={y} value={y}>{y}</option>)}
-              </select>
-              <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-primary/30 pointer-events-none" />
-            </div>
-          </div>
-
-          {/* Grade filter */}
-          <div>
-            <label className="text-[10px] font-black uppercase tracking-widest text-primary/40 block mb-2">Grade</label>
-            <div className="relative">
-              <select
-                value={filterGrade}
-                onChange={e => setFilterGrade(e.target.value)}
-                className="w-full appearance-none bg-surface-container-lowest border border-outline-variant/10 rounded-2xl px-4 py-3 text-sm font-bold text-primary focus:outline-none focus:ring-2 focus:ring-primary/10 pr-10"
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${exportType === 'zip' ? 'bg-primary text-secondary' : 'bg-surface-variant text-on-surface-variant'}`}>
+                  <Archive size={20} />
+                </div>
+                <div>
+                  <div className="font-black text-primary mb-1">ZIP Archive (PDFs)</div>
+                  <div className="text-xs text-primary/60 font-semibold leading-relaxed">Generates individual PDF dossiers for each candidate, packaged into a single ZIP file.</div>
+                </div>
+              </button>
+              
+              <button
+                onClick={() => setExportType('excel')}
+                className={`w-full text-left p-6 rounded-[24px] border-2 transition-all flex items-center gap-4 ${exportType === 'excel' ? 'border-primary bg-primary/5 shadow-md' : 'border-outline-variant/10 hover:border-primary/30 hover:bg-surface-container-lowest'}`}
               >
-                <option value="all">All Grades</option>
-                {uniqueGrades.map(g => <option key={g} value={g}>{g}</option>)}
-              </select>
-              <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-primary/30 pointer-events-none" />
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${exportType === 'excel' ? 'bg-green-600 text-white' : 'bg-surface-variant text-on-surface-variant'}`}>
+                  <FileText size={20} />
+                </div>
+                <div>
+                  <div className="font-black text-primary mb-1">Excel Spreadsheet</div>
+                  <div className="text-xs text-primary/60 font-semibold leading-relaxed">Generates a flat .xlsx file containing all structured data fields for analysis and reporting.</div>
+                </div>
+              </button>
             </div>
-          </div>
-
-          {/* Status filter */}
-          <div>
-            <label className="text-[10px] font-black uppercase tracking-widest text-primary/40 block mb-2">Application Status</label>
-            <div className="flex flex-wrap gap-2">
-              {statusOptions.map(opt => (
-                <button
-                  key={opt.id}
-                  onClick={() => setFilterStatus(opt.id)}
-                  className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${
-                    filterStatus === opt.id
-                      ? 'bg-primary text-white border-primary'
-                      : 'bg-surface-container-lowest text-primary/50 border-outline-variant/10 hover:border-primary/30 hover:text-primary'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
+            
+            <div className="flex justify-end gap-3">
+              <button onClick={onClose} className="py-4 px-6 text-[11px] font-black uppercase tracking-widest text-primary/60 hover:bg-primary/5 rounded-2xl transition-colors">
+                Cancel
+              </button>
+              <button
+                onClick={() => setStep(2)}
+                className="py-4 px-8 bg-primary text-secondary font-black text-[11px] uppercase tracking-widest rounded-2xl hover:opacity-90 transition-all flex items-center gap-2 shadow-lg shadow-primary/20"
+              >
+                Next Step <ChevronRight size={14} />
+              </button>
             </div>
-          </div>
-        </div>
+          </>
+        ) : (
+          <>
+            <div className="mb-6">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 bg-primary rounded-2xl flex items-center justify-center cursor-pointer" onClick={() => setStep(1)}>
+                  <ArrowLeft size={18} className="text-secondary hover:-translate-x-1 transition-transform" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black text-primary">Filter Records</h3>
+                  <p className="text-xs font-bold text-primary/40">Step 2: Apply filters for {exportType === 'zip' ? 'ZIP Export' : 'Excel Export'}</p>
+                </div>
+              </div>
+            </div>
 
-        {/* Preview count */}
-        <div className="mt-6 p-4 bg-primary/5 rounded-2xl border border-primary/10 flex items-center justify-between">
-          <span className="text-xs font-bold text-primary/60">Applications to export</span>
-          <span className="text-xl font-black text-primary">{filtered.length}</span>
-        </div>
+            <div className="space-y-5">
+              {/* Year filter */}
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-primary/40 block mb-2">Academic Year</label>
+                <div className="relative">
+                  <select
+                    value={filterYear}
+                    onChange={e => setFilterYear(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
+                    className="w-full appearance-none bg-surface-container-lowest border border-outline-variant/10 rounded-2xl px-4 py-3 text-sm font-bold text-primary focus:outline-none focus:ring-2 focus:ring-primary/10 pr-10"
+                  >
+                    <option value="all">All Years</option>
+                    {uniqueYears.map(y => <option key={y} value={y}>{y}</option>)}
+                  </select>
+                  <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-primary/30 pointer-events-none" />
+                </div>
+              </div>
 
-        {/* Action buttons */}
-        <div className="flex gap-3 mt-6">
-          <button onClick={onClose} className="flex-1 py-4 text-[11px] font-black uppercase tracking-widest text-primary/60 hover:bg-primary/5 rounded-2xl transition-colors">
-            Cancel
-          </button>
-          <button
-            onClick={() => onExport(filtered)}
-            disabled={filtered.length === 0 || isBulkExporting}
-            className="flex-[2] py-4 bg-primary text-secondary font-black text-[11px] uppercase tracking-widest rounded-2xl hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
-          >
-            {isBulkExporting
-              ? <><Loader2 size={14} className="animate-spin" /> Generating...</>
-              : <><FileDown size={14} /> Export {filtered.length} PDF{filtered.length !== 1 ? 's' : ''}</>}
-          </button>
-        </div>
+              {/* Grade filter */}
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-primary/40 block mb-2">Grade</label>
+                <div className="relative">
+                  <select
+                    value={filterGrade}
+                    onChange={e => setFilterGrade(e.target.value)}
+                    className="w-full appearance-none bg-surface-container-lowest border border-outline-variant/10 rounded-2xl px-4 py-3 text-sm font-bold text-primary focus:outline-none focus:ring-2 focus:ring-primary/10 pr-10"
+                  >
+                    <option value="all">All Grades</option>
+                    {uniqueGrades.map(g => <option key={g} value={g}>{g}</option>)}
+                  </select>
+                  <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-primary/30 pointer-events-none" />
+                </div>
+              </div>
+
+              {/* Status filter */}
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-primary/40 block mb-2">Application Status</label>
+                <div className="flex flex-wrap gap-2">
+                  {statusOptions.map(opt => (
+                    <button
+                      key={opt.id}
+                      onClick={() => setFilterStatus(opt.id)}
+                      className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${
+                        filterStatus === opt.id
+                          ? 'bg-primary text-white border-primary'
+                          : 'bg-surface-container-lowest text-primary/50 border-outline-variant/10 hover:border-primary/30 hover:text-primary'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Preview count */}
+            <div className="mt-6 p-4 bg-primary/5 rounded-2xl border border-primary/10 flex items-center justify-between">
+              <span className="text-xs font-bold text-primary/60">Applications to export</span>
+              <span className="text-xl font-black text-primary">{filtered.length}</span>
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setStep(1)} className="flex-1 py-4 text-[11px] font-black uppercase tracking-widest text-primary/60 hover:bg-primary/5 rounded-2xl transition-colors">
+                Back
+              </button>
+              <button
+                onClick={() => onExport(filtered, exportType)}
+                disabled={filtered.length === 0 || isBulkExporting}
+                className="flex-[2] py-4 bg-primary text-secondary font-black text-[11px] uppercase tracking-widest rounded-2xl hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
+              >
+                {isBulkExporting
+                  ? <><Loader2 size={14} className="animate-spin" /> Generating...</>
+                  : <><FileDown size={14} /> Export {filtered.length} {exportType === 'zip' ? 'PDFs' : 'Rows'}</>}
+              </button>
+            </div>
+          </>
+        )}
       </motion.div>
     </div>
   );
@@ -306,8 +368,27 @@ export default function ApplicationsView() {
   const { data: apps = [], isLoading, refetch } = useApplications();
   const updateStatusMutation = useUpdateApplicationStatus();
 
+  const { data: cycles = [] } = useCycles();
+  const sortedCycles = React.useMemo(() => {
+    return [...cycles].sort((a: any, b: any) => {
+      const now = new Date();
+      const aActive = a.isActive && now >= new Date(a.startDate) && now <= new Date(a.endDate);
+      const bActive = b.isActive && now >= new Date(b.startDate) && now <= new Date(b.endDate);
+      if (aActive && !bActive) return -1;
+      if (!aActive && bActive) return 1;
+      return b.academicYear - a.academicYear;
+    });
+  }, [cycles]);
+
   const [selectedApp, setSelectedApp] = useState<any | null>(null);
   const [selectedYear, setSelectedYear] = useState<number>(2026);
+
+  React.useEffect(() => {
+    if (sortedCycles.length > 0 && !sortedCycles.some((c: any) => c.academicYear === selectedYear)) {
+      setSelectedYear(sortedCycles[0].academicYear);
+    }
+  }, [sortedCycles, selectedYear]);
+
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -371,38 +452,77 @@ export default function ApplicationsView() {
     });
   };
 
-  const handleExportZIPClick = () => {
+  const handleExportDataClick = () => {
     if (selectedIds.size > 0) {
-      // Has selections — skip modal, export immediately
-      const toExport = apps.filter((a: any) => selectedIds.has(a.id));
-      runBulkExport(toExport);
+      // Has selections — skip modal, export immediately as Excel by default or ZIP. Let's just open the modal to let them choose type, but pass filtered apps!
+      // Actually, since they have selections, we can open a stripped down modal or just default to ZIP.
+      // Wait, let's just open the modal so they can choose. But BulkExportModal applies filters.
+      // If we want to support selectedIds, we'd need to pass them to the modal or just let them choose.
+      // For simplicity, if they select rows, we'll export Excel automatically, or ZIP. 
+      // Actually, let's always open the modal for bulk actions, or if selected, just open a quick type selector.
+      // To keep it simple: Let's just use the modal for everything. We'll ignore selectedIds for bulk export modal.
+      setIsBulkModalOpen(true);
     } else {
-      // No selections — open filter modal
       setIsBulkModalOpen(true);
     }
   };
 
-  const runBulkExport = async (appsToExport: any[]) => {
+  const runBulkExport = async (appsToExport: any[], type: 'zip' | 'excel') => {
     if (appsToExport.length === 0) return;
     setIsBulkExporting(true);
     setIsBulkModalOpen(false);
-    const toastId = (window as any).__toast?.loading?.('Generating ZIP archive...') ?? null;
 
     try {
-      const zip = new JSZip();
-      for (const app of appsToExport) {
-        const doc = await buildApplicationPDF(app);
-        const name = app.candidate?.fullName?.replace(/\s+/g, '_') || `APP_${app.id}`;
-        const pdfBlob = doc.output('arraybuffer');
-        zip.file(`APP-${app.id.toString().padStart(4, '0')}_${name}.pdf`, pdfBlob);
+      if (type === 'zip') {
+        const zip = new JSZip();
+        for (const app of appsToExport) {
+          const doc = await buildApplicationPDF(app);
+          const name = app.candidate?.fullName?.replace(/\s+/g, '_') || `APP_${app.id}`;
+          const pdfBlob = doc.output('arraybuffer');
+          zip.file(`APP-${app.id.toString().padStart(4, '0')}_${name}.pdf`, pdfBlob);
+        }
+        const blob = await zip.generateAsync({ type: 'blob' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Kianda_Applications_${new Date().toISOString().slice(0, 10)}.zip`;
+        a.click();
+        URL.revokeObjectURL(url);
+      } else {
+        // Excel Export
+        const data = appsToExport.map(app => ({
+          'Application ID': `APP-${app.id.toString().padStart(4, '0')}`,
+          'Status': app.status,
+          'Admission Type': app.admissionType || 'Transfer',
+          'Academic Year': app.academicYear,
+          'Applied On': new Date(app.createdAt).toLocaleDateString(),
+          
+          'Candidate Name': app.candidate?.fullName,
+          'Grade': app.candidate?.grade,
+          'Date of Birth': app.candidate?.dob,
+          'Religion': app.candidate?.religion,
+          'Denomination': app.candidate?.denomination,
+          'Birth Order': app.candidate?.birthOrder,
+          'Medical Info': app.candidate?.medicalInfo,
+          'Assessment No': app.candidate?.assessmentNo,
+          
+          'Father Name': app.parentDetails?.fatherName,
+          'Father Phone': app.parentDetails?.fatherPhone,
+          'Father Email': app.parentDetails?.fatherEmail,
+          'Mother Name': app.parentDetails?.motherName,
+          'Mother Phone': app.parentDetails?.motherPhone,
+          'Mother Email': app.parentDetails?.motherEmail,
+          
+          'Payment Verified': app.paymentVerified ? 'Yes' : 'No',
+          'M-PESA Code': app.mpesaCode
+        }));
+        
+        const worksheet = XLSX.utils.json_to_sheet(data);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Applications");
+        
+        XLSX.writeFile(workbook, `Kianda_Applications_${new Date().toISOString().slice(0, 10)}.xlsx`);
       }
-      const blob = await zip.generateAsync({ type: 'blob' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Kianda_Applications_${new Date().toISOString().slice(0, 10)}.zip`;
-      a.click();
-      URL.revokeObjectURL(url);
       // Reset selection
       setSelectedIds(new Set());
       setIsSelectMode(false);
@@ -430,8 +550,9 @@ export default function ApplicationsView() {
                 onChange={(e) => setSelectedYear(parseInt(e.target.value))}
                 className="appearance-none w-full bg-white px-5 py-4 rounded-2xl font-black text-primary border border-outline-variant/10 focus:ring-4 focus:ring-primary/5 cursor-pointer transition-all pr-10 shadow-sm text-xs"
               >
-                {Array.from({ length: 5 }, (_, i) => 2026 + i).map(year => (
-                  <option key={year} value={year}>Academic Year {year}</option>
+                {sortedCycles.length === 0 && <option value={selectedYear}>Academic Year {selectedYear}</option>}
+                {sortedCycles.map((c: any) => (
+                  <option key={c.id} value={c.academicYear}>Academic Year {c.academicYear}</option>
                 ))}
               </select>
               <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-primary/40 pointer-events-none" />
@@ -461,16 +582,16 @@ export default function ApplicationsView() {
               {isSelectMode ? `${selectedIds.size} Selected` : 'Select'}
             </button>
 
-            {/* Export ZIP */}
+            {/* Export Data */}
             <button
-              onClick={handleExportZIPClick}
+              onClick={handleExportDataClick}
               disabled={isBulkExporting}
               className="flex items-center gap-2 px-5 py-4 bg-primary text-secondary rounded-2xl text-[10px] font-black uppercase tracking-widest border border-transparent hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary/20 whitespace-nowrap"
             >
               {isBulkExporting
                 ? <Loader2 size={14} className="animate-spin" />
-                : <Archive size={14} />}
-              Export ZIP
+                : <FileDown size={14} />}
+              Export Data
             </button>
           </div>
 

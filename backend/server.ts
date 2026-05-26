@@ -25,7 +25,24 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 5000;
 
-app.use(cors());
+const allowedOrigins = [
+  'http://localhost:3001',
+  'http://127.0.0.1:3001'
+];
+if (process.env.FRONTEND_URL) {
+  allowedOrigins.push(process.env.FRONTEND_URL);
+}
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true
+}));
 app.use(express.json());
 
 // --- Security Middleware ---
@@ -93,11 +110,29 @@ app.get('/api/health', (req, res) => {
 
 // --- Public Routes ---
 
-// Get Grades with Vacancies
+// Get Grades with Vacancies (Filtered by Cycle)
 app.get('/api/grades/available', async (req, res) => {
   try {
+    const now = new Date();
+    // Check if there is an active admission cycle for the current time
+    const activeCycle = await db.query.admissionCycles.findFirst({
+      where: (cycle, { and, lte, gte, eq }) => and(
+        eq(cycle.isActive, true),
+        lte(cycle.startDate, now),
+        gte(cycle.endDate, now)
+      )
+    });
+
+    if (!activeCycle) {
+      return res.json([]); // Cycle closed, return no grades
+    }
+
+    // Fetch grades for that active cycle where manual toggle is true
     const availableGrades = await db.query.gradeManagement.findMany({
-      where: (grade, { gt }) => gt(grade.vacantSpots, 0),
+      where: (grade, { and, eq }) => and(
+        eq(grade.academicYear, activeCycle.academicYear),
+        eq(grade.isAcceptingApplications, true)
+      ),
     });
     res.json(availableGrades);
   } catch (error) {
@@ -111,68 +146,81 @@ app.post('/api/applications', async (req, res) => {
   try {
     const { candidate, parent, additional, payment, documents } = req.body;
 
-    // Look up grade to get the academic year
+    // Look up grade to get the academic year and vacancies
     const gradeDetails = await db.query.gradeManagement.findFirst({
       where: eq(schema.gradeManagement.gradeName, candidate.grade)
     });
 
-    const [newApp] = await db.insert(schema.applications).values({
-      mpesaCode: payment.mpesaCode,
-      status: 'pending',
-      academicYear: gradeDetails?.academicYear || new Date().getFullYear()
-    }).returning();
+    const isWaitlisted = gradeDetails && gradeDetails.vacantSpots <= 0;
+    const initialStatus = isWaitlisted ? 'waitlisted' : 'pending';
 
-    // 1. Insert Candidate
-    const { schools, ...candidateData } = candidate;
-    await db.insert(schema.candidates).values({
-      applicationId: newApp.id,
-      ...candidateData
-    });
+    const admissionType = ['Grade 1', 'Grade 7', 'Grade 10'].includes(candidate.grade) ? 'New' : 'Transfer';
 
-    // 2. Insert Schools
-    if (schools) {
-      const schoolsToInsert = [];
-      if (schools.kindergarten?.name) schoolsToInsert.push({ applicationId: newApp.id, schoolType: 'Kindergarten', schoolName: schools.kindergarten.name, yearsRange: schools.kindergarten.years });
-      if (schools.primary?.name) schoolsToInsert.push({ applicationId: newApp.id, schoolType: 'Primary', schoolName: schools.primary.name, yearsRange: schools.primary.years });
-      if (schools.junior?.name) schoolsToInsert.push({ applicationId: newApp.id, schoolType: 'Junior', schoolName: schools.junior.name, yearsRange: schools.junior.years });
-      
-      if (schoolsToInsert.length > 0) {
-        await db.insert(schema.schoolsAttended).values(schoolsToInsert);
+    const newAppId = await db.transaction(async (tx) => {
+      const [newApp] = await tx.insert(schema.applications).values({
+        mpesaCode: payment.mpesaCode,
+        status: initialStatus,
+        academicYear: gradeDetails?.academicYear || new Date().getFullYear(),
+        admissionType: admissionType
+      }).returning();
+
+      // 1. Insert Candidate
+      const { schools, passportPhoto, ...candidateData } = candidate;
+      await tx.insert(schema.candidates).values({
+        applicationId: newApp.id,
+        passportPhotoUrl: passportPhoto,
+        ...candidateData
+      });
+
+      // 2. Insert Schools
+      if (schools && Array.isArray(schools)) {
+        const schoolsToInsert = schools.map((s: any) => ({
+          applicationId: newApp.id,
+          schoolType: s.type || 'Unknown',
+          schoolName: s.name,
+          yearsRange: s.years
+        })).filter((s: any) => s.schoolName);
+        
+        if (schoolsToInsert.length > 0) {
+          await tx.insert(schema.schoolsAttended).values(schoolsToInsert);
+        }
       }
-    }
 
-    // 3. Insert Parent Details
-    await db.insert(schema.parentDetails).values({
-      applicationId: newApp.id,
-      ...parent
-    });
+      // 3. Insert Parent Details
+      await tx.insert(schema.parentDetails).values({
+        applicationId: newApp.id,
+        ...parent
+      });
 
-    // 4. Insert Additional Info & Siblings
-    const { siblings, ...additionalData } = additional;
-    if (siblings && siblings.length > 0) {
-      await db.insert(schema.siblings).values(
-        siblings.map((s: any) => ({ applicationId: newApp.id, ...s }))
-      );
-    }
-    await db.insert(schema.additionalInfo).values({
-      applicationId: newApp.id,
-      ...additionalData
-    });
-
-    // 5. Insert Documents
-    if (documents) {
-      const docsToInsert = [];
-      if (documents.letter) docsToInsert.push({ applicationId: newApp.id, documentType: 'Application Letter', fileUrl: documents.letter });
-      if (documents.birthCert) docsToInsert.push({ applicationId: newApp.id, documentType: "Candidate's Birth Certificate", fileUrl: documents.birthCert });
-      if (documents.report) docsToInsert.push({ applicationId: newApp.id, documentType: 'Latest School Report', fileUrl: documents.report });
-      
-      if (docsToInsert.length > 0) {
-        await db.insert(schema.documents).values(docsToInsert);
+      // 4. Insert Additional Info & Siblings
+      const { siblings, ...additionalData } = additional;
+      if (siblings && siblings.length > 0) {
+        await tx.insert(schema.siblings).values(
+          siblings.map((s: any) => ({ applicationId: newApp.id, ...s }))
+        );
       }
-    }
+      await tx.insert(schema.additionalInfo).values({
+        applicationId: newApp.id,
+        ...additionalData
+      });
+
+      // 5. Insert Documents
+      if (documents) {
+        const docsToInsert = [];
+        if (documents.letter) docsToInsert.push({ applicationId: newApp.id, documentType: 'Application Letter', fileUrl: documents.letter });
+        if (documents.birthCert) docsToInsert.push({ applicationId: newApp.id, documentType: "Candidate's Birth Certificate", fileUrl: documents.birthCert });
+        if (documents.report) docsToInsert.push({ applicationId: newApp.id, documentType: 'Latest School Report', fileUrl: documents.report });
+        
+        if (docsToInsert.length > 0) {
+          await tx.insert(schema.documents).values(docsToInsert);
+        }
+      }
+      
+      return newApp.id;
+    });
 
     // Prepare Email
-    const emailContent = getSuccessEmail(candidate.fullName, candidate.grade, newApp.academicYear || new Date().getFullYear(), gradeDetails?.assessmentDate?.toISOString(), gradeDetails?.location);
+    const emailContent = getSuccessEmail(candidate.fullName, candidate.grade, gradeDetails?.academicYear || new Date().getFullYear(), gradeDetails?.assessmentDate?.toISOString(), gradeDetails?.location);
     const parentEmails = [parent.fatherEmail, parent.motherEmail].filter(Boolean).join(', ');
 
     if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
@@ -191,7 +239,7 @@ app.post('/api/applications', async (req, res) => {
       console.log(`[MOCK EMAIL] To: ${parentEmails}\nSubject: ${emailContent.subject}\nBody:\n${emailContent.body}`);
     }
 
-    res.status(201).json({ success: true, applicationId: newApp.id });
+    res.status(201).json({ success: true, applicationId: newAppId });
   } catch (error) {
     console.error('Submission error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -221,6 +269,40 @@ app.post('/api/admin/login', async (req, res) => {
     }
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// --- Process Documents ---
+app.get('/api/admin/process-documents', authenticateAdmin, async (req, res) => {
+  try {
+    const docs = await db.select().from(schema.processDocuments).orderBy(schema.processDocuments.gradeName);
+    res.json(docs);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch process documents' });
+  }
+});
+
+app.post('/api/admin/process-documents', authenticateAdmin, async (req, res) => {
+  try {
+    const { gradeName, title, fileUrl } = req.body;
+    await db.insert(schema.processDocuments).values({
+      gradeName: gradeName || null,
+      title,
+      fileUrl
+    });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to upload process document' });
+  }
+});
+
+app.delete('/api/admin/process-documents/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db.delete(schema.processDocuments).where(eq(schema.processDocuments.id, parseInt(id)));
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete document' });
   }
 });
 
@@ -388,6 +470,51 @@ app.get('/api/admin/stats', authenticateAdmin, async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch stats' });
   }
 });
+
+// --- Admission Cycles ---
+
+app.get('/api/admin/cycles', authenticateAdmin, async (req, res) => {
+  try {
+    const cycles = await db.select().from(schema.admissionCycles).orderBy(schema.admissionCycles.academicYear);
+    res.json(cycles);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch cycles' });
+  }
+});
+
+app.post('/api/admin/cycles', authenticateAdmin, async (req, res) => {
+  try {
+    const { id, academicYear, startDate, endDate, isActive } = req.body;
+    if (id) {
+       await db.update(schema.admissionCycles)
+         .set({ startDate: new Date(startDate), endDate: new Date(endDate), isActive })
+         .where(eq(schema.admissionCycles.id, id));
+    } else {
+        await db.insert(schema.admissionCycles).values({
+          academicYear,
+          startDate: new Date(startDate),
+          endDate: new Date(endDate),
+          isActive
+        });
+    }
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Cycle update error:', error);
+    res.status(500).json({ error: 'Failed to update cycle' });
+  }
+});
+
+app.delete('/api/admin/cycles/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db.delete(schema.admissionCycles).where(eq(schema.admissionCycles.id, parseInt(id)));
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete cycle' });
+  }
+});
+
+// --- Grade Management ---
 
 // GET Grade Management
 app.get('/api/admin/grades', authenticateAdmin, async (req, res) => {

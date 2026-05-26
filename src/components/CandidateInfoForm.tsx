@@ -1,7 +1,7 @@
 import { CandidateInfo } from '../types';
 import { Plus, X, Trash2, ListChecks, Calendar, Users, GraduationCap, PlusCircle, Pencil, AlertTriangle, Loader2, ChevronDown, BookCopy, Church, ArrowRight, School, Baby } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import DatePicker from './DatePicker';
 
@@ -36,22 +36,61 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const updateSchool = (type: keyof CandidateInfo['schools'], field: 'name' | 'years', value: string) => {
-    updateData({
-      schools: {
-        ...data.schools,
-        [type]: { ...data.schools[type], [field]: value }
-      }
-    });
+  const updateSchool = (index: number, field: keyof CandidateInfo['schools'][0], value: string) => {
+    const schools = Array.isArray(data.schools) ? data.schools : [];
+    const newSchools = [...schools];
+    newSchools[index] = { ...newSchools[index], [field]: value };
+    updateData({ schools: newSchools });
+  };
+  
+  const addSchool = (type: string) => {
+    const schools = Array.isArray(data.schools) ? data.schools : [];
+    updateData({ schools: [...schools, { type, name: '', years: '' }] });
+  };
+  
+  const removeSchool = (index: number) => {
+    const schools = Array.isArray(data.schools) ? data.schools : [];
+    updateData({ schools: schools.filter((_, i) => i !== index) });
   };
 
   const birthOrderOptions = [
+    { label: 'Only Child', value: 'Only Child' },
     { label: 'First Born', value: '1st' },
     { label: 'Second Born', value: '2nd' },
     { label: 'Third Born', value: '3rd' },
-    { label: 'Fourth or later', value: '4th+' },
-    { label: 'Only Child', value: 'Only Child' },
+    { label: 'Fourth Born', value: '4th' },
+    { label: 'Fifth Born', value: '5th' },
+    { label: 'Other', value: 'Other' },
   ];
+  
+  const isPredefinedBirthOrder = birthOrderOptions.some(o => o.value === data.birthOrder);
+  const showSpecifyBirthOrder = data.birthOrder === 'Other' || (!isPredefinedBirthOrder && data.birthOrder !== '');
+
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!data.fullName) {
+      alert('Please enter the candidate full name first.');
+      return;
+    }
+    setIsUploadingPhoto(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await fetch(`/api/upload?candidateName=${encodeURIComponent(data.fullName)}`, {
+        method: 'POST',
+        body: formData,
+      });
+      if (!response.ok) throw new Error();
+      const resData = await response.json();
+      updateData({ passportPhoto: resData.fileUrl });
+    } catch (error) {
+      console.error('Failed to upload photo');
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
 
   const religionOptions = ['Christian', 'Hindu', 'Muslim', 'Other'];
   const denominationOptions = ['Catholic', 'Anglican', 'PCEA', 'SDA', 'Other'];
@@ -61,6 +100,25 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
 
   const isPredefinedDenomination = denominationOptions.includes(data.denomination);
   const showSpecifyDenomination = data.denomination === 'Other' || (!isPredefinedDenomination && data.denomination !== '');
+
+  if (!loadingGrades && availableGrades.length === 0) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, x: -20 }}
+        className="bg-surface-container-lowest p-12 rounded-2xl shadow-sm border border-outline-variant/5 text-center flex flex-col items-center"
+      >
+        <div className="w-16 h-16 bg-secondary/10 text-secondary rounded-full flex items-center justify-center mx-auto mb-6">
+          <Calendar size={32} />
+        </div>
+        <h3 className="text-2xl font-bold text-primary mb-3">Applications Closed</h3>
+        <p className="text-sm text-on-surface-variant font-medium leading-relaxed max-w-md mx-auto">
+          We are not currently accepting new applications. Please check back later when the next admission cycle opens.
+        </p>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
@@ -84,7 +142,7 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
           {/* Personal Details */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
             <div className="space-y-2 relative">
-              <label className="block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">Applying for Grade</label>
+              <label className="block text-[11px] font-bold uppercase tracking-widest text-primary">Applying for Grade <span className="text-red-500">*</span></label>
               <button
                 type="button"
                 onClick={() => setActiveDropdown(activeDropdown === 'grade' ? null : 'grade')}
@@ -107,28 +165,24 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
                     className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-[0_20px_40px_rgba(0,0,0,0.15)] border border-outline-variant/5 py-3 z-[100] max-h-60 overflow-y-auto"
                   >
-                    {!loadingGrades && availableGrades.length === 0 ? (
-                      <div className="px-6 py-4 text-xs italic text-on-surface-variant opacity-60">No vacancies available.</div>
-                    ) : (
-                      availableGrades.map((g) => (
-                        <button
-                          key={g.gradeName}
-                          type="button"
-                          onClick={() => { updateData({ grade: g.gradeName }); setActiveDropdown(null); }}
-                          className={`w-full px-6 py-3 text-left text-xs font-black tracking-widest hover:bg-secondary/10 transition-colors flex items-center justify-between ${data.grade === g.gradeName ? 'bg-secondary/5 text-secondary' : 'text-primary'}`}
-                        >
-                          {g.gradeName}
-                          {data.grade === g.gradeName && <div className="w-1.5 h-1.5 rounded-full bg-secondary" />}
-                        </button>
-                      ))
-                    )}
+                    {availableGrades.map((g) => (
+                      <button
+                        key={g.gradeName}
+                        type="button"
+                        onClick={() => { updateData({ grade: g.gradeName }); setActiveDropdown(null); }}
+                        className={`w-full px-6 py-3 text-left text-xs font-black tracking-widest hover:bg-secondary/10 transition-colors flex items-center justify-between ${data.grade === g.gradeName ? 'bg-secondary/5 text-secondary' : 'text-primary'}`}
+                      >
+                        {g.gradeName}
+                        {data.grade === g.gradeName && <div className="w-1.5 h-1.5 rounded-full bg-secondary" />}
+                      </button>
+                    ))}
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
 
             <div className="space-y-2">
-              <label className="block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">Full Name (As per birth certificate)</label>
+              <label className="block text-[11px] font-bold uppercase tracking-widest text-primary">Full Name (As per birth certificate) <span className="text-red-500">*</span></label>
               <input
                 type="text"
                 placeholder="First Middle Surname"
@@ -141,7 +195,7 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
 
             <div className="space-y-0">
                <DatePicker 
-                 label="Date of Birth"
+                 label={<>Date of Birth <span className="text-red-500">*</span></>}
                  value={data.dob}
                  onChange={(val) => updateData({ dob: val })}
                  placeholder="Select Date of Birth"
@@ -149,7 +203,7 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
             </div>
 
             <div className="space-y-2 relative">
-              <label className="block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">Birth Order</label>
+              <label className="block text-[11px] font-bold uppercase tracking-widest text-primary">Birth Order <span className="text-red-500">*</span></label>
               <button
                 type="button"
                 onClick={() => setActiveDropdown(activeDropdown === 'birthOrder' ? null : 'birthOrder')}
@@ -186,11 +240,32 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
                   </motion.div>
                 )}
               </AnimatePresence>
+              <AnimatePresence>
+                {showSpecifyBirthOrder && (
+                  <motion.div 
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="pt-3">
+                      <input
+                        type="text"
+                        placeholder="Please specify birth order"
+                        value={isPredefinedBirthOrder ? '' : data.birthOrder}
+                        onChange={(e) => updateData({ birthOrder: e.target.value })}
+                        className="w-full bg-secondary/[0.03] border-2 border-secondary/10 rounded-xl p-4 focus:ring-2 focus:ring-secondary focus:border-secondary transition-all text-sm font-black text-primary tracking-tight"
+                        required
+                      />
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* Religion Dropdown */}
             <div className="space-y-2 relative">
-              <label className="block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">Religion</label>
+              <label className="block text-[11px] font-bold uppercase tracking-widest text-primary">Religion <span className="text-red-500">*</span></label>
               <button
                 type="button"
                 onClick={() => setActiveDropdown(activeDropdown === 'religion' ? null : 'religion')}
@@ -263,7 +338,7 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
                   exit={{ opacity: 0, x: 20 }}
                   className="space-y-2 relative"
                 >
-                  <label className="block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">Denomination</label>
+                  <label className="block text-[11px] font-bold uppercase tracking-widest text-primary">Denomination <span className="text-red-500">*</span></label>
                   <button
                     type="button"
                     onClick={() => setActiveDropdown(activeDropdown === 'denomination' ? null : 'denomination')}
@@ -326,64 +401,123 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
               )}
             </AnimatePresence>
           </div>
-
-          {/* Schools History */}
-          <div className="space-y-6 pt-6 border-t border-outline-variant/10">
-            <h4 className="text-lg font-bold text-primary italic">Previous Education History</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {(['kindergarten', 'primary', 'junior'] as const)
-                .filter(type => {
-                  if (type === 'kindergarten') return true;
-                  if (!data.grade) return true; // Show all if no grade selected
-
-                  const gradeNum = parseInt(data.grade.replace(/\D/g, ''));
-                  const isNumeric = /\d/.test(data.grade);
-
-                  if (type === 'primary') {
-                    if (!isNumeric) return false;
-                    return gradeNum > 1;
-                  }
-                  if (type === 'junior') {
-                    if (!isNumeric) return false;
-                    return gradeNum >= 8;
-                  }
-                  return true;
-                })
-                .map((type) => (
-                  <motion.div 
-                    layout
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    key={type} 
-                    className="space-y-3 p-6 bg-surface-container-low rounded-[24px] border border-outline-variant/5 shadow-sm"
-                  >
-                    <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-secondary mb-1 capitalize italic text-nowrap">
-                      {type === 'junior' ? 'Junior Secondary' : `${type} Stage`}
-                    </span>
-                    <input
-                      type="text"
-                      placeholder="Name of School"
-                      value={data.schools[type].name}
-                      onChange={(e) => updateSchool(type, 'name', e.target.value)}
-                      className="w-full bg-white border-none rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-secondary shadow-inner"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Years (e.g. 2020-2022)"
-                      value={data.schools[type].years}
-                      onChange={(e) => updateSchool(type, 'years', e.target.value)}
-                      className="w-full bg-white border-none rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-secondary shadow-inner"
-                    />
-                  </motion.div>
-                ))}
-            </div>
-            {data.grade === '' && (
-              <p className="text-xs text-on-surface-variant/40 italic text-center py-4 bg-primary-light/30 rounded-2xl">Please select a grade to see relevant school history sections.</p>
-            )}
+          
+          {/* Assessment No (Grades 4-9) & Passport Photo */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8 pt-6 border-t border-outline-variant/10">
+             {data.grade && parseInt(data.grade.replace(/\D/g, '')) >= 4 && parseInt(data.grade.replace(/\D/g, '')) <= 9 && (
+                <div className="space-y-2">
+                  <label className="block text-[11px] font-bold uppercase tracking-widest text-primary">Assessment No. <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    placeholder="Enter Assessment Number"
+                    value={data.assessmentNo || ''}
+                    onChange={(e) => updateData({ assessmentNo: e.target.value })}
+                    className="w-full bg-surface-container-low border-none rounded-xl p-4 focus:ring-2 focus:ring-secondary transition-all text-sm font-black text-primary tracking-tight placeholder:opacity-20 shadow-inner"
+                  />
+                </div>
+             )}
+             
+             <div className="space-y-2">
+                <label className="block text-[11px] font-bold uppercase tracking-widest text-primary">Passport Photo <span className="text-red-500">*</span></label>
+                <div className="flex items-center gap-4">
+                  {data.passportPhoto ? (
+                    <img src={data.passportPhoto} alt="Passport" className="w-16 h-16 rounded-lg object-cover border border-outline-variant/20" />
+                  ) : (
+                    <div className="w-16 h-16 rounded-lg bg-surface-container-low flex items-center justify-center border border-dashed border-outline-variant/20">
+                      <Baby size={24} className="text-primary/20" />
+                    </div>
+                  )}
+                  <label className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest cursor-pointer transition-all ${!data.fullName ? 'bg-surface-variant text-on-surface-variant/30' : 'bg-secondary text-primary hover:bg-secondary/90'}`}>
+                     {isUploadingPhoto ? 'Uploading...' : 'Upload Photo'}
+                     <input type="file" className="hidden" accept="image/*" onChange={handlePhotoUpload} disabled={isUploadingPhoto || !data.fullName} />
+                  </label>
+                </div>
+                {!data.fullName && <p className="text-[10px] text-red-400 mt-1">Please enter candidate full name first</p>}
+             </div>
           </div>
 
+          {/* Schools History */}
+          <div className="space-y-8 pt-6 border-t border-outline-variant/10">
+            <div>
+              <h4 className="text-lg font-bold text-primary italic mb-1">Previous Education History</h4>
+              <p className="text-xs text-on-surface-variant font-medium">Please add all schools attended for each applicable stage.</p>
+            </div>
+
+            {(() => {
+              const g = (data.grade || '').toLowerCase();
+              let stages = ['Kindergarten', 'Primary'];
+              if (g.includes('7') || g.includes('8') || g.includes('9') || g.includes('junior')) {
+                stages = ['Kindergarten', 'Primary', 'Junior'];
+              } else if (g.includes('pp') || g.includes('playgroup') || g.includes('nursery')) {
+                stages = ['Kindergarten'];
+              }
+              
+              return stages.map(stage => {
+                const stageSchools = (Array.isArray(data.schools) ? data.schools : []).map((school, i) => ({ ...school, originalIndex: i })).filter(s => s.type === stage);
+
+                return (
+                  <div key={stage} className="space-y-3 bg-surface-container-low/30 p-5 rounded-3xl border border-primary/5">
+                    <div className="flex justify-between items-center mb-2">
+                      <h5 className="text-sm font-black uppercase tracking-widest text-primary/70">{stage}</h5>
+                      <button 
+                        type="button" 
+                        onClick={() => addSchool(stage)}
+                        className="text-[10px] font-bold uppercase tracking-widest text-secondary flex items-center gap-1 hover:text-primary transition-colors bg-white px-3 py-1.5 rounded-full shadow-sm border border-black/5"
+                      >
+                        <Plus size={14} /> Add School
+                      </button>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      {stageSchools.map((school) => (
+                          <motion.div 
+                            layout
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            key={school.originalIndex} 
+                            className="flex flex-col sm:flex-row items-center gap-3 p-2 bg-white rounded-[20px] border border-primary/5 shadow-sm group hover:border-primary/20 transition-all"
+                          >
+                            <div className="flex-1 flex w-full gap-3">
+                              <input
+                                type="text"
+                                placeholder="Name of School"
+                                value={school.name}
+                                onChange={(e) => updateSchool(school.originalIndex, 'name', e.target.value)}
+                                className="flex-1 bg-surface-container-low/50 border-none rounded-xl p-3.5 text-sm font-semibold focus:ring-2 focus:ring-primary/20 focus:bg-primary/5 transition-colors placeholder:text-primary/30 text-primary"
+                              />
+                              <input
+                                type="text"
+                                placeholder="Years (e.g. 2020-2022)"
+                                value={school.years}
+                                onChange={(e) => updateSchool(school.originalIndex, 'years', e.target.value)}
+                                className="w-1/3 min-w-[120px] bg-surface-container-low/50 border-none rounded-xl p-3.5 text-sm font-semibold focus:ring-2 focus:ring-primary/20 focus:bg-primary/5 transition-colors placeholder:text-primary/30 text-primary"
+                              />
+                            </div>
+                            <button 
+                              type="button" 
+                              onClick={() => removeSchool(school.originalIndex)}
+                              className="w-full sm:w-12 h-12 flex items-center justify-center rounded-xl text-red-400 hover:bg-red-50 hover:text-red-500 transition-colors shrink-0"
+                              title="Remove School"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </motion.div>
+                      ))}
+                    </div>
+                    {stageSchools.length === 0 && (
+                      <div className="text-[11px] font-medium text-primary/40 italic py-3 bg-white/50 border border-primary/5 rounded-2xl px-5 text-center">
+                        No {stage.toLowerCase()} schools added.
+                      </div>
+                    )}
+                  </div>
+                );
+              });
+            })()}
+          </div>
+
+
           <div className="space-y-2 pt-6">
-            <label className="block text-[11px] font-extrabold uppercase tracking-[0.3em] text-primary/40 ml-1">Relevant Medical Information</label>
+            <label className="block text-[11px] font-extrabold uppercase tracking-[0.3em] text-primary ml-1">Relevant Medical Information</label>
             <textarea
               rows={3}
               placeholder="Allergies, chronic conditions, regular medications..."
@@ -393,17 +527,17 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
             />
           </div>
 
-          <div className="flex justify-between items-center pt-8">
+          <div className="flex flex-col-reverse md:flex-row justify-between items-stretch md:items-center gap-6 md:gap-0 pt-8 w-full">
             <button
               type="button"
               onClick={onCancel}
-              className="px-8 py-4 text-on-surface-variant/30 font-black uppercase tracking-[0.3em] text-[10px] hover:text-primary transition-all hover:translate-x-[-4px]"
+              className="w-full md:w-auto text-center px-8 py-4 text-on-surface-variant/30 font-black uppercase tracking-[0.3em] text-[10px] hover:text-primary transition-all md:hover:translate-x-[-4px]"
             >
               Cancel Application
             </button>
             <button
               type="submit"
-              className="px-10 py-5 bg-secondary text-primary rounded-[28px] font-black shadow-[0_20px_40px_rgba(255,196,37,0.25)] hover:shadow-[0_25px_50px_rgba(255,196,37,0.35)] hover:-translate-y-1 active:scale-95 transition-all flex items-center gap-4 group border border-white/20 relative overflow-hidden"
+              className="w-full md:w-auto justify-center px-10 py-5 bg-secondary text-primary rounded-[28px] font-black shadow-[0_20px_40px_rgba(255,196,37,0.25)] hover:shadow-[0_25px_50px_rgba(255,196,37,0.35)] hover:-translate-y-1 active:scale-95 transition-all flex items-center gap-4 group border border-white/20 relative overflow-hidden"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
               <span className="tracking-[0.25em] uppercase text-[11px] relative z-10">Continue to Parent Details</span>
@@ -411,7 +545,6 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
                 <ArrowRight className="w-4 h-4" />
               </div>
             </button>
-
           </div>
 
         </form>

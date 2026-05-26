@@ -8,6 +8,14 @@ const fetchGrades = () => authFetch('/api/admin/grades').then(res => res.json())
 const fetchAssessments = () => authFetch('/api/admin/assessments').then(res => res.json());
 const fetchInterviews = () => authFetch('/api/admin/interviews').then(res => res.json());
 const fetchResults = () => authFetch('/api/admin/results').then(res => res.json());
+const fetchCycles = () => authFetch('/api/admin/cycles').then(res => res.json());
+
+// Main Data Hooks
+export const useCycles = () => useQuery({
+  queryKey: ['cycles'],
+  queryFn: fetchCycles,
+  staleTime: 10000,
+});
 
 // Main Data Hooks
 export const useApplications = () => useQuery({
@@ -191,6 +199,39 @@ export const useDeleteAssessment = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['assessments'] });
       toast.success('Assessment removed.');
+    }
+  });
+};
+export const useCreateCycle = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: any) => {
+      const res = await authFetch('/api/admin/cycles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (!res.ok) throw new Error('Failed to update cycle');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cycles'] });
+      toast.success('Admission cycle updated.');
+    }
+  });
+};
+
+export const useDeleteCycle = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const res = await authFetch(`/api/admin/cycles/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete cycle');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cycles'] });
+      toast.success('Cycle removed.');
     }
   });
 };

@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import AdminPageHeader from '../AdminPageHeader';
-import { LayoutDashboard, Calendar, Bell, ChevronLeft, ChevronRight, CheckCircle2, UserPlus, Award, Clock, ArrowUpRight, GraduationCap, MapPin, ChevronDown, XCircle, TrendingUp } from 'lucide-react';
-import { useApplications, useInterviews, useAssessments, useGrades } from '../../../hooks/useAdminData';
+import { LayoutDashboard, Calendar, Bell, ChevronLeft, ChevronRight, CheckCircle2, UserPlus, Award, Clock, ArrowUpRight, GraduationCap, MapPin, ChevronDown, XCircle, TrendingUp, X, AlertTriangle } from 'lucide-react';
+import { useApplications, useInterviews, useAssessments, useGrades, useCycles, useCreateCycle, useDeleteCycle } from '../../../hooks/useAdminData';
 import { authFetch } from '../../../utils/auth';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart, Area, Line, Cell, Legend } from 'recharts';
 
@@ -11,6 +11,9 @@ export default function DashboardView() {
   const { data: interviews = [] } = useInterviews();
   const { data: assessments = [] } = useAssessments();
   const { data: grades = [] } = useGrades();
+  const { data: cycles = [] } = useCycles();
+  const createCycle = useCreateCycle();
+  const deleteCycle = useDeleteCycle();
   const [stats, setStats] = useState({ 
     totalApplications: 0, 
     totalVacantSpots: 0, 
@@ -18,7 +21,25 @@ export default function DashboardView() {
     acceptanceRate: 0 
   });
 
+  const sortedCycles = useMemo(() => {
+    return [...cycles].sort((a: any, b: any) => {
+      const now = new Date();
+      const aActive = a.isActive && now >= new Date(a.startDate) && now <= new Date(a.endDate);
+      const bActive = b.isActive && now >= new Date(b.startDate) && now <= new Date(b.endDate);
+      if (aActive && !bActive) return -1;
+      if (!aActive && bActive) return 1;
+      return b.academicYear - a.academicYear;
+    });
+  }, [cycles]);
+
   const [selectedYear, setSelectedYear] = useState(2026);
+
+  useEffect(() => {
+    if (sortedCycles.length > 0 && !sortedCycles.some((c: any) => c.academicYear === selectedYear)) {
+      setSelectedYear(sortedCycles[0].academicYear);
+    }
+  }, [sortedCycles, selectedYear]);
+
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewDate, setViewDate] = useState(new Date());
   const [activityPage, setActivityPage] = useState(1);
@@ -219,8 +240,9 @@ export default function DashboardView() {
             onChange={(e) => setSelectedYear(parseInt(e.target.value))}
             className="appearance-none w-full bg-white px-6 py-3 rounded-xl font-black text-primary border border-outline-variant/10 focus:ring-4 focus:ring-primary/5 cursor-pointer transition-all pr-12 shadow-sm text-xs"
           >
-            {[2024, 2025, 2026].map(y => (
-              <option key={y} value={y}>Cycle {y}</option>
+            {sortedCycles.length === 0 && <option value={selectedYear}>Cycle {selectedYear}</option>}
+            {sortedCycles.map((c: any) => (
+              <option key={c.id} value={c.academicYear}>Cycle {c.academicYear}</option>
             ))}
           </select>
           <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-primary/40 pointer-events-none group-hover/year:text-primary transition-colors" />
@@ -233,6 +255,8 @@ export default function DashboardView() {
         <StatCard title="Interviews Today" value={stats.interviewsToday} color="secondary" />
         <StatCard title="Acceptance Rate" value={stats.acceptanceRate} isPercentage color="green" />
       </div>
+
+      <CycleManagementCard cycles={cycles} createCycle={createCycle} deleteCycle={deleteCycle} />
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 items-start">
         {/* Calendar Card */}
@@ -552,3 +576,234 @@ function formatActivityDate(date: Date) {
   if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
   return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 }
+
+function CycleManagementCard({ cycles, createCycle, deleteCycle }: any) {
+  const [year, setYear] = useState<number>(new Date().getFullYear() + 1);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [page, setPage] = useState(1);
+  const [editingCycle, setEditingCycle] = useState<any>(null);
+  const itemsPerPage = 12;
+  
+  const sortedCycles = useMemo(() => {
+    return [...cycles].sort((a: any, b: any) => {
+      const now = new Date();
+      const aActive = a.isActive && now >= new Date(a.startDate) && now <= new Date(a.endDate);
+      const bActive = b.isActive && now >= new Date(b.startDate) && now <= new Date(b.endDate);
+      if (aActive && !bActive) return -1;
+      if (!aActive && bActive) return 1;
+      return b.academicYear - a.academicYear;
+    });
+  }, [cycles]);
+
+  const currentCycle = useMemo(() => {
+    return sortedCycles.find((c: any) => {
+      const now = new Date();
+      return c.isActive && now >= new Date(c.startDate) && now <= new Date(c.endDate);
+    });
+  }, [sortedCycles]);
+
+  const otherCycles = useMemo(() => {
+    return sortedCycles.filter(c => c.id !== currentCycle?.id);
+  }, [sortedCycles, currentCycle]);
+
+  const totalPages = Math.ceil(otherCycles.length / itemsPerPage) || 1;
+  const paginatedCycles = otherCycles.slice((page - 1) * itemsPerPage, page * itemsPerPage);
+
+  const handleSave = () => {
+    if (!startDate || !endDate) return;
+    createCycle.mutate({
+      id: editingCycle?.id,
+      academicYear: year,
+      startDate,
+      endDate,
+      isActive: editingCycle?.isActive ?? true
+    }, {
+      onSuccess: () => {
+        setEditingCycle(null);
+        setYear(new Date().getFullYear() + 1);
+        setStartDate('');
+        setEndDate('');
+      }
+    });
+  };
+
+  const handleEditClick = (cycle: any) => {
+    setEditingCycle(cycle);
+    setYear(cycle.academicYear);
+    const formatDateTime = (dStr: string) => {
+      const d = new Date(dStr);
+      const tzOffset = d.getTimezoneOffset() * 60000; // offset in milliseconds
+      const localISOTime = new Date(d.getTime() - tzOffset).toISOString().slice(0, 16);
+      return localISOTime;
+    };
+    setStartDate(formatDateTime(cycle.startDate));
+    setEndDate(formatDateTime(cycle.endDate));
+  };
+
+  const renderCycleCard = (c: any, isCurrent: boolean) => {
+    const now = new Date();
+    const start = new Date(c.startDate);
+    const end = new Date(c.endDate);
+    const isPast = end < now;
+
+    return (
+      <div key={c.id} className={`p-6 rounded-3xl border-2 transition-all relative group flex flex-col h-full ${isCurrent ? 'bg-green-50/50 border-green-500/20' : 'bg-white border-outline-variant/10 hover:border-primary/20'}`}>
+        {isCurrent ? (
+          <div className="absolute top-4 right-4 flex items-center gap-2 px-2 py-1 bg-green-100 rounded-lg text-[9px] font-black uppercase tracking-widest text-green-600">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"/> Current
+          </div>
+        ) : isPast ? (
+          <div className="absolute top-4 right-4 flex items-center gap-2 px-2 py-1 bg-surface-container-low rounded-lg text-[9px] font-black uppercase tracking-widest text-on-surface-variant/50">
+            Past
+          </div>
+        ) : null}
+        
+        <h4 className="text-lg font-black text-primary mb-6 mt-1">Year {c.academicYear}</h4>
+        
+        <div className="space-y-3 mb-6 flex-1">
+          <div className="flex flex-col text-xs">
+              <span className="font-black text-[9px] uppercase tracking-widest text-primary/30 mb-0.5">Starts</span>
+              <span className="font-bold text-primary">{start.toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+          </div>
+          <div className="flex flex-col text-xs">
+              <span className="font-black text-[9px] uppercase tracking-widest text-primary/30 mb-0.5">Ends</span>
+              <span className="font-bold text-primary">{end.toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+          </div>
+        </div>
+
+        <div className="flex gap-2 mt-auto">
+          <button 
+            onClick={() => handleEditClick(c)}
+            className="flex-1 py-2 bg-primary/5 text-primary hover:bg-primary/10 transition-colors rounded-xl text-[10px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100"
+          >
+            Edit
+          </button>
+          <button 
+            onClick={() => deleteCycle.mutate(c.id)}
+            className="flex-1 py-2 bg-red-50 text-red-600 hover:bg-red-100 transition-colors rounded-xl text-[10px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="bg-white rounded-[40px] p-10 shadow-[0_20px_50px_rgba(0,0,0,0.03)] border border-outline-variant/10 mt-12">
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h3 className="text-xl font-headline font-black text-primary flex items-center gap-3">
+            <Calendar size={20} className="text-secondary" /> Admission Cycles
+          </h3>
+          <p className="text-[10px] font-bold text-on-surface-variant/50 uppercase tracking-widest mt-1">Manage Application Durations</p>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-8">
+        {/* Top Section: Form and Current Cycle */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+          {/* Form */}
+          <div className="bg-surface-container-lowest p-6 rounded-3xl border border-outline-variant/10 xl:col-span-2">
+            <div className="flex items-center justify-between mb-6">
+              <h4 className="text-sm font-black text-primary">
+                {editingCycle ? `Edit Cycle (Year ${editingCycle.academicYear})` : 'Create New Cycle'}
+              </h4>
+              {editingCycle && (
+                <button 
+                  onClick={() => {
+                    setEditingCycle(null);
+                    setYear(new Date().getFullYear() + 1);
+                    setStartDate('');
+                    setEndDate('');
+                  }}
+                  className="text-[10px] font-black uppercase tracking-widest text-primary/40 hover:text-primary transition-colors flex items-center gap-1"
+                >
+                  <X size={12} /> Cancel Edit
+                </button>
+              )}
+            </div>
+            
+            <div className="flex flex-col gap-4">
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-primary/40 block mb-1">Academic Year</label>
+                <input type="number" value={year} onChange={e => setYear(parseInt(e.target.value))} className="w-full bg-white p-3 rounded-xl border border-outline-variant/10 text-sm font-bold text-primary focus:ring-2 focus:ring-primary/10 outline-none" />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-primary/40 block mb-1">Start Date & Time</label>
+                  <input type="datetime-local" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full bg-white p-3 rounded-xl border border-outline-variant/10 text-sm font-bold text-primary focus:ring-2 focus:ring-primary/10 outline-none" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-primary/40 block mb-1">End Date & Time</label>
+                  <input type="datetime-local" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full bg-white p-3 rounded-xl border border-outline-variant/10 text-sm font-bold text-primary focus:ring-2 focus:ring-primary/10 outline-none" />
+                </div>
+              </div>
+            </div>
+            <button 
+              onClick={handleSave}
+              disabled={createCycle.isPending}
+              className="w-full mt-4 py-3 bg-secondary text-primary font-black uppercase tracking-widest text-[10px] rounded-xl hover:bg-[#e5b021] transition-colors"
+            >
+              {createCycle.isPending ? 'Saving...' : (editingCycle ? 'Update Cycle' : 'Save Cycle')}
+            </button>
+          </div>
+
+          {/* Current Cycle */}
+          <div className="xl:col-span-1">
+            {currentCycle ? (
+              renderCycleCard(currentCycle, true)
+            ) : (
+              <div className="h-full bg-surface-container-lowest/50 border border-outline-variant/5 border-dashed rounded-3xl p-6 flex flex-col items-center justify-center text-center">
+                <AlertTriangle size={24} className="text-primary/20 mb-2" />
+                <div className="text-[10px] font-bold text-primary/40 uppercase tracking-widest">No Active Cycle</div>
+                <p className="text-xs text-primary/30 mt-2">Applications are currently closed to the public.</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Bottom Section: Created Cycles Grid */}
+        <div className="flex flex-col gap-6 pt-8 border-t border-outline-variant/5">
+          <h4 className="text-[10px] font-black uppercase tracking-widest text-primary/40 px-2">Other Defined Cycles</h4>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {paginatedCycles.length === 0 && (
+              <div className="col-span-1 md:col-span-2 lg:col-span-3 text-center py-12 text-[10px] font-bold text-on-surface-variant/30 italic uppercase tracking-widest">
+                No other cycles defined
+              </div>
+            )}
+            {paginatedCycles.map((c: any) => renderCycleCard(c, false))}
+          </div>
+
+          {/* Pagination Controls */}
+          {otherCycles.length > 0 && (
+            <div className="flex items-center justify-between pt-4 mt-auto">
+               <div className="text-[10px] font-black uppercase tracking-widest text-primary/30 px-2">
+                 Page {page} of {totalPages}
+               </div>
+               <div className="flex gap-2">
+                 <button 
+                   onClick={() => setPage(p => Math.max(1, p - 1))}
+                   disabled={page === 1}
+                   className="p-2 rounded-xl bg-primary/5 text-primary hover:bg-primary/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                 >
+                   <ChevronLeft size={16} />
+                 </button>
+                 <button 
+                   onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                   disabled={page === totalPages}
+                   className="p-2 rounded-xl bg-primary/5 text-primary hover:bg-primary/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                 >
+                   <ChevronRight size={16} />
+                 </button>
+               </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+

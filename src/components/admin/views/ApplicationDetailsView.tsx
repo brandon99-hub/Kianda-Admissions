@@ -105,6 +105,13 @@ export default function ApplicationDetailsView({ app, onBack, onUpdate, showResu
                   currentAppStatus === 'waitlisted' ? 'Waitlist' :
                   currentAppStatus.replace('_', ' ')}
                </span>
+               <span className={`px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-md border ${
+                  app.admissionType === 'New' ? 'bg-purple-50 text-purple-600 border-purple-100' :
+                  app.admissionType === 'Transfer' ? 'bg-indigo-50 text-indigo-600 border-indigo-100' :
+                  'bg-surface-variant text-on-surface-variant border-outline-variant/20'
+               }`}>
+                 {app.admissionType || 'Unknown Type'}
+               </span>
              </div>
              <div className="flex flex-wrap items-center gap-6 text-sm font-semibold text-on-surface-variant/70">
                 <span className="font-mono text-[10px] uppercase font-black tracking-widest text-primary/40 bg-primary/5 px-3 py-1 rounded border border-primary/5">Application ID: APP-{app.id.toString().padStart(4, '0')}</span>
@@ -164,6 +171,7 @@ export default function ApplicationDetailsView({ app, onBack, onUpdate, showResu
                        <DetailItem inline label="Date of Birth" value={formattedDob} />
                        <DetailItem inline label="Birth Order" value={candidate.birthOrder} />
                        <DetailItem inline label="Religion" value={`${candidate.religion || ''} ${candidate.denomination ? `(${candidate.denomination})` : ''}`} />
+                       {candidate.assessmentNo && <DetailItem inline label="Assessment No." value={candidate.assessmentNo} />}
                      </div>
                    </div>
                  </div>
@@ -203,7 +211,10 @@ export default function ApplicationDetailsView({ app, onBack, onUpdate, showResu
                                  <span className="text-xs font-bold text-primary">{s.name}</span>
                                  <span className="text-[10px] font-bold text-secondary bg-white px-1.5 py-0.5 rounded shadow-sm">{s.grade}</span>
                                </div>
-                               <div className="text-[9px] font-black uppercase tracking-widest text-primary/50">Relationship: <span className="text-primary">{s.relationship || 'Unspecified'}</span></div>
+                               <div className="flex justify-between items-center">
+                                 <div className="text-[9px] font-black uppercase tracking-widest text-primary/50">Relationship: <span className="text-primary">{s.relationship || 'Unspecified'}</span></div>
+                                 {s.kiandaOrder && <div className="text-[9px] font-black uppercase tracking-widest text-primary/50">Order: <span className="text-primary">{s.kiandaOrder}</span></div>}
+                               </div>
                              </div>
                            )) : <div className="text-xs italic opacity-50 px-2">None registered</div>}
                          </div>
@@ -252,6 +263,17 @@ export default function ApplicationDetailsView({ app, onBack, onUpdate, showResu
                    </div>
                  </div>
                </div>
+
+               {/* Residency Display */}
+               <div className="mt-8 pt-6 border-t border-primary/5">
+                  <div className="space-y-4 relative">
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-secondary/30 rounded-full" />
+                    <div className="pl-4">
+                      <h4 className="text-sm font-bold text-primary mb-3 opacity-80 uppercase tracking-widest">Family Residency</h4>
+                      <DetailItem inline={false} label="Physical Address / Estate" value={parent.residency} />
+                    </div>
+                  </div>
+               </div>
             </div>
 
             {/* Application & Medical Context */}
@@ -262,7 +284,6 @@ export default function ApplicationDetailsView({ app, onBack, onUpdate, showResu
 
                <div className="space-y-8 pl-4">
                  {/* Full-width block for large narratives */}
-                 <DetailItem fullBlock label="Medical Information" value={candidate.medicalInfo} fallback="No specific medical information provided." />
                  <DetailItem fullBlock label="Motivation to join Kianda" value={additional.motivation} fallback="No motivation narrative provided." />
                  
                  {/* Smaller context flags */}
@@ -279,7 +300,20 @@ export default function ApplicationDetailsView({ app, onBack, onUpdate, showResu
                           };
                           return <DetailItem inline label="How did you hear about us?" value={sourceMap[additional.source || ''] || additional.source} />;
                        })()}
-                      <DetailItem inline label="Applied Before?" value={additional.hasAppliedBefore ? `Yes, in ${additional.previousApplicationYear}` : 'No'} />
+                      {(() => {
+                          let years = 'No';
+                          if (additional.hasAppliedBefore) {
+                             const yrs = additional.previousApplicationYears;
+                             if (Array.isArray(yrs) && yrs.length > 0) {
+                                years = `Yes, in ${yrs.join(', ')}`;
+                             } else if (additional.previousApplicationYear) {
+                                years = `Yes, in ${additional.previousApplicationYear}`;
+                             } else {
+                                years = 'Yes';
+                             }
+                          }
+                          return <DetailItem inline label="Applied Before?" value={years} />;
+                      })()}
                    </div>
                  </div>
                </div>
@@ -309,6 +343,17 @@ export default function ApplicationDetailsView({ app, onBack, onUpdate, showResu
          {/* Right Column (Actions & Documents) */}
          <div className="space-y-6">
             
+            {/* Passport Photo Display */}
+            {candidate.passportPhotoUrl && (
+              <div className="bg-white rounded-[32px] p-6 shadow-sm border border-outline-variant/10 flex flex-col items-center justify-center">
+                 <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/40 mb-4 self-start">Passport Photo</h3>
+                 <div className="w-40 h-40 rounded-3xl overflow-hidden border-4 border-white shadow-xl shadow-primary/10 relative group bg-surface-variant/20">
+                    <img src={candidate.passportPhotoUrl} alt="Passport Photo" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                    <div className="absolute inset-0 ring-1 ring-inset ring-black/10 rounded-3xl" />
+                 </div>
+              </div>
+            )}
+
             {/* Quick Actions at Top */}
             <div className="bg-white rounded-[32px] p-8 shadow-sm border border-outline-variant/10">
                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/40 mb-6">Administrative Actions</h3>

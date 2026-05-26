@@ -1,13 +1,38 @@
 import React, { useState } from 'react';
-import { Plus, X, Trash2, ListChecks, Calendar, Users, GraduationCap, PlusCircle, Pencil, AlertTriangle, Loader2, ChevronDown, MapPin, Check, RefreshCw, Cloud } from 'lucide-react';
+import { Plus, X, Trash2, ListChecks, Calendar, Users, GraduationCap, PlusCircle, Pencil, AlertTriangle, Loader2, ChevronDown, MapPin, Check, RefreshCw, Cloud, FileText, ListPlus } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import AdminPageHeader from '../AdminPageHeader';
-import { useGrades, useAssessments, useCreateGrade, useDeleteGrade, useCreateAssessment, useDeleteAssessment } from '../../../hooks/useAdminData';
+import { useGrades, useAssessments, useCreateGrade, useDeleteGrade, useCreateAssessment, useDeleteAssessment, useCycles } from '../../../hooks/useAdminData';
 import DatePicker from '../../DatePicker';
 
 interface Props {
   onGoToAssessments?: (gradeId: number) => void;
 }
+
+// ── Components ────────────────────────────────────────────────────────────────
+const AcceptApplicationsToggle = ({ grade, createGradeMutation }: any) => {
+  const [val, setVal] = React.useState(grade.isAcceptingApplications ?? true);
+
+  return (
+    <div className="group/field flex items-center justify-between p-6 md:p-8 bg-white border border-outline-variant/10 shadow-[0_10px_30px_-15px_rgba(0,0,0,0.03)] rounded-[32px] transition-all">
+       <div>
+         <label className="block text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-1.5">Accept Applications</label>
+         <p className="text-[8px] font-bold text-primary/30 uppercase tracking-widest">Allow parents to apply for this grade.</p>
+       </div>
+       <button
+         type="button"
+         onClick={() => {
+           const newVal = !val;
+           setVal(newVal);
+           createGradeMutation.mutate({ id: grade.id, isAcceptingApplications: newVal });
+         }}
+         className={`w-14 h-7 rounded-full transition-colors relative flex items-center px-1 shadow-inner ${val ? 'bg-green-500' : 'bg-outline-variant/20'}`}
+       >
+         <div className={`w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${val ? 'translate-x-7' : 'translate-x-0'}`} />
+       </button>
+    </div>
+  );
+};
 
 // Sub-component for managing local state and debounced auto-save for logistics
 const GradeLogisticsCard = ({ grade, YEAR_OPTIONS, createGradeMutation, setConfirmNotify }: any) => {
@@ -122,6 +147,7 @@ const GradeLogisticsCard = ({ grade, YEAR_OPTIONS, createGradeMutation, setConfi
                <Users className="absolute right-5 top-1/2 -translate-y-1/2 text-primary/10" size={24} />
              </div>
           </div>
+
           
           <div className="group/field">
              <DatePicker 
@@ -212,7 +238,20 @@ export default function GradesView({ onGoToAssessments }: Props) {
   const [showAssessmentModal, setShowAssessmentModal] = useState(false);
   const [expandedGrade, setExpandedGrade] = useState<number | null>(null);
   
-  const YEAR_OPTIONS = Array.from({ length: 6 }, (_, i) => 2026 + i);
+  const { data: cycles = [] } = useCycles();
+  const YEAR_OPTIONS = React.useMemo(() => {
+    if (cycles.length === 0) return [new Date().getFullYear()];
+    return [...cycles]
+      .sort((a: any, b: any) => {
+        const now = new Date();
+        const aActive = a.isActive && now >= new Date(a.startDate) && now <= new Date(a.endDate);
+        const bActive = b.isActive && now >= new Date(b.startDate) && now <= new Date(b.endDate);
+        if (aActive && !bActive) return -1;
+        if (!aActive && bActive) return 1;
+        return b.academicYear - a.academicYear;
+      })
+      .map(c => c.academicYear);
+  }, [cycles]);
   
   const [newGrade, setNewGrade] = useState({ 
     gradeName: 'Grade 1', 
@@ -324,14 +363,12 @@ export default function GradesView({ onGoToAssessments }: Props) {
             <motion.div 
               key={grade.id} 
               layout
-              className={`bg-white rounded-[48px] shadow-2xl shadow-primary/5 border transition-all overflow-visible group mb-4 ${isExpanded ? 'border-primary/20 ring-1 ring-primary/10' : 'border-outline-variant/10 hover:border-primary/10'}`}
+              className={`bg-white rounded-[48px] shadow-2xl shadow-primary/5 border transition-all duration-300 overflow-visible group mb-4 ${isExpanded ? 'border-primary/20 ring-1 ring-primary/10' : 'border-outline-variant/10 hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(0,0,0,0.1)] hover:border-primary/20'}`}
             >
                <div 
                  onClick={() => setExpandedGrade(isExpanded ? null : grade.id)}
                  className="p-8 md:p-10 flex flex-col md:flex-row md:items-center justify-between gap-8 relative cursor-pointer"
                >
-                  {/* Left Indicator Decor */}
-                  <div className={`absolute left-0 top-0 bottom-0 w-2 transition-all duration-500 ${isExpanded ? 'bg-secondary' : 'bg-primary/10 group-hover:bg-primary/30'}`} />
 
                   <div className="flex items-center gap-10">
                      <div className={`w-20 h-20 rounded-[28px] flex items-center justify-center transition-all duration-500 ${isExpanded ? 'bg-primary text-secondary' : 'bg-primary/5 text-primary group-hover:bg-primary group-hover:text-secondary'}`}>
@@ -354,29 +391,30 @@ export default function GradesView({ onGoToAssessments }: Props) {
                      </div>
                   </div>
 
-                  <div className="flex items-center gap-4 relative z-10">
+                  <div className="flex items-center gap-3 relative z-10">
                      <button 
                        onClick={(e) => { e.stopPropagation(); onGoToAssessments && onGoToAssessments(grade.id); }}
-                       className="px-6 py-3.5 bg-primary/5 text-primary rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-secondary hover:text-primary transition-all shadow-sm"
+                       className="flex items-center gap-2 px-6 py-3.5 bg-primary/5 text-primary rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-primary/10 transition-all shadow-sm"
                      >
-                        Results
+                        <FileText size={14} /> Results
                      </button>
                      
-                     <div className="h-10 w-px bg-outline-variant/10 mx-2" />
-
                      <button 
                        onClick={(e) => { e.stopPropagation(); openAssessmentModal(grade.id); }}
-                       className="w-12 h-12 flex items-center justify-center rounded-2xl bg-secondary/10 text-primary hover:bg-secondary transition-all shadow-sm"
+                       className="flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-secondary text-primary hover:bg-[#e5b021] hover:text-primary transition-all shadow-[0_4px_14px_rgba(255,196,37,0.4)] hover:shadow-[0_6px_20px_rgba(255,196,37,0.6)] font-black text-[10px] uppercase tracking-widest"
                        title="Add Assessment"
                      >
-                        <PlusCircle size={20} />
+                        <ListPlus size={16} /> Task
                      </button>
+
+                     <div className="h-6 w-px bg-outline-variant/10 mx-1" />
 
                      <button 
                        onClick={(e) => { e.stopPropagation(); setDeleteModal({ isOpen: true, type: 'grade', id: grade.id, title: grade.gradeName }); }}
-                       className="w-12 h-12 flex items-center justify-center rounded-2xl text-red-200 hover:text-white hover:bg-red-500 transition-all opacity-40 hover:opacity-100"
+                       className="w-10 h-10 flex items-center justify-center rounded-2xl text-red-300 hover:text-white hover:bg-red-500 transition-all"
+                       title="Delete Grade"
                      >
-                        <Trash2 size={20} />
+                        <Trash2 size={16} />
                      </button>
                   </div>
                </div>
@@ -410,8 +448,8 @@ export default function GradesView({ onGoToAssessments }: Props) {
                                       <ListChecks size={16} />
                                     </div>
                                     <div className="flex-1">
-                                      <h5 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Evaluation Matrix</h5>
-                                      <p className="text-[8px] font-bold text-primary/30 uppercase tracking-widest mt-1">Synced with teacher dashboards</p>
+                                      <h5 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Assessments</h5>
+                                      <p className="text-[8px] font-bold text-primary/30 uppercase tracking-widest mt-1">Manage Marks and Titles of assessments</p>
                                     </div>
                                   </div>
                                   
@@ -447,11 +485,12 @@ export default function GradesView({ onGoToAssessments }: Props) {
                                      ))}
                                      {gradeAssessments.length === 0 && (
                                        <div className="py-12 px-6 border-2 border-dashed border-outline-variant/10 rounded-[32px] text-center bg-primary/[0.01]">
-                                           <p className="text-[10px] text-on-surface-variant/30 font-black uppercase tracking-widest leading-loose">No dynamic evaluations<br/>configured for this level</p>
+                                           <p className="text-[10px] text-on-surface-variant/30 font-black uppercase tracking-widest leading-loose">No assessments set for this level</p>
                                        </div>
                                      )}
                                   </div>
                                </div>
+                               <AcceptApplicationsToggle grade={grade} createGradeMutation={createGradeMutation} />
                             </div>
                           </div>
                        </div>

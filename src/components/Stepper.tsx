@@ -24,7 +24,7 @@ export default function Stepper({ currentStep }: Props) {
         />
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="flex overflow-x-auto snap-x snap-mandatory gap-6 md:grid md:grid-cols-5 md:gap-4 md:overflow-visible pb-4 md:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {steps.map((step, idx) => {
           const isActive = step.id === currentStep;
           const isCompleted = idx < currentIdx;
@@ -32,7 +32,7 @@ export default function Stepper({ currentStep }: Props) {
           return (
             <div 
               key={step.id} 
-              className={`flex flex-col gap-2 transition-all duration-300 ${isActive || isCompleted ? 'opacity-100' : 'opacity-30'}`}
+              className={`flex-shrink-0 w-[55%] snap-start md:w-auto flex flex-col gap-2 transition-all duration-300 ${isActive || isCompleted ? 'opacity-100' : 'opacity-30'}`}
             >
               <span className={`text-[9px] font-bold uppercase tracking-[0.2em] ${isActive ? 'text-secondary' : 'text-on-surface-variant'}`}>
                 {step.stepNum}

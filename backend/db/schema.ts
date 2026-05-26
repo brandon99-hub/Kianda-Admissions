@@ -15,6 +15,7 @@ export const applications = pgTable('applications', {
   academicYear: integer('academic_year'),
   rejectionRemarks: text('rejection_remarks'),
   rejectionDate: timestamp('rejection_date'),
+  admissionType: varchar('admission_type', { length: 50 }),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
@@ -29,6 +30,8 @@ export const candidates = pgTable('candidates', {
   denomination: varchar('denomination', { length: 100 }),
   birthOrder: varchar('birth_order', { length: 50 }),
   medicalInfo: text('medical_info'),
+  assessmentNo: varchar('assessment_no', { length: 50 }),
+  passportPhotoUrl: text('passport_photo_url'),
 });
 
 export const parentDetails = pgTable('parent_details', {
@@ -46,6 +49,15 @@ export const parentDetails = pgTable('parent_details', {
   motherEmail: varchar('mother_email', { length: 255 }),
   motherProfession: varchar('mother_profession', { length: 255 }),
   motherWork: varchar('mother_work', { length: 255 }),
+  residency: varchar('residency', { length: 255 }),
+  
+  fatherAltContactName: varchar('father_alt_contact_name', { length: 255 }),
+  fatherAltContactPhone: varchar('father_alt_contact_phone', { length: 50 }),
+  fatherAltContactRelation: varchar('father_alt_contact_relation', { length: 100 }),
+  
+  motherAltContactName: varchar('mother_alt_contact_name', { length: 255 }),
+  motherAltContactPhone: varchar('mother_alt_contact_phone', { length: 50 }),
+  motherAltContactRelation: varchar('mother_alt_contact_relation', { length: 100 }),
 });
 
 export const schoolsAttended = pgTable('schools_attended', {
@@ -62,6 +74,9 @@ export const siblings = pgTable('siblings', {
   name: varchar('name', { length: 255 }),
   grade: varchar('grade', { length: 50 }),
   relationship: varchar('relationship', { length: 100 }),
+  schoolType: varchar('school_type', { length: 50 }), // 'Kianda School', 'Other'
+  schoolName: varchar('school_name', { length: 255 }),
+  kiandaOrder: varchar('kianda_order', { length: 50 }),
 });
 
 export const additionalInfo = pgTable('additional_info', {
@@ -71,7 +86,7 @@ export const additionalInfo = pgTable('additional_info', {
   source: varchar('source', { length: 255 }),
   sourceOther: text('source_other'),
   hasAppliedBefore: boolean('has_applied_before'),
-  previousApplicationYear: integer('previous_application_year'),
+  previousApplicationYears: jsonb('previous_application_years'),
 });
 
 export const documents = pgTable('documents', {
@@ -89,9 +104,19 @@ export const gradeManagement = pgTable('grade_management', {
   assessmentDate: timestamp('assessment_date'),
   location: varchar('location', { length: 255 }),
   academicYear: integer('academic_year').default(new Date().getFullYear()),
+  isAcceptingApplications: boolean('is_accepting_applications').default(true).notNull(),
 }, (t) => ({
   unq: unique().on(t.gradeName, t.academicYear),
 }));
+
+export const admissionCycles = pgTable('admission_cycles', {
+  id: serial('id').primaryKey(),
+  academicYear: integer('academic_year').notNull().unique(),
+  startDate: timestamp('start_date').notNull(),
+  endDate: timestamp('end_date').notNull(),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+});
 
 export const assessments = pgTable('assessments', {
   id: serial('id').primaryKey(),
@@ -122,6 +147,14 @@ export const adminUsers = pgTable('admin_users', {
   email: varchar('email', { length: 255 }).notNull().unique(),
   passwordHash: text('password_hash').notNull(),
   createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const processDocuments = pgTable('process_documents', {
+  id: serial('id').primaryKey(),
+  gradeName: varchar('grade_name', { length: 50 }),
+  title: varchar('title', { length: 255 }).notNull(),
+  fileUrl: text('file_url').notNull(),
+  uploadedAt: timestamp('uploaded_at').defaultNow(),
 });
 
 export const applicationsRelations = relations(applications, ({ one, many }) => ({

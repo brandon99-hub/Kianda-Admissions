@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { PaymentDetails } from '../types';
 import { ArrowLeft, ArrowRight, Check, CreditCard, ShieldCheck, Smartphone, Hash, User, CircleDollarSign } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import ApplicationPreview from './ApplicationPreview';
+import { ApplicationState, Step } from '../types';
 
 
 interface Props {
@@ -12,10 +14,13 @@ interface Props {
   onCancel: () => void;
   candidateName: string;
   isSubmitting?: boolean;
+  fullState: ApplicationState;
+  jumpToStep: (step: Step) => void;
 }
 
-export default function PaymentConfirmationForm({ data, updateData, onSubmit, onBack, onCancel, candidateName, isSubmitting }: Props) {
+export default function PaymentConfirmationForm({ data, updateData, onSubmit, onBack, onCancel, candidateName, isSubmitting, fullState, jumpToStep }: Props) {
   const accountName = `${candidateName.split(' ').slice(0, 2).join(' ')} APP`;
+  const [showPreview, setShowPreview] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -104,33 +109,41 @@ export default function PaymentConfirmationForm({ data, updateData, onSubmit, on
               </div>
 
               <div className="flex flex-col items-center gap-10">
-                 <button
-                   type="submit"
-                   disabled={isSubmitting || data.mpesaCode.length < 10}
-                   className={`w-full max-w-md py-6 rounded-2xl font-black transition-all flex items-center justify-center gap-4 group border border-white/20 relative overflow-hidden shadow-[0_20px_40px_rgba(24,33,109,0.1)] ${isSubmitting || data.mpesaCode.length < 10 ? 'bg-surface-variant text-on-surface-variant opacity-40 cursor-not-allowed' : 'bg-secondary text-primary hover:shadow-[0_25px_50px_rgba(255,196,37,0.3)] hover:-translate-y-1 active:scale-95'}`}
-                 >
-                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
-                   <span className="tracking-[0.3em] uppercase text-[12px] relative z-10 font-black">
-                     {isSubmitting ? 'Verifying...' : 'Finalize Application'}
-                   </span>
-                   {!isSubmitting && <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform relative z-10" />}
-                   {isSubmitting && <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin relative z-10" />}
-                 </button>
+                 <div className="flex flex-col sm:flex-row items-center gap-4 w-full max-w-md mx-auto">
+                   <button
+                     type="button"
+                     onClick={() => setShowPreview(true)}
+                     className="w-full sm:flex-1 py-6 rounded-2xl font-black uppercase tracking-[0.2em] text-[12px] bg-primary/5 text-primary hover:bg-primary/10 transition-colors border border-primary/10"
+                   >
+                     Preview
+                   </button>
+                   <button
+                     type="submit"
+                     disabled={isSubmitting || data.mpesaCode.length < 10}
+                     className={`w-full sm:flex-1 py-6 rounded-2xl font-black transition-all flex items-center justify-center gap-4 group border border-white/20 relative overflow-hidden shadow-[0_20px_40px_rgba(24,33,109,0.1)] ${isSubmitting || data.mpesaCode.length < 10 ? 'bg-surface-variant text-on-surface-variant opacity-40 cursor-not-allowed' : 'bg-secondary text-primary hover:shadow-[0_25px_50px_rgba(255,196,37,0.3)] hover:-translate-y-1 active:scale-95'}`}
+                   >
+                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+                     <span className="tracking-[0.3em] uppercase text-[12px] relative z-10 font-black">
+                       {isSubmitting ? 'Verifying...' : 'Submit'}
+                     </span>
+                     {!isSubmitting && <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform relative z-10" />}
+                     {isSubmitting && <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin relative z-10" />}
+                   </button>
+                 </div>
 
-                 <div className="flex gap-4">
+                 <div className="flex flex-row gap-2 md:gap-4 items-center w-full md:w-auto">
                     <button
                       type="button"
                       onClick={onBack}
-                      className="px-6 py-2 text-primary/40 hover:text-primary transition-all text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2"
+                      className="flex-1 md:flex-none justify-center px-4 md:px-8 py-4 text-on-surface-variant font-bold uppercase tracking-[0.2em] text-[10px] hover:text-primary transition-colors flex items-center gap-1 md:gap-2"
                     >
-                      <ArrowLeft size={14} />
-                      Go Back
+                      <ArrowLeft className="w-4 h-4" />
+                      Back
                     </button>
-                    <div className="w-[1px] h-4 bg-primary/10 self-center" />
                     <button
                       type="button"
                       onClick={onCancel}
-                      className="px-6 py-2 text-primary/20 hover:text-red-500 transition-all text-[10px] font-black uppercase tracking-[0.2em]"
+                      className="flex-1 md:flex-none text-center px-4 md:px-8 py-4 text-on-surface-variant/30 font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-[10px] hover:text-primary transition-all md:hover:translate-x-[-4px]"
                     >
                       Cancel
                     </button>
@@ -144,6 +157,16 @@ export default function PaymentConfirmationForm({ data, updateData, onSubmit, on
       <p className="mt-8 text-center text-[10px] text-on-surface-variant/30 font-bold uppercase tracking-[0.3em] leading-relaxed max-w-lg mx-auto italic">
         Kianda School handles all applications with strict confidentiality. Final processing occurs once payment is confirmed.
       </p>
+
+      <AnimatePresence>
+        {showPreview && (
+          <ApplicationPreview 
+            data={fullState} 
+            onClose={() => setShowPreview(false)} 
+            onEdit={jumpToStep}
+          />
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

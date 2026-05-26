@@ -1,6 +1,7 @@
 export type Step = 'candidate' | 'parent' | 'additional' | 'documents' | 'payment';
 
 export interface SchoolHistory {
+  type?: string;
   name: string;
   years: string;
 }
@@ -13,11 +14,9 @@ export interface CandidateInfo {
   denomination: string;
   birthOrder: string;
   medicalInfo: string;
-  schools: {
-    kindergarten: SchoolHistory;
-    primary: SchoolHistory;
-    junior: SchoolHistory;
-  };
+  assessmentNo?: string;
+  passportPhoto?: string;
+  schools: SchoolHistory[];
 }
 
 export interface ParentDetails {
@@ -26,17 +25,29 @@ export interface ParentDetails {
   fatherEmail: string;
   fatherProfession: string;
   fatherWork: string;
+  fatherAltContactName: string;
+  fatherAltContactPhone: string;
+  fatherAltContactRelation: string;
+  
   motherName: string;
   motherPhone: string;
   motherEmail: string;
   motherProfession: string;
   motherWork: string;
+  motherAltContactName: string;
+  motherAltContactPhone: string;
+  motherAltContactRelation: string;
+  
+  residency: string;
 }
 
 export interface Sibling {
   name: string;
   grade: string;
   relationship: string;
+  schoolType?: string; // 'Kianda School', 'Other', or ''
+  schoolName?: string;
+  kiandaOrder?: string;
 }
 
 export interface AdditionalInfo {
@@ -45,7 +56,7 @@ export interface AdditionalInfo {
   source: string;
   sourceOther?: string;
   hasAppliedBefore: boolean;
-  previousApplicationYear?: string;
+  previousApplicationYears: string[];
 }
 
 export interface PaymentDetails {

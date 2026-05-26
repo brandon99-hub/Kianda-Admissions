@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useMutation } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, AlertTriangle } from 'lucide-react';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import Stepper from './components/Stepper';
@@ -12,7 +12,7 @@ import AdditionalInfoForm from './components/AdditionalInfoForm';
 import DocumentUploadForm from './components/DocumentUploadForm';
 import PaymentConfirmationForm from './components/PaymentConfirmationForm';
 import { ApplicationState, Step } from './types';
-import { LayoutDashboard, Users, GraduationCap, Calendar, LogOut, Search, Filter, ArrowUpRight, Clock, MapPin, ChevronLeft, ChevronRight, ListChecks } from 'lucide-react';
+import { LayoutDashboard, Users, GraduationCap, Calendar, LogOut, Search, Filter, ArrowUpRight, Clock, MapPin, ChevronLeft, ChevronRight, ListChecks, FileText } from 'lucide-react';
 import { AdminContentView } from './components/AdminViews';
 import { saveToken, removeToken, isTokenValid } from './utils/auth';
 
@@ -21,22 +21,20 @@ const EXPIRY_DURATION_MS = 2 * 60 * 60 * 1000; // 2 Hours
 const INITIAL_STATE: ApplicationState = {
   currentStep: 'candidate',
   candidate: {
-    grade: '', fullName: '', dob: '', religion: '', denomination: '', birthOrder: '', medicalInfo: '',
-    schools: {
-      kindergarten: { name: '', years: '' },
-      primary: { name: '', years: '' },
-      junior: { name: '', years: '' },
-    }
+    grade: '', fullName: '', dob: '', religion: '', denomination: '', birthOrder: '', medicalInfo: '', assessmentNo: '', passportPhoto: '',
+    schools: []
   },
   parent: {
-    fatherName: '', fatherPhone: '', fatherEmail: '', fatherProfession: '', fatherWork: '',
-    motherName: '', motherPhone: '', motherEmail: '', motherProfession: '', motherWork: '',
+    fatherName: '', fatherPhone: '', fatherEmail: '', fatherProfession: '', fatherWork: '', fatherAltContactName: '', fatherAltContactPhone: '', fatherAltContactRelation: '',
+    motherName: '', motherPhone: '', motherEmail: '', motherProfession: '', motherWork: '', motherAltContactName: '', motherAltContactPhone: '', motherAltContactRelation: '',
+    residency: '',
   },
   additional: {
     siblings: [],
     motivation: '',
     source: '',
     hasAppliedBefore: false,
+    previousApplicationYears: []
   },
   payment: {
     mpesaCode: '',
@@ -73,8 +71,9 @@ export default function App() {
     return INITIAL_STATE;
   });
 
-  const [activeAdminTab, setActiveAdminTab] = useState<'dashboard' | 'applications' | 'grades' | 'interviews' | 'assessments'>('dashboard');
+  const [activeAdminTab, setActiveAdminTab] = useState<'dashboard' | 'applications' | 'grades' | 'interviews' | 'assessments' | 'documents'>('dashboard');
   const [preSelectedGradeId, setPreSelectedGradeId] = useState<number | null>(null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
 
   useEffect(() => {
     const stateToSave = { ...state, lastUpdated: new Date().toISOString() };
@@ -89,10 +88,13 @@ export default function App() {
   }, []);
 
   const resetApplication = () => {
-    if (confirm('Are you sure you want to cancel? All progress will be lost.')) {
-      setState(INITIAL_STATE);
-      localStorage.removeItem('kianda_admission_state');
-    }
+    setShowCancelModal(true);
+  };
+
+  const confirmResetApplication = () => {
+    setState(INITIAL_STATE);
+    localStorage.removeItem('kianda_admission_state');
+    setShowCancelModal(false);
   };
 
   const updateState = (key: keyof Omit<ApplicationState, 'currentStep'>, data: any) => {
@@ -123,6 +125,10 @@ export default function App() {
     }
   };
 
+  const jumpToStep = (step: Step) => {
+    setState(prev => ({ ...prev, currentStep: step, lastUpdated: new Date().toISOString() }));
+  };
+
   const submissionMutation = useMutation({
     mutationFn: async (payload: ApplicationState) => {
       const response = await fetch('/api/applications', {
@@ -134,7 +140,7 @@ export default function App() {
       return response.json();
     },
     onSuccess: (data) => {
-      toast.success(`Application submitted successfully! ID: ${data.applicationId}`);
+      toast.success('Application submitted successfully! Please check your email for the next steps.');
       setState(INITIAL_STATE);
       localStorage.removeItem('kianda_admission_state');
     },
@@ -291,6 +297,7 @@ export default function App() {
              { id: 'grades', label: 'Grade Management', icon: GraduationCap },
              { id: 'assessments', label: 'Assessments', icon: ListChecks },
              { id: 'interviews', label: 'Interviews', icon: Calendar },
+             { id: 'documents', label: 'Process Documents', icon: FileText },
            ].map(item => (
              <div key={item.id} className="relative group/tooltip">
                <button
@@ -431,10 +438,12 @@ export default function App() {
               <motion.div key="payment" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                 <PaymentConfirmationForm 
                   data={state.payment}
+                  fullState={state}
                   updateData={(d) => updateState('payment', d)}
                   onSubmit={nextStep}
                   onBack={prevStep}
                   onCancel={resetApplication}
+                  jumpToStep={jumpToStep}
                   candidateName={state.candidate.fullName}
                   isSubmitting={submissionMutation.isPending}
                 />
@@ -445,6 +454,51 @@ export default function App() {
       </main>
 
       <Footer />
+
+      <AnimatePresence>
+        {showCancelModal && (
+          <div className="fixed inset-0 z-[200] flex flex-col justify-end md:justify-center items-center">
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }} 
+              onClick={() => setShowCancelModal(false)}
+              className="absolute inset-0 bg-primary/20 backdrop-blur-sm" 
+            />
+            <motion.div 
+              initial={{ opacity: 0, y: 100 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 100 }}
+              className="relative w-full md:max-w-md bg-surface-container-lowest border border-outline-variant/10 rounded-t-3xl md:rounded-[24px] p-8 md:p-10 shadow-2xl z-10"
+            >
+              <div className="w-12 h-1.5 bg-outline-variant/20 rounded-full mx-auto mb-6 md:hidden" />
+              <div className="flex flex-col items-center text-center">
+                <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-6">
+                  <AlertTriangle size={32} />
+                </div>
+                <h3 className="text-xl md:text-2xl font-bold text-primary mb-3">Cancel Application?</h3>
+                <p className="text-sm font-medium text-on-surface-variant mb-8 leading-relaxed">
+                  This will permanently clear your current progress and remove all stored data from your browser's local storage. You will need to start over.
+                </p>
+                <div className="flex flex-col md:flex-row w-full gap-4">
+                  <button 
+                    onClick={() => setShowCancelModal(false)}
+                    className="flex-1 px-6 py-4 rounded-xl font-black text-[11px] uppercase tracking-widest text-on-surface-variant bg-surface-container-low hover:text-primary transition-all order-2 md:order-1"
+                  >
+                    Keep Editing
+                  </button>
+                  <button 
+                    onClick={confirmResetApplication}
+                    className="flex-1 px-6 py-4 rounded-xl font-black text-[11px] uppercase tracking-widest text-white bg-red-500 hover:bg-red-600 shadow-lg shadow-red-500/20 transition-all order-1 md:order-2"
+                  >
+                    Yes, Cancel
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

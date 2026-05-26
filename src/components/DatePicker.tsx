@@ -32,7 +32,10 @@ export default function DatePicker({ value, onChange, placeholder = "Select Date
 
   const handleDateSelect = (day: number) => {
     const selectedDate = new Date(viewDate.getFullYear(), viewDate.getMonth(), day);
-    onChange(selectedDate.toISOString().split('T')[0]);
+    const yearStr = selectedDate.getFullYear();
+    const monthStr = String(selectedDate.getMonth() + 1).padStart(2, '0');
+    const dayStr = String(selectedDate.getDate()).padStart(2, '0');
+    onChange(`${yearStr}-${monthStr}-${dayStr}`);
     setIsOpen(false);
   };
 
@@ -82,7 +85,7 @@ export default function DatePicker({ value, onChange, placeholder = "Select Date
 
   return (
     <div className="relative w-full" ref={containerRef}>
-      {label && <label className="block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant mb-2">{label}</label>}
+      {label && <label className="block text-[11px] font-bold uppercase tracking-widest text-primary mb-2">{label}</label>}
       
       <button
         type="button"
@@ -101,12 +104,21 @@ export default function DatePicker({ value, onChange, placeholder = "Select Date
       </button>
 
       <AnimatePresence>
-        {isOpen && (
+        {isOpen && [
+          <motion.div 
+            key="backdrop"
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }} 
+            className="fixed inset-0 bg-primary/40 backdrop-blur-sm z-[140] md:hidden"
+            onClick={() => setIsOpen(false)}
+          />,
           <motion.div
+            key="calendar"
             initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            className="absolute top-full left-0 right-0 mt-2 bg-white rounded-3xl shadow-[0_30px_60px_rgba(24,33,109,0.15)] border border-outline-variant/10 p-6 z-[150] min-w-[320px]"
+            className="fixed bottom-0 left-0 right-0 bg-white rounded-t-[32px] p-6 pb-10 z-[150] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] md:absolute md:top-full md:bottom-auto md:mt-2 md:rounded-[32px] md:p-6 md:min-w-[320px] max-h-[90vh] overflow-y-auto"
           >
             {/* Calendar Header */}
             <div className="flex items-center justify-between mb-6">
@@ -212,7 +224,7 @@ export default function DatePicker({ value, onChange, placeholder = "Select Date
               </button>
             </div>
           </motion.div>
-        )}
+        ]}
       </AnimatePresence>
     </div>
   );
