@@ -72,31 +72,5 @@ The system adheres to **Institutional Premium** aesthetics:
 *Built for Kianda School Admissions Office.*
 
 node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
-# --- NEW: Admissions System Block ---
-server {
-    listen       8086;
-    server_name  192.168.0.100;
-    # 1. Serve the compiled Frontend React App DIRECTLY (Fastest)
-    location / {
-        # Absolute path to the dist folder (use forward slashes)
-        root   C:/Users/USERR/PythonProject/Kianda-Admissions/dist;
-        index  index.html;
-        
-        # Required for React Router
-        try_files $uri $uri/ /index.html;
-    }
-    # 2. Proxy API requests to the Node.js backend (Port 5000)
-    location /api/ {
-        proxy_pass http://localhost:5000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-    }
-}
 
-PS C:\nginx-1.28.3\nginx-1.28.3> .\nginx -t
-nginx: [emerg] "server" directive is not allowed here in C:\nginx-1.28.3\nginx-1.28.3/conf/nginx.conf:72
-nginx: configuration file C:\nginx-1.28.3\nginx-1.28.3/conf/nginx.conf test failed
-PS C:\nginx-1.28.3\nginx-1.28.3>
+New-NetFirewallRule -DisplayName "Admissions System Port 8086" -Direction Inbound -LocalPort 8086 -Protocol TCP -Action Allow
