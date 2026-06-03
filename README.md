@@ -95,3 +95,8 @@ server {
         proxy_cache_bypass $http_upgrade;
     }
 }
+
+PS C:\nginx-1.28.3\nginx-1.28.3> .\nginx -t
+nginx: [emerg] "server" directive is not allowed here in C:\nginx-1.28.3\nginx-1.28.3/conf/nginx.conf:72
+nginx: configuration file C:\nginx-1.28.3\nginx-1.28.3/conf/nginx.conf test failed
+PS C:\nginx-1.28.3\nginx-1.28.3>
