@@ -72,3 +72,26 @@ The system adheres to **Institutional Premium** aesthetics:
 *Built for Kianda School Admissions Office.*
 
 node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+# --- NEW: Admissions System Block ---
+server {
+    listen       8086;
+    server_name  192.168.0.100;
+    # 1. Serve the compiled Frontend React App DIRECTLY (Fastest)
+    location / {
+        # Absolute path to the dist folder (use forward slashes)
+        root   C:/Users/USERR/PythonProject/Kianda-Admissions/dist;
+        index  index.html;
+        
+        # Required for React Router
+        try_files $uri $uri/ /index.html;
+    }
+    # 2. Proxy API requests to the Node.js backend (Port 5000)
+    location /api/ {
+        proxy_pass http://localhost:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
