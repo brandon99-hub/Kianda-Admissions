@@ -303,7 +303,7 @@ export default function AdditionalInfoForm({ data, updateData, onNext, onBack, o
                           <button
                             key={opt.value}
                             type="button"
-                            onClick={() => { updateData({ source: opt.value, sourceOther: opt.value === 'Other' ? data.sourceOther : '' }); setActiveDropdown(null); }}
+                            onClick={() => { updateData({ source: opt.value, sourceOther: (opt.value === 'Other' || opt.value === 'SocialMedia') ? data.sourceOther : '' }); setActiveDropdown(null); }}
                             className={`w-full px-6 py-3 text-left text-xs font-black tracking-widest hover:bg-secondary/10 transition-colors flex items-center justify-between ${data.source === opt.value ? 'bg-secondary/5 text-secondary' : 'text-primary'}`}
                           >
                             {opt.label}
@@ -315,6 +315,50 @@ export default function AdditionalInfoForm({ data, updateData, onNext, onBack, o
                   </AnimatePresence>
                 </div>
                 <AnimatePresence>
+                  {data.source === 'SocialMedia' && (
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      className="space-y-2 relative"
+                    >
+                      <label className="block text-[11px] font-bold uppercase tracking-widest text-primary">Which platform?</label>
+                      <button
+                        type="button"
+                        onClick={() => setActiveDropdown(activeDropdown === 'platform' ? null : 'platform')}
+                        className={`w-full flex items-center justify-between bg-surface-container-low p-4 rounded-xl border-2 transition-all group ${activeDropdown === 'platform' ? 'border-secondary shadow-lg shadow-secondary/10' : 'border-transparent hover:border-secondary/20'}`}
+                      >
+                         <span className={`text-sm font-black tracking-tight ${data.sourceOther ? 'text-primary' : 'text-primary/30'}`}>
+                           {data.sourceOther || 'Select Platform'}
+                         </span>
+                         <ChevronDown size={14} className={`text-primary/20 transition-transform ${activeDropdown === 'platform' ? 'rotate-180 text-secondary' : ''}`} />
+                      </button>
+
+                      <AnimatePresence>
+                        {activeDropdown === 'platform' && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                            className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-[0_20px_40px_rgba(0,0,0,0.15)] border border-outline-variant/5 py-3 z-[100]"
+                          >
+                            {['Instagram', 'Facebook', 'LinkedIn', 'TikTok'].map((platform) => (
+                              <button
+                                key={platform}
+                                type="button"
+                                onClick={() => { updateData({ sourceOther: platform }); setActiveDropdown(null); }}
+                                className={`w-full px-6 py-3 text-left text-xs font-black tracking-widest hover:bg-secondary/10 transition-colors flex items-center justify-between ${data.sourceOther === platform ? 'bg-secondary/5 text-secondary' : 'text-primary'}`}
+                              >
+                                {platform}
+                                {data.sourceOther === platform && <div className="w-1.5 h-1.5 rounded-full bg-secondary" />}
+                              </button>
+                            ))}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </motion.div>
+                  )}
+                  
                   {data.source === 'Other' && (
                     <motion.div 
                       initial={{ opacity: 0, scale: 0.95 }}

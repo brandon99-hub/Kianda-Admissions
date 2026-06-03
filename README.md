@@ -70,3 +70,5 @@ The system adheres to **Institutional Premium** aesthetics:
 
 ---
 *Built for Kianda School Admissions Office.*
+
+node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"

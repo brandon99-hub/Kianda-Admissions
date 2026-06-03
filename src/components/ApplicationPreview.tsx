@@ -1,7 +1,8 @@
 import React from 'react';
 import { ApplicationState, Step } from '../types';
 import { motion } from 'motion/react';
-import { X, Edit2, CheckCircle2, User, Users, FileText, FileBadge } from 'lucide-react';
+import { X, Edit2, CheckCircle2, User, Users, FileText, FileBadge, Download } from 'lucide-react';
+import { buildApplicationPDF } from '../utils/buildApplicationPDF';
 
 interface Props {
   data: ApplicationState;
@@ -10,6 +11,22 @@ interface Props {
 }
 
 export default function ApplicationPreview({ data, onClose, onEdit }: Props) {
+  const handleDownload = async () => {
+    const appData = {
+      candidate: { ...data.candidate, passportPhotoUrl: data.candidate.passportPhoto },
+      parentDetails: data.parent,
+      additionalInfo: data.additional,
+      schoolsAttended: data.candidate.schools.map((s: any) => ({ schoolName: s.name, schoolType: s.type, yearsRange: s.years })),
+      siblings: data.additional.siblings,
+    };
+    try {
+      const doc = await buildApplicationPDF(appData);
+      doc.save(`Application_${data.candidate.fullName.replace(/\s+/g, '_')}.pdf`);
+    } catch(e) {
+      console.error(e);
+    }
+  };
+
   const Section = ({ title, icon: Icon, step, children }: any) => (
     <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-outline-variant/10 relative group">
       <div className="flex justify-between items-start mb-6 border-b border-outline-variant/5 pb-4">
@@ -78,6 +95,7 @@ export default function ApplicationPreview({ data, onClose, onEdit }: Props) {
                   <Field label="Date of Birth" value={data.candidate.dob} />
                   <Field label="Religion" value={`${data.candidate.religion} ${data.candidate.denomination ? `(${data.candidate.denomination})` : ''}`} />
                   <Field label="Birth Order" value={data.candidate.birthOrder} />
+                  {data.candidate.assessmentNo && <Field label="Assessment No." value={data.candidate.assessmentNo} />}
                   <Field label="Medical Info" value={data.candidate.medicalInfo} />
                 </div>
                 {data.candidate.passportPhoto && (
@@ -210,7 +228,13 @@ export default function ApplicationPreview({ data, onClose, onEdit }: Props) {
           
         </div>
 
-        <div className="p-6 md:p-8 bg-white border-t border-outline-variant/10 flex justify-end shrink-0">
+        <div className="p-6 md:p-8 bg-white border-t border-outline-variant/10 flex justify-end shrink-0 gap-4">
+          <button
+            onClick={handleDownload}
+            className="px-8 py-4 bg-primary/5 text-primary rounded-full font-black uppercase tracking-[0.2em] text-[11px] hover:bg-primary/10 transition-all flex items-center gap-2"
+          >
+            <Download size={14} /> Download PDF
+          </button>
           <button
             onClick={onClose}
             className="px-10 py-4 bg-secondary text-primary rounded-full font-black uppercase tracking-[0.2em] text-[11px] hover:-translate-y-1 hover:shadow-lg transition-all"

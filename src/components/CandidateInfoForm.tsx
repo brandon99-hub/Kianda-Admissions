@@ -418,7 +418,7 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
              )}
              
              <div className="space-y-2">
-                <label className="block text-[11px] font-bold uppercase tracking-widest text-primary">Passport Photo <span className="text-red-500">*</span></label>
+                <label className="block text-[11px] font-bold uppercase tracking-widest text-primary">Passport Photo <span className="text-[9px] font-semibold text-primary/40 normal-case tracking-normal ml-1">(not older than 1 year)</span> <span className="text-red-500">*</span></label>
                 <div className="flex items-center gap-4">
                   {data.passportPhoto ? (
                     <img src={data.passportPhoto} alt="Passport" className="w-16 h-16 rounded-lg object-cover border border-outline-variant/20" />

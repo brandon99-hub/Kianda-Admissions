@@ -529,26 +529,28 @@ app.get('/api/admin/grades', authenticateAdmin, async (req, res) => {
 // CREATE/UPDATE Grade
 app.post('/api/admin/grades', authenticateAdmin, async (req, res) => {
   try {
-    const { id, gradeName, vacantSpots, assessmentDate, academicYear, location } = req.body;
+    const { id, gradeName, vacantSpots, assessmentDate, academicYear, location, isAcceptingApplications } = req.body;
     const year = academicYear || new Date().getFullYear();
     const finalDate = assessmentDate ? new Date(assessmentDate) : null;
     
+    const payload: any = {
+      vacantSpots,
+      assessmentDate: finalDate,
+      academicYear: year,
+      location
+    };
+    if (isAcceptingApplications !== undefined) {
+      payload.isAcceptingApplications = isAcceptingApplications;
+    }
+
     if (id) {
        await db.update(schema.gradeManagement)
-         .set({ 
-          vacantSpots, 
-          assessmentDate: finalDate,
-          academicYear: year,
-          location
-        })
-        .where(eq(schema.gradeManagement.id, id));
+         .set(payload)
+         .where(eq(schema.gradeManagement.id, id));
     } else {
         await db.insert(schema.gradeManagement).values({
           gradeName,
-          vacantSpots,
-          assessmentDate: finalDate,
-          academicYear: year,
-          location
+          ...payload
         });
     }
 

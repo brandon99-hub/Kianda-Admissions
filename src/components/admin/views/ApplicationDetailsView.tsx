@@ -224,6 +224,19 @@ export default function ApplicationDetailsView({ app, onBack, onUpdate, showResu
                    </div>
                  </div>
                </div>
+               
+               {candidate.medicalInfo && (
+                 <div className="mt-10 pt-8 border-t border-outline-variant/10">
+                   <h4 className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-primary/40 flex items-center gap-2 mb-4">
+                     <HeartPulse size={14} className="text-red-400" /> Medical History
+                   </h4>
+                   <div className="bg-primary/5 p-6 rounded-2xl border border-primary/5">
+                     <p className="text-sm font-bold text-primary leading-relaxed whitespace-pre-wrap">
+                       {candidate.medicalInfo}
+                     </p>
+                   </div>
+                 </div>
+               )}
             </div>
 
             {/* Parent Details Module */}
