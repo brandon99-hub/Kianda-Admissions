@@ -1,10 +1,24 @@
+import { useEffect, useRef } from 'react';
 import { Step } from '../types';
 
 interface Props {
   currentStep: Step;
+  highestStepIdx: number;
+  onStepClick: (step: Step) => void;
 }
 
-export default function Stepper({ currentStep }: Props) {
+export default function Stepper({ currentStep, highestStepIdx, onStepClick }: Props) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (containerRef.current) {
+      const activeElement = containerRef.current.querySelector('[data-active="true"]');
+      if (activeElement) {
+        activeElement.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      }
+    }
+  }, [currentStep]);
+
   const steps: { id: Step; label: string; stepNum: string }[] = [
     { id: 'candidate', label: 'Candidate Info', stepNum: 'Step 01' },
     { id: 'parent', label: 'Parent Details', stepNum: 'Step 02' },
@@ -24,15 +38,26 @@ export default function Stepper({ currentStep }: Props) {
         />
       </div>
 
-      <div className="flex overflow-x-auto snap-x snap-mandatory gap-6 md:grid md:grid-cols-5 md:gap-4 md:overflow-visible pb-4 md:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div 
+        ref={containerRef}
+        className="flex overflow-x-auto snap-x snap-mandatory gap-6 md:grid md:grid-cols-5 md:gap-4 md:overflow-visible pb-4 md:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
         {steps.map((step, idx) => {
           const isActive = step.id === currentStep;
           const isCompleted = idx < currentIdx;
+          const isClickable = idx <= highestStepIdx;
 
           return (
-            <div 
-              key={step.id} 
-              className={`flex-shrink-0 w-[55%] snap-start md:w-auto flex flex-col gap-2 transition-all duration-300 ${isActive || isCompleted ? 'opacity-100' : 'opacity-30'}`}
+            <button 
+              key={step.id}
+              data-active={isActive}
+              onClick={() => {
+                if (isClickable) onStepClick(step.id);
+              }}
+              disabled={!isClickable}
+              className={`flex-shrink-0 w-[55%] snap-start md:w-auto flex flex-col gap-2 transition-all duration-300 text-left 
+                ${isActive || isCompleted ? 'opacity-100' : 'opacity-30'} 
+                ${isClickable ? 'cursor-pointer hover:opacity-80' : 'cursor-not-allowed'}`}
             >
               <span className={`text-[9px] font-bold uppercase tracking-[0.2em] ${isActive ? 'text-secondary' : 'text-on-surface-variant'}`}>
                 {step.stepNum}
@@ -43,7 +68,7 @@ export default function Stepper({ currentStep }: Props) {
               {isActive && (
                 <div className="w-1 h-1 bg-secondary rounded-full mt-1" />
               )}
-            </div>
+            </button>
           );
         })}
       </div>

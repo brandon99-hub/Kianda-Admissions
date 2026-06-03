@@ -125,7 +125,7 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
-      className="bg-surface-container-lowest p-8 md:p-12 rounded-2xl shadow-sm border border-outline-variant/5"
+      className="bg-transparent md:bg-surface-container-lowest p-0 md:p-12 rounded-none md:rounded-2xl shadow-none md:shadow-sm border-none md:border md:border-outline-variant/5"
     >
       <div className="relative z-10" ref={dropdownRef}>
         <div className="mb-10 flex items-center gap-4">
@@ -488,7 +488,7 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
                               onChange={(e) => updateSchool(index, 'name', e.target.value)}
                               className="flex-1 bg-surface-container-low/50 border-none rounded-xl p-3.5 text-sm font-semibold focus:ring-2 focus:ring-primary/20 focus:bg-primary/5 transition-colors placeholder:text-primary/30 text-primary"
                             />
-                            <div className="flex flex-row gap-3 w-full sm:w-auto">
+                            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                               <select
                                 value={school.type || ''}
                                 onChange={(e) => updateSchool(index, 'type', e.target.value)}

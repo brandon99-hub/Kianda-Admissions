@@ -56,7 +56,7 @@ export default function AdditionalInfoForm({ data, updateData, onNext, onBack, o
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
-      className="bg-surface-container-lowest p-8 md:p-12 rounded-2xl shadow-sm border border-outline-variant/5"
+      className="bg-transparent md:bg-surface-container-lowest p-0 md:p-12 rounded-none md:rounded-2xl shadow-none md:shadow-sm border-none md:border md:border-outline-variant/5"
     >
       <div className="relative z-10" ref={dropdownRef}>
         <div className="mb-10 flex items-center gap-4">
@@ -123,11 +123,19 @@ export default function AdditionalInfoForm({ data, updateData, onNext, onBack, o
                               exit={{ opacity: 0, y: -10 }}
                               className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-primary/5 py-2 z-50 max-h-48 overflow-y-auto"
                             >
-                              {['Brother', 'Sister'].map(rel => (
+                              {['Brother', 'Sister', 'Relative', 'Friend'].map(rel => (
                                 <button
                                   key={rel}
                                   type="button"
-                                  onClick={() => { updateSibling(index, 'relationship', rel); setActiveDropdown(null); }}
+                                  onClick={() => { 
+                                    const newSiblings = [...data.siblings];
+                                    newSiblings[index] = { ...newSiblings[index], relationship: rel };
+                                    if (rel === 'Relative' || rel === 'Friend') {
+                                       newSiblings[index].schoolType = 'Kianda School';
+                                    }
+                                    updateData({ siblings: newSiblings });
+                                    setActiveDropdown(null); 
+                                  }}
                                   className={`w-full text-left px-4 py-2 text-xs font-bold transition-colors ${sibling.relationship === rel ? 'bg-primary/5 text-primary' : 'text-on-surface hover:bg-surface-variant'}`}
                                 >
                                   {rel}
@@ -175,37 +183,45 @@ export default function AdditionalInfoForm({ data, updateData, onNext, onBack, o
                      </div>
                      
                      <div className="relative">
-                        <button
-                          type="button"
-                          onClick={() => setActiveDropdown(activeDropdown === `sib-${index}-sch` ? null : `sib-${index}-sch`)}
-                          className="w-full bg-white border-none rounded-xl p-3.5 text-xs font-bold flex justify-between items-center focus:ring-2 focus:ring-primary/20"
-                        >
-                          <span className={sibling.schoolType ? 'text-primary' : 'text-primary/30'}>
-                            {sibling.schoolType || 'Select School'}
-                          </span>
-                          <ChevronDown size={16} className={`text-primary/50 transition-transform ${activeDropdown === `sib-${index}-sch` ? 'rotate-180' : ''}`} />
-                        </button>
-                        <AnimatePresence>
-                          {activeDropdown === `sib-${index}-sch` && (
-                            <motion.div
-                              initial={{ opacity: 0, y: -10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, y: -10 }}
-                              className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-primary/5 py-2 z-50 max-h-48 overflow-y-auto"
+                        {sibling.relationship === 'Relative' || sibling.relationship === 'Friend' ? (
+                          <div className="w-full bg-white border-none rounded-xl p-3.5 text-xs font-bold text-primary flex justify-between items-center focus:ring-2 focus:ring-primary/20 cursor-default">
+                             Kianda School
+                          </div>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => setActiveDropdown(activeDropdown === `sib-${index}-sch` ? null : `sib-${index}-sch`)}
+                              className="w-full bg-white border-none rounded-xl p-3.5 text-xs font-bold flex justify-between items-center focus:ring-2 focus:ring-primary/20"
                             >
-                              {['Kianda School', 'Other'].map(st => (
-                                <button
-                                  key={st}
-                                  type="button"
-                                  onClick={() => { updateSibling(index, 'schoolType', st); setActiveDropdown(null); }}
-                                  className={`w-full text-left px-4 py-2 text-xs font-bold transition-colors ${sibling.schoolType === st ? 'bg-primary/5 text-primary' : 'text-on-surface hover:bg-surface-variant'}`}
+                              <span className={sibling.schoolType ? 'text-primary' : 'text-primary/30'}>
+                                {sibling.schoolType || 'Select School'}
+                              </span>
+                              <ChevronDown size={16} className={`text-primary/50 transition-transform ${activeDropdown === `sib-${index}-sch` ? 'rotate-180' : ''}`} />
+                            </button>
+                            <AnimatePresence>
+                              {activeDropdown === `sib-${index}-sch` && (
+                                <motion.div
+                                  initial={{ opacity: 0, y: -10 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  exit={{ opacity: 0, y: -10 }}
+                                  className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-primary/5 py-2 z-50 max-h-48 overflow-y-auto"
                                 >
-                                  {st}
-                                </button>
-                              ))}
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
+                                  {['Kianda School', 'Other'].map(st => (
+                                    <button
+                                      key={st}
+                                      type="button"
+                                      onClick={() => { updateSibling(index, 'schoolType', st); setActiveDropdown(null); }}
+                                      className={`w-full text-left px-4 py-2 text-xs font-bold transition-colors ${sibling.schoolType === st ? 'bg-primary/5 text-primary' : 'text-on-surface hover:bg-surface-variant'}`}
+                                    >
+                                      {st}
+                                    </button>
+                                  ))}
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </>
+                        )}
                      </div>
                      
                      {sibling.schoolType === 'Other' && (
@@ -217,7 +233,7 @@ export default function AdditionalInfoForm({ data, updateData, onNext, onBack, o
                         />
                      )}
                      
-                     {sibling.schoolType === 'Kianda School' && (
+                     {sibling.schoolType === 'Kianda School' && sibling.relationship !== 'Relative' && sibling.relationship !== 'Friend' && (
                        <div className="relative">
                           <button
                             type="button"

@@ -71,5 +71,6 @@ export interface ApplicationState {
   payment: PaymentDetails;
   documents: Record<string, string>;
   consentGiven: boolean;
+  highestStepIdx?: number;
   lastUpdated: string; // ISO string for expiry logic
 }

@@ -40,7 +40,7 @@ export default function PaymentConfirmationForm({ data, updateData, onSubmit, on
       exit={{ opacity: 0, y: -20 }}
       className="max-w-4xl mx-auto"
     >
-      <div className="bg-white/70 backdrop-blur-3xl rounded-[40px] shadow-[0_50px_100px_-20px_rgba(24,33,109,0.12)] border border-white/50 overflow-hidden relative">
+      <div className="bg-transparent md:bg-white/70 md:backdrop-blur-3xl rounded-none md:rounded-[40px] shadow-none md:shadow-[0_50px_100px_-20px_rgba(24,33,109,0.12)] border-none md:border md:border-white/50 overflow-hidden relative">
         {/* Decorative Background Elements */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-secondary/5 rounded-full blur-3xl -mr-32 -mt-32" />
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -ml-32 -mb-32" />

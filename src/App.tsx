@@ -111,7 +111,12 @@ export default function App() {
     const steps: Step[] = ['candidate', 'parent', 'additional', 'documents', 'payment'];
     const currentIdx = steps.indexOf(state.currentStep);
     if (currentIdx < steps.length - 1) {
-      setState(prev => ({ ...prev, currentStep: steps[currentIdx + 1], lastUpdated: new Date().toISOString() }));
+      setState(prev => ({ 
+        ...prev, 
+        currentStep: steps[currentIdx + 1], 
+        highestStepIdx: Math.max(prev.highestStepIdx || 0, currentIdx + 1),
+        lastUpdated: new Date().toISOString() 
+      }));
     } else {
       submissionMutation.mutate(state);
     }
@@ -366,7 +371,7 @@ export default function App() {
     <div className="min-h-screen flex flex-col bg-surface">
       <Header onAdminClick={() => setView('login')} />
       
-      <main className="flex-grow max-w-5xl mx-auto px-8 mt-16 w-full pb-20">
+      <main className="flex-grow max-w-5xl mx-auto px-4 md:px-8 mt-16 w-full pb-20">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -384,7 +389,11 @@ export default function App() {
           </div>
         </motion.div>
 
-        <Stepper currentStep={state.currentStep} />
+        <Stepper 
+          currentStep={state.currentStep} 
+          highestStepIdx={state.highestStepIdx || 0}
+          onStepClick={jumpToStep}
+        />
 
         <div className="mt-12">
           <AnimatePresence mode="wait">

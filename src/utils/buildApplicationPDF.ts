@@ -156,7 +156,8 @@ export async function buildApplicationPDF(app: any): Promise<jsPDF> {
   drawText(doc, (app.admissionType || 'Transfer').toUpperCase(), rightAlign, y + 8, { size: 9, bold: true, color: PRIMARY, align: 'right' });
 
   drawText(doc, 'APPLICATION ID', rightAlign, y + 14, { size: 6.5, bold: true, color: MUTED, align: 'right' });
-  drawText(doc, `APP-${app.id.toString().padStart(4, '0')}`, rightAlign, y + 18, { size: 10, bold: true, color: PRIMARY, align: 'right' });
+  const appIdString = app.id ? app.id.toString().padStart(4, '0') : 'PREV';
+  drawText(doc, `APP-${appIdString}`, rightAlign, y + 18, { size: 10, bold: true, color: PRIMARY, align: 'right' });
   
   drawText(doc, 'YEAR CYCLE', rightAlign, y + 24, { size: 6.5, bold: true, color: MUTED, align: 'right' });
   drawText(doc, (app.academicYear || new Date().getFullYear()).toString(), rightAlign, y + 28, { size: 9, bold: true, color: PRIMARY, align: 'right' });
@@ -406,7 +407,7 @@ export async function buildApplicationPDF(app: any): Promise<jsPDF> {
     'School': "Through daughter's school",
     'Friend': 'Relative / Friend',
     'Website': 'Kianda Website',
-    'SocialMedia': 'Social Media',
+    'SocialMedia': additional.socialPlatform ? `Social Media (${additional.socialPlatform})` : 'Social Media',
     'Other': additional.sourceOther || 'Other'
   };
   const sourceDisplay = sourceMap[additional.source || ''] || additional.source || 'N/A';
