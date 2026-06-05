@@ -166,7 +166,7 @@ app.post('/api/applications', async (req, res) => {
       }).returning();
 
       // 1. Insert Candidate
-      const { schools, passportPhoto, ...candidateData } = candidate;
+      const { schools, passportPhoto, passportPhotoPreview, ...candidateData } = candidate;
       await tx.insert(schema.candidates).values({
         applicationId: newApp.id,
         passportPhotoUrl: passportPhoto,
