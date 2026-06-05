@@ -241,8 +241,11 @@ app.post('/api/applications', async (req, res) => {
 
     res.status(201).json({ success: true, applicationId: newAppId });
   } catch (error) {
-    console.error('Submission error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ 
+      error: 'Internal server error', 
+      details: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
   }
 });
 

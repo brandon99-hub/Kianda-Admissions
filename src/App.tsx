@@ -141,7 +141,14 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      if (!response.ok) throw new Error('Submission failed');
+      if (!response.ok) {
+        let errStr = 'Submission failed';
+        try {
+          const errData = await response.json();
+          errStr = errData.details || errData.error || errStr;
+        } catch (e) {}
+        throw new Error(errStr);
+      }
       return response.json();
     },
     onSuccess: (data) => {
@@ -151,7 +158,7 @@ export default function App() {
     },
     onError: (error) => {
       console.error('Submission error:', error);
-      toast.error('Failed to submit application. Please check your connection and try again.');
+      toast.error(error instanceof Error ? error.message : 'Failed to submit application. Please try again.');
     }
   });
 
