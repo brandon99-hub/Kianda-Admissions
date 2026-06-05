@@ -47,12 +47,12 @@ export default function PaymentConfirmationForm({ data, updateData, onSubmit, on
 
         <div className="relative z-10">
           {/* Header Section */}
-          <div className="p-10 md:p-12 pb-6 flex flex-col items-center text-center border-b border-primary/5">
-            <div className="w-16 h-16 bg-primary/5 rounded-2xl flex items-center justify-center text-primary mb-6 shadow-inner ring-1 ring-primary/5">
-              <Smartphone size={32} />
+          <div className="p-8 md:p-12 pb-6 flex flex-col items-center text-center border-b border-primary/5">
+            <div className="w-12 h-12 md:w-16 md:h-16 bg-primary/5 rounded-2xl flex items-center justify-center text-primary mb-4 md:mb-6 shadow-inner ring-1 ring-primary/5">
+              <Smartphone size={24} className="md:w-8 md:h-8" />
             </div>
-            <h3 className="text-3xl font-extrabold text-primary font-headline tracking-tight mb-2">Payment Verification</h3>
-            <p className="text-[13px] text-on-surface-variant/60 font-medium uppercase tracking-[0.2em]">Application Processing Fee</p>
+            <h3 className="text-2xl md:text-3xl font-extrabold text-primary font-headline tracking-tight mb-2">Payment Verification</h3>
+            <p className="text-[11px] md:text-[13px] text-on-surface-variant/60 font-medium uppercase tracking-[0.2em]">Application Processing Fee</p>
           </div>
 
           {/* Instructions Section - Unified Horizontal Flow */}

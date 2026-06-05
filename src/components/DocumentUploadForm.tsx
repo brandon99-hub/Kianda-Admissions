@@ -68,13 +68,13 @@ export default function DocumentUploadForm({ onNext, onBack, onCancel, consentGi
       className="bg-transparent md:bg-surface-container-lowest p-0 md:p-12 rounded-none md:rounded-2xl shadow-none md:shadow-sm border-none md:border md:border-outline-variant/5"
     >
       <div className="relative z-10">
-        <div className="mb-10 flex items-center gap-4">
-          <div className="w-12 h-12 bg-secondary-container rounded-full flex items-center justify-center text-primary">
-            <FileText size={20} />
+        <div className="mb-8 md:mb-10 flex items-start md:items-center gap-3 md:gap-4">
+          <div className="w-10 h-10 md:w-12 h-12 bg-secondary-container rounded-full flex items-center justify-center text-primary shrink-0">
+            <FileText size={18} className="md:w-5 md:h-5" />
           </div>
           <div>
-            <h3 className="text-2xl font-bold text-primary">Document Uploads</h3>
-            <p className="text-sm text-on-surface-variant font-medium">Please provide the required documentation for the application processing.</p>
+            <h3 className="text-lg md:text-2xl font-bold text-primary leading-tight mb-0.5">Document Uploads</h3>
+            <p className="text-[11px] md:text-sm text-on-surface-variant font-medium leading-snug">Please provide the required documentation for the application processing.</p>
           </div>
         </div>
 

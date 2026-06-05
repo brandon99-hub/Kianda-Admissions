@@ -98,10 +98,10 @@ export default function ApplicationPreview({ data, onClose, onEdit }: Props) {
                   {data.candidate.assessmentNo && <Field label="Assessment No." value={data.candidate.assessmentNo} />}
                   <Field label="Medical Info" value={data.candidate.medicalInfo} />
                 </div>
-                {data.candidate.passportPhoto && (
+                {(data.candidate.passportPhotoPreview || data.candidate.passportPhoto) && (
                   <div className="md:w-32 flex flex-col items-center gap-2">
                     <img 
-                      src={data.candidate.passportPhoto} 
+                      src={data.candidate.passportPhotoPreview || data.candidate.passportPhoto} 
                       alt="Passport" 
                       className="w-32 h-32 rounded-3xl object-cover border-4 border-white shadow-lg bg-surface-variant/20"
                     />

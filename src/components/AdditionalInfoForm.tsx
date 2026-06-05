@@ -1,6 +1,7 @@
 import { AdditionalInfo, Sibling } from '../types';
 import { ArrowLeft, ArrowRight, Plus, Trash2, Users, ChevronDown, Calendar, MessageCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import toast from 'react-hot-toast';
 import { useState, useRef, useEffect } from 'react';
 
 interface Props {
@@ -59,17 +60,26 @@ export default function AdditionalInfoForm({ data, updateData, onNext, onBack, o
       className="bg-transparent md:bg-surface-container-lowest p-0 md:p-12 rounded-none md:rounded-2xl shadow-none md:shadow-sm border-none md:border md:border-outline-variant/5"
     >
       <div className="relative z-10" ref={dropdownRef}>
-        <div className="mb-10 flex items-center gap-4">
-          <div className="w-12 h-12 bg-secondary-container rounded-full flex items-center justify-center text-primary">
-            <Users size={24} />
+        <div className="mb-8 md:mb-10 flex items-start md:items-center gap-3 md:gap-4">
+          <div className="w-10 h-10 md:w-12 md:h-12 bg-secondary-container rounded-full flex items-center justify-center text-primary shrink-0">
+            <Users size={18} className="md:w-6 md:h-6" />
           </div>
           <div>
-            <h3 className="text-2xl font-bold text-primary">Additional Information</h3>
-            <p className="text-sm text-on-surface-variant font-medium">Help us understand your family's connection to Kianda School.</p>
+            <h3 className="text-lg md:text-2xl font-bold text-primary leading-tight mb-0.5">Additional Information</h3>
+            <p className="text-[11px] md:text-sm text-on-surface-variant font-medium leading-snug">Help us understand your family's connection to Kianda School.</p>
           </div>
         </div>
 
-        <form className="space-y-12" onSubmit={(e) => { e.preventDefault(); onNext(); }}>
+        <form className="space-y-12" onSubmit={(e) => { 
+          e.preventDefault(); 
+          if (data.hasAppliedBefore && (!data.previousApplicationYears || data.previousApplicationYears.length === 0)) {
+            return toast.error('Please select the year(s) you previously applied.');
+          }
+          if (data.source === 'Other' && !data.sourceOther) {
+            return toast.error('Please specify how you heard about us.');
+          }
+          onNext(); 
+        }}>
           {/* Siblings */}
           <div className="space-y-6">
             <div className="flex justify-between items-center border-b border-outline-variant/10 pb-2">
@@ -88,7 +98,7 @@ export default function AdditionalInfoForm({ data, updateData, onNext, onBack, o
                 <p className="text-xs text-on-surface-variant italic opacity-60">No siblings listed.</p>
               )}
               {data.siblings.map((sibling, index) => (
-                <div key={index} className="space-y-4 p-6 bg-surface-container-low rounded-3xl border border-primary/5 shadow-sm relative group">
+                <div key={index} className="space-y-4 p-6 bg-white rounded-3xl border-2 border-outline-variant/40 shadow-sm relative group">
                    <div className="flex justify-between items-center mb-2">
                      <h5 className="text-[11px] font-bold uppercase tracking-widest text-primary/60">Sibling {index + 1}</h5>
                      <button type="button" onClick={() => removeSibling(index)} className="p-2 text-red-400 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100 bg-white rounded-full shadow-sm">
@@ -285,7 +295,7 @@ export default function AdditionalInfoForm({ data, updateData, onNext, onBack, o
                   rows={4}
                   value={data.motivation}
                   onChange={(e) => updateData({ motivation: e.target.value })}
-                  className="w-full bg-surface-container-low border-none rounded-xl p-4 focus:ring-2 focus:ring-primary transition-all text-sm font-medium"
+                  className="w-full bg-white border-2 border-outline-variant/40 rounded-xl p-4 focus:ring-2 focus:ring-primary focus:border-primary transition-all text-sm font-medium shadow-sm placeholder:opacity-40"
                   required
                 />
               </div>
@@ -296,7 +306,7 @@ export default function AdditionalInfoForm({ data, updateData, onNext, onBack, o
                   <button
                     type="button"
                     onClick={() => setActiveDropdown(activeDropdown === 'source' ? null : 'source')}
-                    className={`w-full flex items-center justify-between bg-surface-container-low p-4 rounded-xl border-2 transition-all group ${activeDropdown === 'source' ? 'border-secondary shadow-lg shadow-secondary/10' : 'border-transparent hover:border-secondary/20'}`}
+                    className={`w-full flex items-center justify-between bg-white p-4 rounded-xl border-2 transition-all group ${activeDropdown === 'source' ? 'border-secondary shadow-lg shadow-secondary/10' : 'border-outline-variant/40 hover:border-secondary/40'}`}
                   >
                     <div className="flex items-center gap-3">
                        <MessageCircle size={16} className={`${data.source ? 'text-secondary' : 'text-primary/20'}`} />
@@ -342,7 +352,7 @@ export default function AdditionalInfoForm({ data, updateData, onNext, onBack, o
                       <button
                         type="button"
                         onClick={() => setActiveDropdown(activeDropdown === 'platform' ? null : 'platform')}
-                        className={`w-full flex items-center justify-between bg-surface-container-low p-4 rounded-xl border-2 transition-all group ${activeDropdown === 'platform' ? 'border-secondary shadow-lg shadow-secondary/10' : 'border-transparent hover:border-secondary/20'}`}
+                        className={`w-full flex items-center justify-between bg-white p-4 rounded-xl border-2 transition-all group ${activeDropdown === 'platform' ? 'border-secondary shadow-lg shadow-secondary/10' : 'border-outline-variant/40 hover:border-secondary/40'}`}
                       >
                          <span className={`text-sm font-black tracking-tight ${data.sourceOther ? 'text-primary' : 'text-primary/30'}`}>
                            {data.sourceOther || 'Select Platform'}
@@ -388,7 +398,7 @@ export default function AdditionalInfoForm({ data, updateData, onNext, onBack, o
                         placeholder="E.g. Billboard, Radio..."
                         value={data.sourceOther}
                         onChange={(e) => updateData({ sourceOther: e.target.value })}
-                        className="w-full bg-surface-container-low border-none rounded-xl p-4 focus:ring-2 focus:ring-secondary transition-all text-sm font-medium shadow-inner"
+                        className="w-full bg-white border-2 border-outline-variant/40 rounded-xl p-4 focus:ring-2 focus:ring-secondary focus:border-secondary transition-all text-sm font-medium shadow-sm placeholder:opacity-40"
                       />
                     </motion.div>
                   )}

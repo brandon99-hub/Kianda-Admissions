@@ -42,13 +42,13 @@ export default function ParentInfoForm({ data, updateData, onNext, onBack, onCan
       className="bg-transparent md:bg-surface-container-lowest p-0 md:p-12 rounded-none md:rounded-2xl shadow-none md:shadow-sm border-none md:border md:border-outline-variant/5"
     >
       <div className="relative z-10">
-        <div className="mb-10 flex items-center gap-4">
-          <div className="w-12 h-12 bg-secondary-container rounded-full flex items-center justify-center text-primary">
-            <Home size={24} />
+        <div className="mb-8 md:mb-10 flex items-start md:items-center gap-3 md:gap-4">
+          <div className="w-10 h-10 md:w-12 h-12 bg-secondary-container rounded-full flex items-center justify-center text-primary shrink-0">
+            <Home size={18} className="md:w-6 md:h-6" />
           </div>
           <div>
-            <h3 className="text-2xl font-bold text-primary">Parent / Guardian Information</h3>
-            <p className="text-sm text-on-surface-variant font-medium">Please provide contact and professional details for at least one parent.</p>
+            <h3 className="text-lg md:text-2xl font-bold text-primary leading-tight mb-0.5">Parent / Guardian Information</h3>
+            <p className="text-[11px] md:text-sm text-on-surface-variant font-medium leading-snug">Please provide contact and professional details for at least one parent.</p>
           </div>
         </div>
 
@@ -66,7 +66,7 @@ export default function ParentInfoForm({ data, updateData, onNext, onBack, onCan
                     type={f.key === 'Email' ? 'email' : 'text'}
                     value={(data as any)[`father${f.key}`] || ''}
                     onChange={(e) => updateData({ [`father${f.key}`]: e.target.value })}
-                    className="w-full bg-surface-container-low border-none rounded-xl p-4 focus:ring-2 focus:ring-primary transition-all text-sm font-medium"
+                    className="w-full bg-white border-2 border-outline-variant/40 rounded-xl p-4 focus:ring-2 focus:ring-primary focus:border-primary transition-all text-sm font-medium shadow-sm placeholder:opacity-40"
                     required={isFatherFilled && f.key !== 'Email'}
                   />
                 </div>
@@ -77,15 +77,15 @@ export default function ParentInfoForm({ data, updateData, onNext, onBack, onCan
                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="space-y-2">
                     <label className="block text-[10px] font-bold uppercase tracking-widest text-primary">Name {isFatherFilled && <span className="text-red-500">*</span>}</label>
-                    <input type="text" value={data.fatherAltContactName || ''} onChange={e => updateData({ fatherAltContactName: e.target.value })} required={isFatherFilled} className="w-full bg-surface-container-low border-none rounded-xl p-3 focus:ring-2 focus:ring-primary text-sm font-medium" />
+                    <input type="text" value={data.fatherAltContactName || ''} onChange={e => updateData({ fatherAltContactName: e.target.value })} required={isFatherFilled} className="w-full bg-white border-2 border-outline-variant/40 rounded-xl p-3 focus:ring-2 focus:ring-primary focus:border-primary text-sm font-medium shadow-sm placeholder:opacity-40" />
                   </div>
                   <div className="space-y-2">
                     <label className="block text-[10px] font-bold uppercase tracking-widest text-primary">Phone {isFatherFilled && <span className="text-red-500">*</span>}</label>
-                    <input type="text" value={data.fatherAltContactPhone || ''} onChange={e => updateData({ fatherAltContactPhone: e.target.value })} required={isFatherFilled} className="w-full bg-surface-container-low border-none rounded-xl p-3 focus:ring-2 focus:ring-primary text-sm font-medium" />
+                    <input type="text" value={data.fatherAltContactPhone || ''} onChange={e => updateData({ fatherAltContactPhone: e.target.value })} required={isFatherFilled} className="w-full bg-white border-2 border-outline-variant/40 rounded-xl p-3 focus:ring-2 focus:ring-primary focus:border-primary text-sm font-medium shadow-sm placeholder:opacity-40" />
                   </div>
                   <div className="space-y-2">
                     <label className="block text-[10px] font-bold uppercase tracking-widest text-primary">Relationship {isFatherFilled && <span className="text-red-500">*</span>}</label>
-                    <input type="text" value={data.fatherAltContactRelation || ''} onChange={e => updateData({ fatherAltContactRelation: e.target.value })} required={isFatherFilled} className="w-full bg-surface-container-low border-none rounded-xl p-3 focus:ring-2 focus:ring-primary text-sm font-medium" />
+                    <input type="text" value={data.fatherAltContactRelation || ''} onChange={e => updateData({ fatherAltContactRelation: e.target.value })} required={isFatherFilled} className="w-full bg-white border-2 border-outline-variant/40 rounded-xl p-3 focus:ring-2 focus:ring-primary focus:border-primary text-sm font-medium shadow-sm placeholder:opacity-40" />
                   </div>
                </div>
             </div>
@@ -104,7 +104,7 @@ export default function ParentInfoForm({ data, updateData, onNext, onBack, onCan
                     type={f.key === 'Email' ? 'email' : 'text'}
                     value={(data as any)[`mother${f.key}`] || ''}
                     onChange={(e) => updateData({ [`mother${f.key}`]: e.target.value })}
-                    className="w-full bg-surface-container-low border-none rounded-xl p-4 focus:ring-2 focus:ring-primary transition-all text-sm font-medium"
+                    className="w-full bg-white border-2 border-outline-variant/40 rounded-xl p-4 focus:ring-2 focus:ring-primary focus:border-primary transition-all text-sm font-medium shadow-sm placeholder:opacity-40"
                     required={isMotherFilled && f.key !== 'Email'}
                   />
                 </div>
@@ -115,15 +115,15 @@ export default function ParentInfoForm({ data, updateData, onNext, onBack, onCan
                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="space-y-2">
                     <label className="block text-[10px] font-bold uppercase tracking-widest text-primary">Name {isMotherFilled && <span className="text-red-500">*</span>}</label>
-                    <input type="text" value={data.motherAltContactName || ''} onChange={e => updateData({ motherAltContactName: e.target.value })} required={isMotherFilled} className="w-full bg-surface-container-low border-none rounded-xl p-3 focus:ring-2 focus:ring-primary text-sm font-medium" />
+                    <input type="text" value={data.motherAltContactName || ''} onChange={e => updateData({ motherAltContactName: e.target.value })} required={isMotherFilled} className="w-full bg-white border-2 border-outline-variant/40 rounded-xl p-3 focus:ring-2 focus:ring-primary focus:border-primary text-sm font-medium shadow-sm placeholder:opacity-40" />
                   </div>
                   <div className="space-y-2">
                     <label className="block text-[10px] font-bold uppercase tracking-widest text-primary">Phone {isMotherFilled && <span className="text-red-500">*</span>}</label>
-                    <input type="text" value={data.motherAltContactPhone || ''} onChange={e => updateData({ motherAltContactPhone: e.target.value })} required={isMotherFilled} className="w-full bg-surface-container-low border-none rounded-xl p-3 focus:ring-2 focus:ring-primary text-sm font-medium" />
+                    <input type="text" value={data.motherAltContactPhone || ''} onChange={e => updateData({ motherAltContactPhone: e.target.value })} required={isMotherFilled} className="w-full bg-white border-2 border-outline-variant/40 rounded-xl p-3 focus:ring-2 focus:ring-primary focus:border-primary text-sm font-medium shadow-sm placeholder:opacity-40" />
                   </div>
                   <div className="space-y-2">
                     <label className="block text-[10px] font-bold uppercase tracking-widest text-primary">Relationship {isMotherFilled && <span className="text-red-500">*</span>}</label>
-                    <input type="text" value={data.motherAltContactRelation || ''} onChange={e => updateData({ motherAltContactRelation: e.target.value })} required={isMotherFilled} className="w-full bg-surface-container-low border-none rounded-xl p-3 focus:ring-2 focus:ring-primary text-sm font-medium" />
+                    <input type="text" value={data.motherAltContactRelation || ''} onChange={e => updateData({ motherAltContactRelation: e.target.value })} required={isMotherFilled} className="w-full bg-white border-2 border-outline-variant/40 rounded-xl p-3 focus:ring-2 focus:ring-primary focus:border-primary text-sm font-medium shadow-sm placeholder:opacity-40" />
                   </div>
                </div>
             </div>
@@ -139,7 +139,7 @@ export default function ParentInfoForm({ data, updateData, onNext, onBack, onCan
                   type="text"
                   value={(data as any).residency || ''}
                   onChange={(e) => updateData({ residency: e.target.value })}
-                  className="w-full bg-surface-container-low border-none rounded-xl p-4 focus:ring-2 focus:ring-primary transition-all text-sm font-medium"
+                  className="w-full bg-white border-2 border-outline-variant/40 rounded-xl p-4 focus:ring-2 focus:ring-primary focus:border-primary transition-all text-sm font-medium shadow-sm placeholder:opacity-40"
                   required={false}
                 />
               </div>

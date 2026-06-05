@@ -225,17 +225,16 @@ app.post('/api/applications', async (req, res) => {
     const parentEmails = [parent.fatherEmail, parent.motherEmail].filter(Boolean).join(', ');
 
     if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-      try {
-        await transporter.sendMail({
-          from: `"Kianda Admissions" <${process.env.EMAIL_USER}>`,
-          to: parentEmails,
-          subject: emailContent.subject,
-          html: emailContent.body
-        });
+      transporter.sendMail({
+        from: `"Kianda Admissions" <${process.env.EMAIL_USER}>`,
+        to: parentEmails,
+        subject: emailContent.subject,
+        html: emailContent.body
+      }).then(() => {
         console.log(`[EMAIL SENT] Success email sent to ${parentEmails}`);
-      } catch (e) {
+      }).catch((e) => {
         console.error('[EMAIL ERROR] Failed to send email via nodemailer:', e);
-      }
+      });
     } else {
       console.log(`[MOCK EMAIL] To: ${parentEmails}\nSubject: ${emailContent.subject}\nBody:\n${emailContent.body}`);
     }

@@ -1,6 +1,7 @@
 import { CandidateInfo } from '../types';
 import { Plus, X, Trash2, ListChecks, Calendar, Users, GraduationCap, PlusCircle, Pencil, AlertTriangle, Loader2, ChevronDown, BookCopy, Church, ArrowRight, School, Baby } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import toast from 'react-hot-toast';
 import React, { useState, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import DatePicker from './DatePicker';
@@ -71,10 +72,23 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
     const file = e.target.files?.[0];
     if (!file) return;
     if (!data.fullName) {
-      alert('Please enter the candidate full name first.');
+      toast.error('Please enter the Candidate\'s Full Name first.');
       return;
     }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Photo size exceeds 5MB limit. Please upload a smaller image.');
+      return;
+    }
+
+    // Create Base64 preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      updateData({ passportPhotoPreview: reader.result as string });
+    };
+    reader.readAsDataURL(file);
+
     setIsUploadingPhoto(true);
+    const toastId = toast.loading(`Uploading photo...`);
     try {
       const formData = new FormData();
       formData.append('file', file);
@@ -85,8 +99,10 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
       if (!response.ok) throw new Error();
       const resData = await response.json();
       updateData({ passportPhoto: resData.fileUrl });
+      toast.success('Photo uploaded successfully!', { id: toastId });
     } catch (error) {
       console.error('Failed to upload photo');
+      toast.error('Failed to upload photo. It may be too large for the server.', { id: toastId });
     } finally {
       setIsUploadingPhoto(false);
     }
@@ -128,17 +144,25 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
       className="bg-transparent md:bg-surface-container-lowest p-0 md:p-12 rounded-none md:rounded-2xl shadow-none md:shadow-sm border-none md:border md:border-outline-variant/5"
     >
       <div className="relative z-10" ref={dropdownRef}>
-        <div className="mb-10 flex items-center gap-4">
-          <div className="w-12 h-12 bg-secondary-container rounded-full flex items-center justify-center text-primary">
-            <School size={20} />
+        <div className="mb-8 md:mb-10 flex items-start md:items-center gap-3 md:gap-4">
+          <div className="w-10 h-10 md:w-12 md:h-12 bg-secondary-container rounded-full flex items-center justify-center text-primary shrink-0">
+            <School size={18} className="md:w-5 md:h-5" />
           </div>
           <div>
-            <h3 className="text-2xl font-bold text-primary">Candidate Information</h3>
-            <p className="text-sm text-on-surface-variant font-medium">Please provide accurate details of the prospective student.</p>
+            <h3 className="text-lg md:text-2xl font-bold text-primary leading-tight mb-0.5">Candidate Information</h3>
+            <p className="text-[11px] md:text-sm text-on-surface-variant font-medium leading-snug">Please provide accurate details of the prospective student.</p>
           </div>
         </div>
 
-        <form className="space-y-10" onSubmit={(e) => { e.preventDefault(); onNext(); }}>
+        <form className="space-y-10" onSubmit={(e) => { 
+          e.preventDefault(); 
+          if (!data.grade) return toast.error('Please select a Class / Grade.');
+          if (!data.fullName) return toast.error('Please enter the Full Name.');
+          if (!data.dob) return toast.error('Please select the Date of Birth.');
+          if (!data.birthOrder) return toast.error('Please select the Birth Order.');
+          if (!data.passportPhoto) return toast.error('Please upload a Passport Photo.');
+          onNext(); 
+        }}>
           {/* Personal Details */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
             <div className="space-y-2 relative">
@@ -146,7 +170,7 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
               <button
                 type="button"
                 onClick={() => setActiveDropdown(activeDropdown === 'grade' ? null : 'grade')}
-                className={`w-full flex items-center justify-between bg-surface-container-low p-4 rounded-xl border-2 transition-all group ${activeDropdown === 'grade' ? 'border-secondary shadow-lg shadow-secondary/10' : 'border-transparent hover:border-secondary/20'}`}
+                className={`w-full flex items-center justify-between bg-white p-4 rounded-xl border-2 transition-all group ${activeDropdown === 'grade' ? 'border-secondary shadow-lg shadow-secondary/10' : 'border-outline-variant/40 hover:border-secondary/40'}`}
               >
                 <div className="flex items-center gap-3">
                    <GraduationCap size={16} className={`${data.grade ? 'text-secondary' : 'text-primary/20'}`} />
@@ -188,7 +212,7 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
                 placeholder="First Middle Surname"
                 value={data.fullName}
                 onChange={(e) => updateData({ fullName: e.target.value })}
-                className="w-full bg-surface-container-low border-none rounded-xl p-4 focus:ring-2 focus:ring-secondary transition-all text-sm font-black text-primary tracking-tight placeholder:opacity-20 shadow-inner"
+                className="w-full bg-white border-2 border-outline-variant/40 rounded-xl p-4 focus:ring-2 focus:ring-secondary focus:border-secondary transition-all text-sm font-black text-primary tracking-tight placeholder:opacity-40 shadow-sm"
                 required
               />
             </div>
@@ -207,7 +231,7 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
               <button
                 type="button"
                 onClick={() => setActiveDropdown(activeDropdown === 'birthOrder' ? null : 'birthOrder')}
-                className={`w-full flex items-center justify-between bg-surface-container-low p-4 rounded-xl border-2 transition-all group ${activeDropdown === 'birthOrder' ? 'border-secondary shadow-lg shadow-secondary/10' : 'border-transparent hover:border-secondary/20'}`}
+                className={`w-full flex items-center justify-between bg-white p-4 rounded-xl border-2 transition-all group ${activeDropdown === 'birthOrder' ? 'border-secondary shadow-lg shadow-secondary/10' : 'border-outline-variant/40 hover:border-secondary/40'}`}
               >
                 <div className="flex items-center gap-3">
                    <Baby size={16} className={`${data.birthOrder ? 'text-secondary' : 'text-primary/20'}`} />
@@ -269,7 +293,7 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
               <button
                 type="button"
                 onClick={() => setActiveDropdown(activeDropdown === 'religion' ? null : 'religion')}
-                className={`w-full flex items-center justify-between bg-surface-container-low p-4 rounded-xl border-2 transition-all group ${activeDropdown === 'religion' ? 'border-secondary shadow-lg shadow-secondary/10' : 'border-transparent hover:border-secondary/20'}`}
+                className={`w-full flex items-center justify-between bg-white p-4 rounded-xl border-2 transition-all group ${activeDropdown === 'religion' ? 'border-secondary shadow-lg shadow-secondary/10' : 'border-outline-variant/40 hover:border-secondary/40'}`}
               >
                 <div className="flex items-center gap-3">
                    <BookCopy size={16} className={`${data.religion ? 'text-secondary' : 'text-primary/20'}`} />
@@ -342,7 +366,7 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
                   <button
                     type="button"
                     onClick={() => setActiveDropdown(activeDropdown === 'denomination' ? null : 'denomination')}
-                    className={`w-full flex items-center justify-between bg-surface-container-low p-4 rounded-xl border-2 transition-all group ${activeDropdown === 'denomination' ? 'border-secondary shadow-lg shadow-secondary/10' : 'border-transparent hover:border-secondary/20'}`}
+                    className={`w-full flex items-center justify-between bg-white p-4 rounded-xl border-2 transition-all group ${activeDropdown === 'denomination' ? 'border-secondary shadow-lg shadow-secondary/10' : 'border-outline-variant/40 hover:border-secondary/40'}`}
                   >
                     <div className="flex items-center gap-3">
                        <Church size={16} className={`${data.denomination ? 'text-secondary' : 'text-primary/20'}`} />
@@ -412,7 +436,7 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
                     placeholder="Enter Assessment Number"
                     value={data.assessmentNo || ''}
                     onChange={(e) => updateData({ assessmentNo: e.target.value })}
-                    className="w-full bg-surface-container-low border-none rounded-xl p-4 focus:ring-2 focus:ring-secondary transition-all text-sm font-black text-primary tracking-tight placeholder:opacity-20 shadow-inner"
+                    className="w-full bg-white border-2 border-outline-variant/40 rounded-xl p-4 focus:ring-2 focus:ring-secondary focus:border-secondary transition-all text-sm font-black text-primary tracking-tight placeholder:opacity-40 shadow-sm"
                   />
                 </div>
              )}
@@ -420,10 +444,10 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
              <div className="space-y-2">
                 <label className="block text-[11px] font-bold uppercase tracking-widest text-primary">Passport Photo <span className="text-[9px] font-semibold text-primary/40 normal-case tracking-normal ml-1">(not older than 1 year)</span> <span className="text-red-500">*</span></label>
                 <div className="flex items-center gap-4">
-                  {data.passportPhoto ? (
-                    <img src={data.passportPhoto} alt="Passport" className="w-16 h-16 rounded-lg object-cover border border-outline-variant/20" />
+                  {data.passportPhotoPreview || data.passportPhoto ? (
+                    <img src={data.passportPhotoPreview || data.passportPhoto} alt="Passport" className="w-16 h-16 rounded-lg object-cover border border-outline-variant/40" />
                   ) : (
-                    <div className="w-16 h-16 rounded-lg bg-surface-container-low flex items-center justify-center border border-dashed border-outline-variant/20">
+                    <div className="w-16 h-16 rounded-lg bg-surface-container-low flex items-center justify-center border border-dashed border-outline-variant/40">
                       <Baby size={24} className="text-primary/20" />
                     </div>
                   )}
@@ -486,25 +510,23 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
                               placeholder="Name of School"
                               value={school.name}
                               onChange={(e) => updateSchool(index, 'name', e.target.value)}
-                              className="flex-1 bg-surface-container-low/50 border-none rounded-xl p-3.5 text-sm font-semibold focus:ring-2 focus:ring-primary/20 focus:bg-primary/5 transition-colors placeholder:text-primary/30 text-primary"
+                              className="w-full sm:flex-[2] bg-white border-2 border-outline-variant/40 rounded-xl p-3.5 text-sm font-semibold focus:ring-2 focus:ring-primary/20 focus:bg-primary/5 transition-colors placeholder:text-primary/40 text-primary shadow-sm"
                             />
-                            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                              <select
-                                value={school.type || ''}
-                                onChange={(e) => updateSchool(index, 'type', e.target.value)}
-                                className="w-full sm:w-[160px] bg-surface-container-low/50 border-none rounded-xl p-3.5 text-xs font-semibold focus:ring-2 focus:ring-primary/20 focus:bg-primary/5 transition-colors text-primary cursor-pointer"
-                              >
-                                <option value="" disabled hidden>Stage(s) Attended</option>
-                                {stageOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                              </select>
-                              <input
-                                type="text"
-                                placeholder="Years (e.g. 2020-2022)"
-                                value={school.years}
-                                onChange={(e) => updateSchool(index, 'years', e.target.value)}
-                                className="w-[120px] bg-surface-container-low/50 border-none rounded-xl p-3.5 text-sm font-semibold focus:ring-2 focus:ring-primary/20 focus:bg-primary/5 transition-colors placeholder:text-primary/30 text-primary"
-                              />
-                            </div>
+                            <select
+                              value={school.type || ''}
+                              onChange={(e) => updateSchool(index, 'type', e.target.value)}
+                              className="w-full sm:flex-[1.5] bg-white border-2 border-outline-variant/40 rounded-xl p-3.5 text-xs font-semibold focus:ring-2 focus:ring-primary/20 focus:bg-primary/5 transition-colors text-primary cursor-pointer shadow-sm"
+                            >
+                              <option value="" disabled hidden>Stage(s) Attended</option>
+                              {stageOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                            </select>
+                            <input
+                              type="text"
+                              placeholder="Years (e.g. 2020-2022)"
+                              value={school.years}
+                              onChange={(e) => updateSchool(index, 'years', e.target.value)}
+                              className="w-full sm:flex-[1.5] bg-white border-2 border-outline-variant/40 rounded-xl p-3.5 text-sm font-semibold focus:ring-2 focus:ring-primary/20 focus:bg-primary/5 transition-colors placeholder:text-primary/40 text-primary shadow-sm"
+                            />
                           </div>
                           <button 
                             type="button" 
@@ -535,7 +557,7 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
               placeholder="Allergies, chronic conditions, regular medications..."
               value={data.medicalInfo}
               onChange={(e) => updateData({ medicalInfo: e.target.value })}
-              className="w-full bg-surface-container-low border-none rounded-[24px] p-6 focus:ring-2 focus:ring-secondary transition-all text-sm font-semibold shadow-inner placeholder:opacity-20"
+              className="w-full bg-white border-2 border-outline-variant/40 rounded-[24px] p-6 focus:ring-2 focus:ring-secondary focus:border-secondary transition-all text-sm font-semibold shadow-sm placeholder:opacity-40"
             />
           </div>
 

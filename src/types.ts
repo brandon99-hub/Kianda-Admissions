@@ -16,6 +16,7 @@ export interface CandidateInfo {
   medicalInfo: string;
   assessmentNo?: string;
   passportPhoto?: string;
+  passportPhotoPreview?: string;
   schools: SchoolHistory[];
 }
 
