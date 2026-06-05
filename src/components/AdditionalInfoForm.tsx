@@ -83,7 +83,7 @@ export default function AdditionalInfoForm({ data, updateData, onNext, onBack, o
           {/* Siblings */}
           <div className="space-y-6">
             <div className="flex justify-between items-center border-b border-outline-variant/10 pb-2">
-              <h4 className="text-sm font-extrabold uppercase tracking-[0.3em] text-secondary">Siblings</h4>
+              <h4 className="text-sm font-extrabold uppercase tracking-[0.3em] text-secondary">Connections to Kianda</h4>
               <button 
                 type="button" 
                 onClick={addSibling}
@@ -95,12 +95,14 @@ export default function AdditionalInfoForm({ data, updateData, onNext, onBack, o
             
             <div className="space-y-4">
               {data.siblings.length === 0 && (
-                <p className="text-xs text-on-surface-variant italic opacity-60">No siblings listed.</p>
+                <p className="text-xs text-on-surface-variant italic opacity-60">No connections listed.</p>
               )}
               {data.siblings.map((sibling, index) => (
                 <div key={index} className="space-y-4 p-6 bg-white rounded-3xl border-2 border-outline-variant/40 shadow-sm relative group">
                    <div className="flex justify-between items-center mb-2">
-                     <h5 className="text-[11px] font-bold uppercase tracking-widest text-primary/60">Sibling {index + 1}</h5>
+                     <h5 className="text-[11px] font-bold uppercase tracking-widest text-primary/60">
+                       {sibling.relationship === 'Brother' || sibling.relationship === 'Sister' ? 'Sibling' : 'Connection'} {index + 1}
+                     </h5>
                      <button type="button" onClick={() => removeSibling(index)} className="p-2 text-red-400 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100 bg-white rounded-full shadow-sm">
                        <Trash2 size={14} />
                      </button>
@@ -111,14 +113,14 @@ export default function AdditionalInfoForm({ data, updateData, onNext, onBack, o
                        placeholder="Full Name" 
                        value={sibling.name} 
                        onChange={(e) => updateSibling(index, 'name', e.target.value)} 
-                       className="w-full bg-white border-none rounded-xl p-3.5 text-xs font-bold focus:ring-2 focus:ring-primary/20 placeholder:text-primary/30" 
+                       className="w-full bg-white border-2 border-outline-variant/40 rounded-xl p-3.5 text-xs font-bold focus:ring-2 focus:ring-primary/20 placeholder:text-primary/30" 
                      />
                      
                      <div className="relative">
                         <button
                           type="button"
                           onClick={() => setActiveDropdown(activeDropdown === `sib-${index}-rel` ? null : `sib-${index}-rel`)}
-                          className="w-full bg-white border-none rounded-xl p-3.5 text-xs font-bold flex justify-between items-center focus:ring-2 focus:ring-primary/20"
+                          className="w-full bg-white border-2 border-outline-variant/40 rounded-xl p-3.5 text-xs font-bold flex justify-between items-center focus:ring-2 focus:ring-primary/20"
                         >
                           <span className={sibling.relationship ? 'text-primary' : 'text-primary/30'}>
                             {sibling.relationship || 'Relationship'}
@@ -162,7 +164,7 @@ export default function AdditionalInfoForm({ data, updateData, onNext, onBack, o
                         <button
                           type="button"
                           onClick={() => setActiveDropdown(activeDropdown === `sib-${index}-grade` ? null : `sib-${index}-grade`)}
-                          className="w-full bg-white border-none rounded-xl p-3.5 text-xs font-bold flex justify-between items-center focus:ring-2 focus:ring-primary/20"
+                          className="w-full bg-white border-2 border-outline-variant/40 rounded-xl p-3.5 text-xs font-bold flex justify-between items-center focus:ring-2 focus:ring-primary/20"
                         >
                           <span className={sibling.grade ? 'text-primary' : 'text-primary/30'}>
                             {sibling.grade || 'Class / Grade'}
@@ -194,7 +196,7 @@ export default function AdditionalInfoForm({ data, updateData, onNext, onBack, o
                      
                      <div className="relative">
                         {sibling.relationship === 'Relative' || sibling.relationship === 'Friend' ? (
-                          <div className="w-full bg-white border-none rounded-xl p-3.5 text-xs font-bold text-primary flex justify-between items-center focus:ring-2 focus:ring-primary/20 cursor-default">
+                          <div className="w-full bg-white border-2 border-outline-variant/40 rounded-xl p-3.5 text-xs font-bold text-primary flex justify-between items-center focus:ring-2 focus:ring-primary/20 cursor-default">
                              Kianda School
                           </div>
                         ) : (
@@ -202,7 +204,7 @@ export default function AdditionalInfoForm({ data, updateData, onNext, onBack, o
                             <button
                               type="button"
                               onClick={() => setActiveDropdown(activeDropdown === `sib-${index}-sch` ? null : `sib-${index}-sch`)}
-                              className="w-full bg-white border-none rounded-xl p-3.5 text-xs font-bold flex justify-between items-center focus:ring-2 focus:ring-primary/20"
+                              className="w-full bg-white border-2 border-outline-variant/40 rounded-xl p-3.5 text-xs font-bold flex justify-between items-center focus:ring-2 focus:ring-primary/20"
                             >
                               <span className={sibling.schoolType ? 'text-primary' : 'text-primary/30'}>
                                 {sibling.schoolType || 'Select School'}
@@ -239,7 +241,7 @@ export default function AdditionalInfoForm({ data, updateData, onNext, onBack, o
                           placeholder="School Name" 
                           value={sibling.schoolName || ''} 
                           onChange={(e) => updateSibling(index, 'schoolName', e.target.value)} 
-                          className="w-full bg-white border-none rounded-xl p-3.5 text-xs font-bold focus:ring-2 focus:ring-primary/20 placeholder:text-primary/30" 
+                          className="w-full bg-white border-2 border-outline-variant/40 rounded-xl p-3.5 text-xs font-bold focus:ring-2 focus:ring-primary/20 placeholder:text-primary/30" 
                         />
                      )}
                      
@@ -248,7 +250,7 @@ export default function AdditionalInfoForm({ data, updateData, onNext, onBack, o
                           <button
                             type="button"
                             onClick={() => setActiveDropdown(activeDropdown === `sib-${index}-ord` ? null : `sib-${index}-ord`)}
-                            className="w-full bg-white border-none rounded-xl p-3.5 text-xs font-bold flex justify-between items-center focus:ring-2 focus:ring-primary/20"
+                            className="w-full bg-white border-2 border-outline-variant/40 rounded-xl p-3.5 text-xs font-bold flex justify-between items-center focus:ring-2 focus:ring-primary/20"
                           >
                             <span className={sibling.kiandaOrder ? 'text-primary' : 'text-primary/30'}>
                               {[{label: '1st Born', value: '1st'},{label: '2nd Born', value: '2nd'},{label: '3rd Born', value: '3rd'},{label: '4th Born', value: '4th'},{label: '5th Born', value: '5th'}].find(o => o.value === sibling.kiandaOrder)?.label || 'Order in Kianda'}
