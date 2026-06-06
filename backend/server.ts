@@ -9,6 +9,10 @@ import bcrypt from 'bcrypt';
 import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 import jwt from 'jsonwebtoken';
 
 import { 
@@ -17,7 +21,8 @@ import {
   getInterviewInviteEmail, 
   getAdmissionOfferEmail,
   getWaitlistEmail,
-  getRejectionEmail
+  getRejectionEmail,
+  getAssessmentScheduleEmail
 } from '../src/utils/emailTemplates';
 
 dotenv.config();
@@ -229,7 +234,8 @@ app.post('/api/applications', async (req, res) => {
         from: `"Kianda Admissions" <${process.env.EMAIL_USER}>`,
         to: parentEmails,
         subject: emailContent.subject,
-        html: emailContent.body
+        html: emailContent.body,
+        attachments: [{ filename: 'kianda-school-logo-removebg-preview.png', path: path.resolve(__dirname, '../public/kianda-school-logo-removebg-preview.png'), cid: 'kiandalogo' }]
       }).then(() => {
         console.log(`[EMAIL SENT] Success email sent to ${parentEmails}`);
       }).catch((e) => {
@@ -411,7 +417,8 @@ app.post('/api/admin/applications/status', authenticateAdmin, async (req, res) =
               from: `"Kianda Admissions" <${process.env.EMAIL_USER}>`,
               to: parentEmails,
               subject: emailContent.subject,
-              html: emailContent.body
+              html: emailContent.body,
+              attachments: [{ filename: 'kianda-school-logo-removebg-preview.png', path: path.resolve(__dirname, '../public/kianda-school-logo-removebg-preview.png'), cid: 'kiandalogo' }]
             });
           } catch (e) {
             console.error('[EMAIL ERROR]', e);
@@ -588,14 +595,15 @@ app.post('/api/admin/grades', authenticateAdmin, async (req, res) => {
 
         // 2. Dispatch invitation/update emails
         for (const appOfGrade of targetedApps) {
-          const recipient = appOfGrade.parentDetails.motherEmail || appOfGrade.parentDetails.fatherEmail;
+          const recipient = [appOfGrade.parentDetails.fatherEmail, appOfGrade.parentDetails.motherEmail].filter(Boolean).join(', ');
           if (recipient) {
-            const email = getAssessmentInvitationEmail(appOfGrade.candidate.fullName, dateStr);
+            const email = getAssessmentScheduleEmail(appOfGrade.candidate.fullName, dateStr, location || 'Main Campus');
             transporter.sendMail({
               from: `"Kianda Admissions" <${process.env.EMAIL_USER}>`,
               to: recipient,
               subject: email.subject,
-              html: email.body
+              html: email.body,
+              attachments: [{ filename: 'kianda-school-logo-removebg-preview.png', path: path.resolve(__dirname, '../public/kianda-school-logo-removebg-preview.png'), cid: 'kiandalogo' }]
             }).catch(e => console.error('Failed to send batch invite:', e));
           }
         }
@@ -767,7 +775,8 @@ app.post('/api/admin/send-status-email', authenticateAdmin, async (req, res) => 
         from: `"Kianda Admissions" <${process.env.EMAIL_USER}>`,
         to: email,
         subject: subject,
-        html: content
+        html: content,
+        attachments: [{ filename: 'kianda-school-logo-removebg-preview.png', path: path.resolve(__dirname, '../public/kianda-school-logo-removebg-preview.png'), cid: 'kiandalogo' }]
       });
       console.log(`[EMAIL SENT] Status email sent to ${email}`);
     } else {
@@ -852,7 +861,8 @@ app.post('/api/admin/interviews', authenticateAdmin, async (req, res) => {
             from: `"Kianda Admissions" <${process.env.EMAIL_USER}>`,
             to: parentEmails,
             subject: emailContent.subject,
-            html: emailContent.body
+            html: emailContent.body,
+            attachments: [{ filename: 'kianda-school-logo-removebg-preview.png', path: path.resolve(__dirname, '../public/kianda-school-logo-removebg-preview.png'), cid: 'kiandalogo' }]
           });
         }
       }
@@ -926,7 +936,8 @@ app.post('/api/admin/interviews/outcome', authenticateAdmin, async (req, res) =>
               from: `"Kianda Admissions" <${process.env.EMAIL_USER}>`,
               to: parentEmails,
               subject: emailContent.subject,
-              html: emailContent.body
+              html: emailContent.body,
+              attachments: [{ filename: 'kianda-school-logo-removebg-preview.png', path: path.resolve(__dirname, '../public/kianda-school-logo-removebg-preview.png'), cid: 'kiandalogo' }]
             });
           } catch (e) {
             console.error('[EMAIL ERROR]', e);

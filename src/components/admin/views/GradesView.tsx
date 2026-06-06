@@ -155,7 +155,7 @@ const GradeLogisticsCard = ({ grade, YEAR_OPTIONS, createGradeMutation, setConfi
                value={grade.assessmentDate || ''}
                onChange={(val) => setConfirmNotify({ 
                  open: true, 
-                 data: { id: grade.id, vacantSpots: localData.vacantSpots, assessmentDate: val, academicYear: localData.academicYear, location: localData.location } 
+                 data: { id: grade.id, gradeName: grade.gradeName, vacantSpots: localData.vacantSpots, assessmentDate: val, academicYear: localData.academicYear, location: localData.location } 
                })}
                placeholder="Select Date"
              />

@@ -9,40 +9,54 @@ const getBaseLayout = (subject: string, content: string) => `
     <meta charset="utf-8">
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f7f9; }
-        .container { max-width: 600px; margin: 20px auto; background: #ffffff; border-radius: 12px; overflow: hidden; shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        .header { background-color: #18216d; padding: 30px; text-align: center; border-bottom: 4px solid #ffc425; }
+        .container { max-width: 600px; margin: 20px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .header { background-color: #ffffff; padding: 20px 30px; text-align: center; border-bottom: 4px solid #ffc425; }
         .content { padding: 40px; }
-        .footer { background-color: #f8f9fa; padding: 30px; text-align: center; font-size: 12px; color: #666; border-top: 1px solid #eee; }
+        .footer { background-color: #ffffff; padding: 30px; text-align: left; font-size: 14px; color: #333; border-top: 1px solid #eee; }
         .info-card { background: #f0f4f8; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ffc425; }
         .info-card strong { color: #18216d; }
         .button { display: inline-block; padding: 12px 24px; background-color: #ffc425; color: #18216d; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 20px; }
-        .signature { margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; }
-        .signature p { margin: 2px 0; font-size: 14px; }
         ul { padding-left: 20px; }
         li { margin-bottom: 8px; }
+        @media only screen and (max-width: 480px) {
+            .responsive-table td {
+                display: block !important;
+                width: 100% !important;
+                text-align: left !important;
+            }
+            .logo-cell {
+                margin-bottom: 20px !important;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h2 style="color: #ffffff; margin: 0; font-size: 24px; letter-spacing: 1px;">KIANDA SCHOOL</h2>
-            <p style="color: #ffc425; margin: 5px 0 0 0; font-size: 12px; text-transform: uppercase; letter-spacing: 2px;">Admissions Portal</p>
+            <img src="cid:kiandalogo" alt="Kianda School" style="max-width: 120px; display: block; margin: 0 auto;" />
         </div>
         <div class="content">
             <h3 style="color: #18216d; margin-top: 0; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px;">${subject}</h3>
             ${content}
-            <div class="signature">
-                <p>Yours sincerely,</p>
-                <p><strong>Yvette Odero (Miss)</strong></p>
-                <p>Admissions Secretary</p>
-                <p style="color: #666; font-size: 12px; margin-top: 10px;">Kianda School | Admissions Office</p>
-            </div>
         </div>
         <div class="footer">
-            <p><strong>Kianda School</strong><br>Email: info@kiandaschool.ac.ke | Enquiries: 020 8077381, 0733-846959<br>www.kiandaschool.ac.ke</p>
-            <div style="margin-top: 15px; opacity: 0.6;">
-                &copy; ${new Date().getFullYear()} Kianda School. All rights reserved.
-            </div>
+            <div style="margin-bottom: 15px; color: #333;">--</div>
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" class="responsive-table">
+                <tr>
+                    <td class="logo-cell" width="130" valign="top" style="padding-right: 20px;">
+                        <img src="cid:kiandalogo" alt="Kianda School Logo" style="width: 100%; max-width: 130px; display: block;" />
+                    </td>
+                    <td class="text-cell" valign="top" style="color: #333; font-size: 14px; line-height: 1.6;">
+                        <span style="font-size: 16px;">Yvette Odero</span><br>
+                        <strong>Admissions Office.</strong><br>
+                        <br>
+                        Kianda School<br>
+                        <strong>Email:</strong> <a href="mailto:info@kiandaschool.ac.ke" style="color: #0b5394; text-decoration: none;">info@kiandaschool.ac.ke</a><br>
+                        <strong>Enquiries:</strong> 0716 875838, 0733-846959<br>
+                        <a href="http://www.kiandaschool.ac.ke" style="color: #0b5394; text-decoration: none;">www.kiandaschool.ac.ke</a>
+                    </td>
+                </tr>
+            </table>
         </div>
     </div>
 </body>
@@ -168,3 +182,19 @@ export const getWaitlistEmail = (candidateName: string) => {
   return { subject, body: getBaseLayout(subject, content) };
 };
 
+export const getAssessmentScheduleEmail = (candidateName: string, date: string, location: string) => {
+  const subject = `Assessment Schedule Notification - ${candidateName}`;
+  const content = `
+    <p>Dear Parents,</p>
+    <p>We are writing to inform you of the scheduled assessment details regarding <strong>${candidateName}</strong>'s application to Kianda School.</p>
+    <div class="info-card">
+        <strong>Scheduled Assessment Date:</strong><br>
+        ${date}<br><br>
+        <strong>Venue:</strong><br>
+        ${location}
+    </div>
+    <p>Please ensure that your daughter arrives punctually at <strong>7:45 a.m.</strong> for registration. She will need to bring the following items: 2 pencils, an eraser, coloured pencils (pack of 12, not crayons), a sharpener, and a healthy snack. Parents are required to leave the children and return to pick them up at 11:00 a.m.</p>
+    <p>We look forward to welcoming ${candidateName} to our school.</p>
+  `;
+  return { subject, body: getBaseLayout(subject, content) };
+};
