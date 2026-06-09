@@ -23,7 +23,12 @@ export default function AuthenticatedImage({ src, alt, className }: Props) {
     let objectUrl: string | null = null;
     const token = getToken();
 
-    fetch(src, {
+    let fetchUrl = src;
+    if (fetchUrl.startsWith('/uploads/')) {
+      fetchUrl = `/api${fetchUrl}`;
+    }
+
+    fetch(fetchUrl, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
       .then((res) => {

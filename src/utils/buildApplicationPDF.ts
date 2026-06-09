@@ -24,8 +24,13 @@ async function getImageBase64(url: string): Promise<string> {
 
   // Case 2 — server URL, inject the admin token
   try {
+    let fetchUrl = url;
+    if (fetchUrl.startsWith('/uploads/')) {
+      fetchUrl = `/api${fetchUrl}`;
+    }
+
     const token = getToken();
-    const response = await fetch(url, {
+    const response = await fetch(fetchUrl, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
     if (!response.ok) return '';

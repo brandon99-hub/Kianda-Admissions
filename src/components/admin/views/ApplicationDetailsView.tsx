@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { ArrowLeft, User, MapPin, Phone, Mail, Hash, BookOpen, Clock, HeartPulse, GraduationCap, Download, FileText, CheckCircle, Users, X, Loader2 } from 'lucide-react';
-import { authFetch } from '../../../utils/auth';
+import { authFetch, getToken } from '../../../utils/auth';
 import { motion, AnimatePresence } from 'motion/react';
+
 import toast from 'react-hot-toast';
 import { buildApplicationPDF } from '../../../utils/buildApplicationPDF';
 import AuthenticatedImage from '../AuthenticatedImage';
@@ -70,7 +71,49 @@ export default function ApplicationDetailsView({ app, onBack, onUpdate, showResu
     }
   };
 
+  const handleSecureDownload = async (url: string, documentName: string) => {
+    if (!url) return;
+    const toastId = toast.loading(`Downloading ${documentName}...`);
+    try {
+      // Route through /api/ to bypass NGINX static serving
+      let fetchUrl = url;
+      if (fetchUrl.startsWith('/uploads/')) {
+        fetchUrl = `/api${fetchUrl}`;
+      }
+
+      const token = getToken();
+      const res = await fetch(fetchUrl, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+
+      if (!res.ok) throw new Error('Download failed');
+
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      
+      // Programmatic click to trigger browser download
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      
+      // Extract file extension from URL if possible, otherwise default to .pdf
+      const extMatch = url.match(/\.([^.]+)$/);
+      const ext = extMatch ? extMatch[1] : 'pdf';
+      a.download = `${candidate.fullName.replace(/\s+/g, '_')}_${documentName.replace(/\s+/g, '_')}.${ext}`;
+      
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(objectUrl);
+      
+      toast.success('Download complete', { id: toastId });
+    } catch (error) {
+      console.error('Secure Download Error:', error);
+      toast.error('Failed to download document', { id: toastId });
+    }
+  };
+
   return (
+
     <motion.div
       initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
@@ -435,13 +478,10 @@ export default function ApplicationDetailsView({ app, onBack, onUpdate, showResu
                
                <div className="space-y-3 relative z-10">
                  {documents.length > 0 ? documents.map((doc: any, i: number) => (
-                   <a 
+                   <button 
                      key={i} 
-                     href={doc.fileUrl || '#'} 
-                     download 
-                     target="_blank"
-                     rel="noreferrer"
-                     className="flex items-center justify-between p-4 bg-surface-container-low rounded-2xl hover:bg-primary/5 hover:border-primary/20 border border-transparent transition-all group"
+                     onClick={() => handleSecureDownload(doc.fileUrl, doc.documentType || 'Document')}
+                     className="w-full flex items-center justify-between p-4 bg-surface-container-low rounded-2xl hover:bg-primary/5 hover:border-primary/20 border border-transparent transition-all group cursor-pointer text-left"
                    >
                      <div className="flex items-center gap-3 truncate">
                        <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center flex-shrink-0 text-primary shadow-sm">
@@ -450,8 +490,9 @@ export default function ApplicationDetailsView({ app, onBack, onUpdate, showResu
                        <span className="text-xs font-bold text-primary truncate">{doc.documentType || 'Uploaded File'}</span>
                      </div>
                      <Download size={16} className="text-secondary opacity-0 group-hover:opacity-100 group-hover:-translate-y-0.5 transition-all" />
-                   </a>
+                   </button>
                  )) : (
+
                    <p className="text-xs font-medium italic text-on-surface-variant/50 p-4 text-center bg-surface-container-lowest rounded-2xl border border-dashed border-outline-variant/20">No documents found.</p>
                  )}
                </div>

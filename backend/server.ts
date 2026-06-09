@@ -72,7 +72,11 @@ const authenticateAdmin = (req: any, res: any, next: any) => {
 };
 
 // Secure uploads - only admins can view documents
+// Mount on /api/uploads so NGINX proxies it directly
+app.use('/api/uploads', authenticateAdmin, express.static(path.join(process.cwd(), 'uploads')));
+// Keep legacy route for fallback if needed
 app.use('/uploads', authenticateAdmin, express.static(path.join(process.cwd(), 'uploads')));
+
 
 // Multer Config
 const storage = multer.diskStorage({
@@ -98,8 +102,9 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
   }
   const candidateName = req.query.candidateName ? String(req.query.candidateName).replace(/[^a-z0-9 ]/gi, '_') : 'Unknown';
   // Return the URL path
-  const fileUrl = `/uploads/${candidateName}/${req.file.filename}`;
+  const fileUrl = `/api/uploads/${candidateName}/${req.file.filename}`;
   res.json({ fileUrl });
+
 });
 
 // Nodemailer Config

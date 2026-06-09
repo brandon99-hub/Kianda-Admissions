@@ -59,7 +59,48 @@ export default function ProcessDocumentsView() {
     onError: () => toast.error('Failed to delete document')
   });
 
+  const handleSecureView = async (url: string) => {
+    if (!url) return;
+    const toastId = toast.loading('Opening document...');
+    try {
+      let fetchUrl = url;
+      if (fetchUrl.startsWith('/uploads/')) {
+        fetchUrl = `/api${fetchUrl}`;
+      }
+      const token = getToken();
+      const res = await fetch(fetchUrl, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      if (!res.ok) throw new Error('Failed to load document');
+      
+      // Ensure the blob is treated as PDF (most process docs are PDFs)
+      // so the browser opens its PDF viewer instead of just downloading
+      let blob = await res.blob();
+      if (url.toLowerCase().endsWith('.pdf')) {
+        blob = new Blob([blob], { type: 'application/pdf' });
+      }
+
+      const objectUrl = URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.target = '_blank';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      
+      toast.success('Document opened', { id: toastId });
+      
+      // Give the new tab time to load the Blob before revoking
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 10000);
+    } catch (error) {
+      console.error('Secure View Error:', error);
+      toast.error('Failed to open document', { id: toastId });
+    }
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+
     const file = e.target.files?.[0];
     if (!file) return;
     setIsUploading(true);
@@ -128,15 +169,14 @@ export default function ProcessDocumentsView() {
              </span>
              
              <div className="flex gap-3">
-                <a 
-                  href={doc.fileUrl} 
-                  target="_blank" 
-                  rel="noreferrer"
+                <button 
+                  onClick={() => handleSecureView(doc.fileUrl)}
                   className="flex-1 flex justify-center items-center gap-2 py-3 bg-primary/5 text-primary rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-colors"
                 >
                   <Link size={14} /> View
-                </a>
+                </button>
                 <button 
+
                   onClick={() => setDocToDelete(doc.id)}
                   className="w-12 h-12 flex items-center justify-center rounded-xl bg-red-50 text-red-400 hover:bg-red-500 hover:text-white transition-colors"
                 >
