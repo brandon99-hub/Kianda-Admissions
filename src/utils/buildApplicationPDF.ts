@@ -1,4 +1,5 @@
 import jsPDF from 'jspdf';
+import { getToken } from './auth';
 
 // ---------------------------------------------------------------------------
 // Helper utilities
@@ -6,21 +7,38 @@ import jsPDF from 'jspdf';
 
 let cachedLogoBase64: string | null = null;
 
+/**
+ * Converts an image URL to a base64 data URL.
+ *
+ * Handles two cases:
+ *  1. Already a base64 data URL (e.g. passportPhotoPreview from parent preview) →
+ *     returned immediately with no network request.
+ *  2. A server URL (e.g. /uploads/...) → fetched with the admin Bearer token
+ *     so the protected route returns 200 instead of 401.
+ */
 async function getImageBase64(url: string): Promise<string> {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext('2d')!;
-      ctx.drawImage(img, 0, 0);
-      resolve(canvas.toDataURL('image/jpeg'));
-    };
-    img.onerror = () => resolve(''); 
-    img.src = url;
-  });
+  if (!url) return '';
+
+  // Case 1 — already base64, no fetch needed
+  if (url.startsWith('data:')) return url;
+
+  // Case 2 — server URL, inject the admin token
+  try {
+    const token = getToken();
+    const response = await fetch(url, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!response.ok) return '';
+    const blob = await response.blob();
+    return new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => resolve('');
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return '';
+  }
 }
 
 async function getLogoBase64(): Promise<string> {

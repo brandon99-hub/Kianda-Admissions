@@ -13,7 +13,10 @@ interface Props {
 export default function ApplicationPreview({ data, onClose, onEdit }: Props) {
   const handleDownload = async () => {
     const appData = {
-      candidate: { ...data.candidate, passportPhotoUrl: data.candidate.passportPhoto },
+      // Use the in-memory base64 preview for the PDF — the server URL at
+      // /uploads/... requires an admin token which the parent doesn't have.
+      // The base64 is in RAM from when they uploaded the photo moments ago.
+      candidate: { ...data.candidate, passportPhotoUrl: data.candidate.passportPhotoPreview || data.candidate.passportPhoto },
       parentDetails: data.parent,
       additionalInfo: data.additional,
       schoolsAttended: data.candidate.schools.map((s: any) => ({ schoolName: s.name, schoolType: s.type, yearsRange: s.years })),

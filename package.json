@@ -11,7 +11,8 @@
     "lint": "tsc --noEmit",
     "server": "tsx backend/server.ts",
     "db:generate": "drizzle-kit generate",
-    "db:push": "drizzle-kit push"
+    "db:push": "drizzle-kit push",
+    "db:clear": "tsx backend/scripts/clear-data.ts"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",

@@ -73,3 +73,4 @@ ALTER TABLE additional_info DROP COLUMN previous_application_years;
 
 -- Step 3: Re-add it with the correct type
 ALTER TABLE additional_info ADD COLUMN previous_application_years jsonb;
+npm run db:clear "ghosts"

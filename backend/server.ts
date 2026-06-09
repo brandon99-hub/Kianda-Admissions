@@ -49,7 +49,8 @@ app.use(cors({
   },
   credentials: true
 }));
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+
 
 // --- Security Middleware ---
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-for-dev-only';
@@ -87,7 +88,8 @@ const storage = multer.diskStorage({
     cb(null, `${Date.now()}-${file.originalname}`);
   }
 });
-const upload = multer({ storage });
+const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
+
 
 // Document Upload Route
 app.post('/api/upload', upload.single('file'), (req, res) => {

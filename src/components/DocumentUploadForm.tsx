@@ -28,10 +28,11 @@ export default function DocumentUploadForm({ onNext, onBack, onCancel, consentGi
     if (!file) return;
     
     // Quick validation
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('File size exceeds 5MB limit.');
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('File size exceeds 10MB limit.');
       return;
     }
+
 
     setUploadingState(prev => ({ ...prev, [id]: true }));
     const toastId = toast.loading(`Uploading ${file.name}...`);
@@ -144,7 +145,8 @@ export default function DocumentUploadForm({ onNext, onBack, onCancel, consentGi
         <div className="bg-primary/5 p-6 rounded-2xl mt-8 flex gap-4 items-start border border-primary/5">
           <div className="text-primary mt-1"><Upload size={18} /></div>
           <p className="text-[10px] text-on-surface-variant leading-relaxed font-medium uppercase tracking-tight">
-            Accepted formats: **PDF, JPG, PNG**. Max file size: **5MB**. Please ensure all documents are legible and officially stamped where required.
+            Accepted formats: **PDF, JPG, PNG**. Max file size: **10MB**. Please ensure all documents are legible and officially stamped where required.
+
           </p>
         </div>
 

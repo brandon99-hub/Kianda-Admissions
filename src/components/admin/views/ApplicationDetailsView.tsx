@@ -4,6 +4,8 @@ import { authFetch } from '../../../utils/auth';
 import { motion, AnimatePresence } from 'motion/react';
 import toast from 'react-hot-toast';
 import { buildApplicationPDF } from '../../../utils/buildApplicationPDF';
+import AuthenticatedImage from '../AuthenticatedImage';
+
 
 interface Props {
   app: any;
@@ -361,11 +363,16 @@ export default function ApplicationDetailsView({ app, onBack, onUpdate, showResu
               <div className="bg-white rounded-[32px] p-6 shadow-sm border border-outline-variant/10 flex flex-col items-center justify-center">
                  <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/40 mb-4 self-start">Passport Photo</h3>
                  <div className="w-40 h-40 rounded-3xl overflow-hidden border-4 border-white shadow-xl shadow-primary/10 relative group bg-surface-variant/20">
-                    <img src={candidate.passportPhotoUrl} alt="Passport Photo" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                    <AuthenticatedImage
+                      src={candidate.passportPhotoUrl}
+                      alt="Passport Photo"
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    />
                     <div className="absolute inset-0 ring-1 ring-inset ring-black/10 rounded-3xl" />
                  </div>
               </div>
             )}
+
 
             {/* Quick Actions at Top */}
             <div className="bg-white rounded-[32px] p-8 shadow-sm border border-outline-variant/10">

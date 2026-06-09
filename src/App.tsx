@@ -136,10 +136,19 @@ export default function App() {
 
   const submissionMutation = useMutation({
     mutationFn: async (payload: ApplicationState) => {
+      // Strip the local base64 preview — the photo is already on the server
+      // from the /api/upload call. Sending it again causes a 413 Payload Too Large.
+      const cleanPayload = {
+        ...payload,
+        candidate: {
+          ...payload.candidate,
+          passportPhotoPreview: undefined,
+        },
+      };
       const response = await fetch('/api/applications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(cleanPayload),
       });
       if (!response.ok) {
         let errStr = 'Submission failed';
