@@ -68,9 +68,6 @@ The system adheres to **Institutional Premium** aesthetics:
 *   **Visual Hierarchy**: Use of Kianda Navy (#18216D) for gravity and Kianda Gold (#FFC425) for action signals.
 *   **Animated Transitions**: Micro-animations via `motion` to provide a "living" interface feel.
 
----
-*Built for Kianda School Admissions Office.*
-
-node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
-
-New-NetFirewallRule -DisplayName "Admissions System Port 8086" -Direction Inbound -LocalPort 8086 -Protocol TCP -Action Allow
+ALTER TABLE additional_info 
+ALTER COLUMN previous_application_years TYPE jsonb 
+USING previous_application_years::jsonb;
