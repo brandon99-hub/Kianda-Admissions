@@ -393,9 +393,10 @@ app.post('/api/admin/applications/status', authenticateAdmin, async (req, res) =
         });
 
         if (grade && grade.vacantSpots > 0) {
-          const deadline = new Date();
-          deadline.setDate(deadline.getDate() + 14);
-          const deadlineStr = deadline.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+          let deadlineStr = 'To be communicated';
+          if (grade.paymentDeadlineDate) {
+            deadlineStr = new Date(grade.paymentDeadlineDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+          }
           
           emailContent = getAdmissionOfferEmail(appData.candidate.fullName, appData.candidate.grade, appData.academicYear || new Date().getFullYear(), deadlineStr);
           // 1. Double check status matches
@@ -546,13 +547,15 @@ app.get('/api/admin/grades', authenticateAdmin, async (req, res) => {
 // CREATE/UPDATE Grade
 app.post('/api/admin/grades', authenticateAdmin, async (req, res) => {
   try {
-    const { id, gradeName, vacantSpots, assessmentDate, academicYear, location, isAcceptingApplications } = req.body;
+    const { id, gradeName, vacantSpots, assessmentDate, paymentDeadlineDate, academicYear, location, isAcceptingApplications } = req.body;
     const year = academicYear || new Date().getFullYear();
     const finalDate = assessmentDate ? new Date(assessmentDate) : null;
+    const finalDeadlineDate = paymentDeadlineDate ? new Date(paymentDeadlineDate) : null;
     
     const payload: any = {
       vacantSpots,
       assessmentDate: finalDate,
+      paymentDeadlineDate: finalDeadlineDate,
       academicYear: year,
       location
     };
@@ -916,9 +919,10 @@ app.post('/api/admin/interviews/outcome', authenticateAdmin, async (req, res) =>
         });
 
         if (grade && grade.vacantSpots > 0) {
-          const deadline = new Date();
-          deadline.setDate(deadline.getDate() + 14);
-          const deadlineStr = deadline.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+          let deadlineStr = 'To be communicated';
+          if (grade.paymentDeadlineDate) {
+            deadlineStr = new Date(grade.paymentDeadlineDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+          }
 
           emailContent = getAdmissionOfferEmail(appData.candidate.fullName, appData.candidate.grade, appData.academicYear || new Date().getFullYear(), deadlineStr);
           // 2. Decrement vacancies

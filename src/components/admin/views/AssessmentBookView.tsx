@@ -249,7 +249,10 @@ export default function AssessmentBookView({ initialGradeId }: Props) {
             </thead>
             <tbody className="divide-y divide-outline-variant/5">
               {gradeApps.map(app => {
+                 const hasAnyResult = gradeAssessments.some(ass => results.find((r: any) => r.applicationId === app.id && r.assessmentId === ass.id));
                  const isPassed = gradeAssessments.every(ass => results.find((r: any) => r.applicationId === app.id && r.assessmentId === ass.id)?.passed);
+                 const isPending = gradeAssessments.length === 0 || !hasAnyResult;
+
 
                  return (
                    <tr key={app.id} className="hover:bg-primary/[0.02] transition-colors group">
@@ -283,11 +286,13 @@ export default function AssessmentBookView({ initialGradeId }: Props) {
                      </td>
                      <td className="px-8 py-6">
                         <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${
+                          isPending ? 'bg-yellow-50 text-yellow-600 border-yellow-100' :
                           isPassed
                           ? 'bg-green-50 text-green-600 border-green-100' 
                           : 'bg-red-50 text-red-500 border-red-100'
                         }`}>
-                           {isPassed ? <><CheckCircle2 size={12} /> Passed</> : 
+                           {isPending ? <><AlertCircle size={12} /> Pending</> : 
+                            isPassed ? <><CheckCircle2 size={12} /> Passed</> : 
                             <><XCircle size={12} /> Failed</>}
                         </div>
                      </td>

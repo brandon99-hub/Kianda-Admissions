@@ -164,7 +164,7 @@ export const getAdmissionOfferEmail = (candidateName: string, grade: string, aca
         <strong>Account Name:</strong> ${candidateName} – ${grade}<br>
         <span style="font-size: 12px; color: #666;">(e.g., Account: Ann Susan Brown – Grade 3)</span>
     </div>
-    <p>Upon receipt of your confirmation and payment, your daughter will be issued with an admission number. The school fee structure and further admission details will then be shared with you.</p>
+    <p>Upon receipt of your confirmation and payment, you will receive a receipt from the accounts office. The school fee structure and further admission details will then be shared with you via email.</p>
     <p>Thank you for choosing Kianda School. We look forward to welcoming your daughter to our community.</p>
   `;
   return { subject, body: getBaseLayout(subject, content) };

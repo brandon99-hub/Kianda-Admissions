@@ -102,6 +102,7 @@ export const gradeManagement = pgTable('grade_management', {
   gradeName: varchar('grade_name', { length: 50 }).notNull(),
   vacantSpots: integer('vacant_spots').default(0),
   assessmentDate: timestamp('assessment_date'),
+  paymentDeadlineDate: timestamp('payment_deadline_date'),
   location: varchar('location', { length: 255 }),
   academicYear: integer('academic_year').default(new Date().getFullYear()),
   isAcceptingApplications: boolean('is_accepting_applications').default(true).notNull(),

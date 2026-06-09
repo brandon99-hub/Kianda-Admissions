@@ -39,7 +39,8 @@ const GradeLogisticsCard = ({ grade, YEAR_OPTIONS, createGradeMutation, setConfi
   const [localData, setLocalData] = React.useState({
     vacantSpots: grade.vacantSpots,
     location: grade.location || '',
-    academicYear: grade.academicYear
+    academicYear: grade.academicYear,
+    paymentDeadlineDate: grade.paymentDeadlineDate || ''
   });
   
   const [syncStatus, setSyncStatus] = React.useState<'idle' | 'syncing' | 'saved' | 'error'>('idle');
@@ -64,10 +65,11 @@ const GradeLogisticsCard = ({ grade, YEAR_OPTIONS, createGradeMutation, setConfi
       setLocalData({
         vacantSpots: grade.vacantSpots,
         location: grade.location || '',
-        academicYear: grade.academicYear
+        academicYear: grade.academicYear,
+        paymentDeadlineDate: grade.paymentDeadlineDate || ''
       });
     }
-  }, [grade.vacantSpots, grade.location, grade.academicYear]);
+  }, [grade.vacantSpots, grade.location, grade.academicYear, grade.paymentDeadlineDate]);
 
   const triggerSave = (data: any, immediate = false) => {
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -155,9 +157,21 @@ const GradeLogisticsCard = ({ grade, YEAR_OPTIONS, createGradeMutation, setConfi
                value={grade.assessmentDate || ''}
                onChange={(val) => setConfirmNotify({ 
                  open: true, 
-                 data: { id: grade.id, gradeName: grade.gradeName, vacantSpots: localData.vacantSpots, assessmentDate: val, academicYear: localData.academicYear, location: localData.location } 
+                 data: { id: grade.id, gradeName: grade.gradeName, vacantSpots: localData.vacantSpots, assessmentDate: val, academicYear: localData.academicYear, location: localData.location, paymentDeadlineDate: localData.paymentDeadlineDate } 
                })}
                placeholder="Select Date"
+             />
+          </div>
+
+          <div className="group/field">
+             <DatePicker 
+               label="Payment Deadline Date"
+               value={localData.paymentDeadlineDate}
+               onChange={(val) => {
+                 setLocalData(prev => ({ ...prev, paymentDeadlineDate: val }));
+                 triggerSave({ ...localData, paymentDeadlineDate: val });
+               }}
+               placeholder="Select Deadline Date"
              />
           </div>
 
@@ -257,6 +271,7 @@ export default function GradesView({ onGoToAssessments }: Props) {
     gradeName: 'Grade 1', 
     vacantSpots: 0, 
     assessmentDate: '', 
+    paymentDeadlineDate: '',
     academicYear: YEAR_OPTIONS[0],
     location: 'Lower Primary building'
   });
@@ -283,6 +298,7 @@ export default function GradesView({ onGoToAssessments }: Props) {
           gradeName: 'Grade 1', 
           vacantSpots: 0, 
           assessmentDate: '', 
+          paymentDeadlineDate: '',
           academicYear: YEAR_OPTIONS[0],
           location: 'Lower Primary building'
         });
@@ -583,6 +599,20 @@ export default function GradesView({ onGoToAssessments }: Props) {
                           type="date" disabled={isSubmitting}
                           value={newGrade.assessmentDate}
                           onChange={e => setNewGrade({...newGrade, assessmentDate: e.target.value})}
+                          className="w-full bg-surface-container-low p-5 rounded-3xl border-none font-black text-primary focus:ring-4 focus:ring-primary/5 transition-all disabled:opacity-50 cursor-pointer"
+                        />
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-6 mt-6">
+                    <div className="space-y-3">
+                      <span className="block text-[10px] font-black uppercase tracking-[0.4em] text-primary/40 ml-1">Payment Deadline</span>
+                      <label className="block w-full cursor-pointer">
+                        <input 
+                          type="date" disabled={isSubmitting}
+                          value={newGrade.paymentDeadlineDate}
+                          onChange={e => setNewGrade({...newGrade, paymentDeadlineDate: e.target.value})}
                           className="w-full bg-surface-container-low p-5 rounded-3xl border-none font-black text-primary focus:ring-4 focus:ring-primary/5 transition-all disabled:opacity-50 cursor-pointer"
                         />
                       </label>

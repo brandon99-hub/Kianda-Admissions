@@ -68,9 +68,4 @@ The system adheres to **Institutional Premium** aesthetics:
 *   **Visual Hierarchy**: Use of Kianda Navy (#18216D) for gravity and Kianda Gold (#FFC425) for action signals.
 *   **Animated Transitions**: Micro-animations via `motion` to provide a "living" interface feel.
 
--- Step 2: Drop the wrongly-typed column
-ALTER TABLE additional_info DROP COLUMN previous_application_years;
-
--- Step 3: Re-add it with the correct type
-ALTER TABLE additional_info ADD COLUMN previous_application_years jsonb;
 npm run db:clear "ghosts"

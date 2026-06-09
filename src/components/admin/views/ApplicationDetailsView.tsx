@@ -17,6 +17,7 @@ interface Props {
 
 export default function ApplicationDetailsView({ app, onBack, onUpdate, showResults }: Props) {
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+  const [isAcceptModalOpen, setIsAcceptModalOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -47,6 +48,7 @@ export default function ApplicationDetailsView({ app, onBack, onUpdate, showResu
       setCurrentAppStatus(status);
       toast.success(status === 'rejected' ? 'Application formally rejected.' : 'Application accepted & emails sent!', { id: toastId });
       setIsRejectModalOpen(false);
+      setIsAcceptModalOpen(false);
       setRejectReason('');
       if (onUpdate) onUpdate();
     } catch(e) {
@@ -441,7 +443,7 @@ export default function ApplicationDetailsView({ app, onBack, onUpdate, showResu
                        <X size={14} strokeWidth={3} /> Rejected Candidate
                      </div>
                       <button 
-                         onClick={() => handleUpdateStatus('accepted')} 
+                         onClick={() => setIsAcceptModalOpen(true)} 
                          disabled={isProcessing}
                          className="w-full py-4 text-xs font-bold bg-green-50 text-green-600 rounded-xl hover:bg-green-100 transition-colors flex items-center justify-center gap-2 border border-green-100/50"
                        >
@@ -451,7 +453,7 @@ export default function ApplicationDetailsView({ app, onBack, onUpdate, showResu
                  ) : (
                    <>
                      <button 
-                        onClick={() => handleUpdateStatus('accepted')} 
+                        onClick={() => setIsAcceptModalOpen(true)} 
                         disabled={isProcessing}
                         className="w-full py-4 text-xs font-bold bg-green-50 text-green-600 rounded-xl hover:bg-green-100 transition-colors flex items-center justify-center gap-2 border border-green-100/50"
                       >
@@ -535,6 +537,42 @@ export default function ApplicationDetailsView({ app, onBack, onUpdate, showResu
 
          </div>
       </div>
+
+      {/* Acceptance Modal Overlay */}
+      <AnimatePresence>
+        {isAcceptModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-primary/40 backdrop-blur-sm" onClick={() => !isProcessing && setIsAcceptModalOpen(false)} />
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-white max-w-lg w-full rounded-[32px] p-8 relative z-10 shadow-2xl border border-outline-variant/10">
+              <button disabled={isProcessing} onClick={() => setIsAcceptModalOpen(false)} className="absolute top-6 right-6 p-2 rounded-full hover:bg-primary/5 text-primary/40 hover:text-primary transition-colors disabled:opacity-50">
+                <X size={20} />
+              </button>
+              
+              <div className="mb-6 pr-8 text-center">
+                 <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center text-green-500 mx-auto mb-6">
+                    <CheckCircle size={28} />
+                 </div>
+                 <h3 className="text-2xl font-black text-primary font-headline mb-2">Accept Application</h3>
+                 <p className="text-sm font-medium text-on-surface-variant/70 leading-relaxed">Are you sure you want to officially admit <span className="font-bold text-primary">{candidate.fullName}</span>? This action will decrease the vacant spots for {candidate.grade} by 1 and dispatch the official admission offer email to the parents.</p>
+              </div>
+
+              <div className="flex gap-4">
+                 <button disabled={isProcessing} onClick={() => setIsAcceptModalOpen(false)} className="flex-1 py-4 text-[11px] font-black uppercase tracking-widest text-primary/60 hover:bg-primary/5 rounded-xl disabled:opacity-50 transition-colors">Cancel</button>
+                 <button 
+                  disabled={isProcessing} 
+                  onClick={() => {
+                    setIsAcceptModalOpen(false);
+                    handleUpdateStatus('accepted');
+                  }} 
+                  className="flex-[2] py-4 bg-green-500 text-white shadow-lg shadow-green-500/20 text-[11px] font-black uppercase tracking-widest rounded-xl hover:bg-green-600 disabled:opacity-50 disabled:shadow-none transition-all flex justify-center items-center gap-2"
+                 >
+                   {isProcessing ? <><Loader2 size={14} className="animate-spin" /> Processing</> : 'Confirm & Send Email'}
+                 </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Rejection Modal Overlay */}
       <AnimatePresence>
