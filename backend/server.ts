@@ -28,7 +28,7 @@ import {
 dotenv.config();
 
 const app = express();
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 8095;
 
 const allowedOrigins = [
   'http://localhost:3001',
@@ -968,7 +968,15 @@ app.post('/api/admin/interviews/outcome', authenticateAdmin, async (req, res) =>
   }
 });
 
+// Serve compiled React frontend
+app.use(express.static(path.join(__dirname, '../dist')));
+
+// React Router catch-all — must be AFTER all API routes
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../dist/index.html'));
+});
+
 app.listen(port, () => {
-  console.log(`Backend running at http://localhost:${port}`);
+  console.log(`Server running at http://localhost:${port}`);
 });
 
