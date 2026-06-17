@@ -15,10 +15,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 import jwt from 'jsonwebtoken';
 
-import { 
-  getSuccessEmail, 
-  getAssessmentInvitationEmail, 
-  getInterviewInviteEmail, 
+import {
+  getSuccessEmail,
+  getAssessmentInvitationEmail,
+  getInterviewInviteEmail,
   getAdmissionOfferEmail,
   getWaitlistEmail,
   getRejectionEmail,
@@ -33,7 +33,9 @@ const port = process.env.PORT || 5000;
 const allowedOrigins = [
   'http://localhost:3001',
   'http://127.0.0.1:3001',
-  'http://192.168.0.100:8086'
+  'http://192.168.0.100:8094',
+  'https://kiandaadmissions.kiandaschool.ac.ke:8094',
+  'http://kiandaadmissions.kiandaschool.ac.ke:8094',
 ];
 if (process.env.FRONTEND_URL) {
   allowedOrigins.push(process.env.FRONTEND_URL);
@@ -193,7 +195,7 @@ app.post('/api/applications', async (req, res) => {
           schoolName: s.name,
           yearsRange: s.years
         })).filter((s: any) => s.schoolName);
-        
+
         if (schoolsToInsert.length > 0) {
           await tx.insert(schema.schoolsAttended).values(schoolsToInsert);
         }
@@ -223,12 +225,12 @@ app.post('/api/applications', async (req, res) => {
         if (documents.letter) docsToInsert.push({ applicationId: newApp.id, documentType: 'Application Letter', fileUrl: documents.letter });
         if (documents.birthCert) docsToInsert.push({ applicationId: newApp.id, documentType: "Candidate's Birth Certificate", fileUrl: documents.birthCert });
         if (documents.report) docsToInsert.push({ applicationId: newApp.id, documentType: 'Latest School Report', fileUrl: documents.report });
-        
+
         if (docsToInsert.length > 0) {
           await tx.insert(schema.documents).values(docsToInsert);
         }
       }
-      
+
       return newApp.id;
     });
 
@@ -254,8 +256,8 @@ app.post('/api/applications', async (req, res) => {
 
     res.status(201).json({ success: true, applicationId: newAppId });
   } catch (error) {
-    res.status(500).json({ 
-      error: 'Internal server error', 
+    res.status(500).json({
+      error: 'Internal server error',
       details: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined
     });
@@ -268,7 +270,7 @@ app.post('/api/applications', async (req, res) => {
 app.post('/api/admin/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    
+
     const admin = await db.query.adminUsers.findFirst({
       where: eq(schema.adminUsers.email, email),
     });
@@ -350,7 +352,7 @@ app.get('/api/admin/applications', authenticateAdmin, async (req, res) => {
 app.post('/api/admin/applications/status', authenticateAdmin, async (req, res) => {
   try {
     let { applicationId, status, reason } = req.body;
-    
+
     // Update Application record
     const updateData: any = { status };
     if (status === 'rejected') {
@@ -365,23 +367,23 @@ app.post('/api/admin/applications/status', authenticateAdmin, async (req, res) =
     await db.update(schema.applications)
       .set(updateData)
       .where(eq(schema.applications.id, applicationId));
-      
+
     // Fetch deep candidate data to construct emails
     const appData = await db.query.applications.findFirst({
       where: eq(schema.applications.id, applicationId),
       with: { candidate: true, parentDetails: true }
     });
-    
+
     if (appData && appData.candidate && appData.parentDetails) {
       const parentEmails = [appData.parentDetails.fatherEmail, appData.parentDetails.motherEmail].filter(Boolean).join(', ');
-      
+
       let emailContent;
-      
+
       if (status === 'assessment_scheduled') {
         const gradeDetails = await db.query.gradeManagement.findFirst({
           where: eq(schema.gradeManagement.gradeName, appData.candidate.grade)
         });
-        const assessmentDate = gradeDetails?.assessmentDate 
+        const assessmentDate = gradeDetails?.assessmentDate
           ? new Date(gradeDetails.assessmentDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
           : 'To be communicated';
         emailContent = getAssessmentInvitationEmail(appData.candidate.fullName, assessmentDate);
@@ -397,7 +399,7 @@ app.post('/api/admin/applications/status', authenticateAdmin, async (req, res) =
           if (grade.paymentDeadlineDate) {
             deadlineStr = new Date(grade.paymentDeadlineDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
           }
-          
+
           emailContent = getAdmissionOfferEmail(appData.candidate.fullName, appData.candidate.grade, appData.academicYear || new Date().getFullYear(), deadlineStr);
           // 1. Double check status matches
           await db.update(schema.applications)
@@ -417,7 +419,7 @@ app.post('/api/admin/applications/status', authenticateAdmin, async (req, res) =
             .where(eq(schema.applications.id, applicationId));
         }
       }
-      
+
       if (emailContent) {
         if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
           try {
@@ -448,17 +450,17 @@ app.post('/api/admin/applications/status', authenticateAdmin, async (req, res) =
 app.get('/api/admin/stats', authenticateAdmin, async (req, res) => {
   try {
     const year = parseInt(req.query.year as string) || new Date().getFullYear();
-    
+
     // Filter apps and grades by year
     const allApps = await db.select().from(schema.applications).where(eq(schema.applications.academicYear, year));
     const gradeStats = await db.select().from(schema.gradeManagement).where(eq(schema.gradeManagement.academicYear, year));
-    
+
     // Calculate Interviews Today (still based on current date, but could be scoped if needed)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
-    
+
     const allInterviews = await db.query.interviewSlots.findMany({
       with: {
         application: true
@@ -481,7 +483,7 @@ app.get('/api/admin/stats', authenticateAdmin, async (req, res) => {
       interviewsToday: interviewsToday,
       acceptanceRate: totalApps > 0 ? Math.round((acceptedCount / totalApps) * 100) : 0,
     };
-    
+
     res.json(stats);
   } catch (error) {
     console.error('Stats error:', error);
@@ -504,16 +506,16 @@ app.post('/api/admin/cycles', authenticateAdmin, async (req, res) => {
   try {
     const { id, academicYear, startDate, endDate, isActive } = req.body;
     if (id) {
-       await db.update(schema.admissionCycles)
-         .set({ startDate: new Date(startDate), endDate: new Date(endDate), isActive })
-         .where(eq(schema.admissionCycles.id, id));
+      await db.update(schema.admissionCycles)
+        .set({ startDate: new Date(startDate), endDate: new Date(endDate), isActive })
+        .where(eq(schema.admissionCycles.id, id));
     } else {
-        await db.insert(schema.admissionCycles).values({
-          academicYear,
-          startDate: new Date(startDate),
-          endDate: new Date(endDate),
-          isActive
-        });
+      await db.insert(schema.admissionCycles).values({
+        academicYear,
+        startDate: new Date(startDate),
+        endDate: new Date(endDate),
+        isActive
+      });
     }
     res.json({ success: true });
   } catch (error) {
@@ -551,7 +553,7 @@ app.post('/api/admin/grades', authenticateAdmin, async (req, res) => {
     const year = academicYear || new Date().getFullYear();
     const finalDate = assessmentDate ? new Date(assessmentDate) : null;
     const finalDeadlineDate = paymentDeadlineDate ? new Date(paymentDeadlineDate) : null;
-    
+
     const payload: any = {
       vacantSpots,
       assessmentDate: finalDate,
@@ -564,21 +566,21 @@ app.post('/api/admin/grades', authenticateAdmin, async (req, res) => {
     }
 
     if (id) {
-       await db.update(schema.gradeManagement)
-         .set(payload)
-         .where(eq(schema.gradeManagement.id, id));
+      await db.update(schema.gradeManagement)
+        .set(payload)
+        .where(eq(schema.gradeManagement.id, id));
     } else {
-        await db.insert(schema.gradeManagement).values({
-          gradeName,
-          ...payload
-        });
+      await db.insert(schema.gradeManagement).values({
+        gradeName,
+        ...payload
+      });
     }
 
     // --- AUTOMATION TRIGGER: Batch Scheduling ---
     // Only trigger if notifyCandidates is explicitly true
     if (finalDate && req.body.notifyCandidates) {
       const dateStr = finalDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
-      
+
       const studentsToNotify = await db.query.applications.findMany({
         where: (app, { eq, and, or, inArray }) => and(
           or(
@@ -597,7 +599,7 @@ app.post('/api/admin/grades', authenticateAdmin, async (req, res) => {
 
       if (targetedApps.length > 0) {
         const appIds = targetedApps.map(a => a.id);
-        
+
         // 1. Update technical status to scheduled (if they were pending)
         await db.update(schema.applications)
           .set({ status: 'assessment_scheduled' })
@@ -715,14 +717,14 @@ app.post('/api/admin/results', authenticateAdmin, async (req, res) => {
         passed
       });
     }
-    
+
     // Update Application Status if passed
     if (passed) {
       await db.update(schema.applications)
-        .set({ status: 'passed_assessment' }) 
+        .set({ status: 'passed_assessment' })
         .where(eq(schema.applications.id, applicationId));
     } else if (passed === false) {
-       await db.update(schema.applications)
+      await db.update(schema.applications)
         .set({ status: 'rejected' })
         .where(eq(schema.applications.id, applicationId));
     }
@@ -737,7 +739,7 @@ app.post('/api/admin/results', authenticateAdmin, async (req, res) => {
 app.post('/api/admin/results/bulk', authenticateAdmin, async (req, res) => {
   try {
     const { results } = req.body; // Array of { applicationId, assessmentId, marksObtained, passed }
-    
+
     for (const item of results) {
       const [existing] = await db.select().from(schema.assessmentResults)
         .where(and(
@@ -761,14 +763,14 @@ app.post('/api/admin/results/bulk', authenticateAdmin, async (req, res) => {
       // Update Application status ONLY if it hasn't progressed yet
       const [currentApp] = await db.select().from(schema.applications).where(eq(schema.applications.id, item.applicationId));
       if (currentApp && ['pending', 'assessment_scheduled'].includes(currentApp.status || '')) {
-          if (item.passed) {
-            await db.update(schema.applications).set({ status: 'passed_assessment' }).where(eq(schema.applications.id, item.applicationId));
-          } else {
-            await db.update(schema.applications).set({ status: 'failed' }).where(eq(schema.applications.id, item.applicationId));
-          }
+        if (item.passed) {
+          await db.update(schema.applications).set({ status: 'passed_assessment' }).where(eq(schema.applications.id, item.applicationId));
+        } else {
+          await db.update(schema.applications).set({ status: 'failed' }).where(eq(schema.applications.id, item.applicationId));
+        }
       }
     }
-    
+
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: 'Bulk sync failed' });
@@ -779,7 +781,7 @@ app.post('/api/admin/results/bulk', authenticateAdmin, async (req, res) => {
 app.post('/api/admin/send-status-email', authenticateAdmin, async (req, res) => {
   try {
     const { email, subject, content } = req.body;
-    
+
     if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
       await transporter.sendMail({
         from: `"Kianda Admissions" <${process.env.EMAIL_USER}>`,
@@ -792,7 +794,7 @@ app.post('/api/admin/send-status-email', authenticateAdmin, async (req, res) => 
     } else {
       console.log(`[MOCK EMAIL] To: ${email}\nSubject: ${subject}\nBody:\n${content}`);
     }
-    
+
     res.json({ success: true });
   } catch (error) {
     console.error('[EMAIL ERROR]', error);
@@ -832,7 +834,7 @@ app.get('/api/admin/interviews', authenticateAdmin, async (req, res) => {
 app.post('/api/admin/interviews', authenticateAdmin, async (req, res) => {
   try {
     const { applicationIds, slotTime, endTime, location } = req.body;
-    
+
     if (!Array.isArray(applicationIds) || applicationIds.length === 0) {
       return res.status(400).json({ error: 'At least one application must be selected.' });
     }
@@ -858,14 +860,14 @@ app.post('/api/admin/interviews', authenticateAdmin, async (req, res) => {
       });
 
       if (appData && appData.candidate && appData.parentDetails) {
-        const parentEmails = [appData.parentDetails.fatherEmail, appData.parentDetails.motherEmail].filter(Boolean).sort().filter((e, i, a) => !i || e !== a[i-1]).join(', ');
+        const parentEmails = [appData.parentDetails.fatherEmail, appData.parentDetails.motherEmail].filter(Boolean).sort().filter((e, i, a) => !i || e !== a[i - 1]).join(', ');
         const dateStr = new Date(slotTime).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
         const startTimeStr = new Date(slotTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         const endTimeStr = endTime ? new Date(endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
-        
+
         const timeStr = endTimeStr ? `${startTimeStr} - ${endTimeStr}` : startTimeStr;
         const emailContent = getInterviewInviteEmail(appData.candidate.fullName, appData.candidate.grade, appData.academicYear || new Date().getFullYear(), dateStr, timeStr, location);
-        
+
         if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
           await transporter.sendMail({
             from: `"Kianda Admissions" <${process.env.EMAIL_USER}>`,
@@ -889,7 +891,7 @@ app.post('/api/admin/interviews', authenticateAdmin, async (req, res) => {
 app.post('/api/admin/interviews/outcome', authenticateAdmin, async (req, res) => {
   try {
     const { applicationId, outcome, reason } = req.body; // outcome: 'accepted' | 'rejected'
-    
+
     // 1. Update Application Status & Persistence
     const updateData: any = { status: outcome };
     if (outcome === 'rejected') {
