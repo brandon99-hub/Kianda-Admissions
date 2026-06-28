@@ -1,4 +1,4 @@
-export type Step = 'candidate' | 'parent' | 'additional' | 'documents' | 'payment';
+export type Step = 'candidate' | 'parent' | 'additional' | 'documents' | 'payment' | 'payment_polling';
 
 export interface SchoolHistory {
   type?: string;
@@ -62,6 +62,10 @@ export interface AdditionalInfo {
 
 export interface PaymentDetails {
   mpesaCode: string;
+  phoneNumber?: string;
+  paymentMethod?: 'stk' | 'manual';
+  checkoutRequestId?: string;
+  applicationId?: number;
 }
 
 export interface ApplicationState {

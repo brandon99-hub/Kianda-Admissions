@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { PaymentDetails } from '../types';
-import { ArrowLeft, ArrowRight, Check, CreditCard, ShieldCheck, Smartphone, Hash, User, CircleDollarSign } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, ShieldCheck, Smartphone, Hash, User, CircleDollarSign } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import ApplicationPreview from './ApplicationPreview';
 import { ApplicationState, Step } from '../types';
@@ -22,16 +22,30 @@ export default function PaymentConfirmationForm({ data, updateData, onSubmit, on
   const accountName = `${candidateName.split(' ').slice(0, 2).join(' ')} APP`;
   const [showPreview, setShowPreview] = useState(false);
 
+  const isManual = data.paymentMethod === 'manual';
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit();
   };
 
   const instructionItems = [
-    { label: 'Paybill Number', value: '34104', icon: Hash },
+    { label: 'Paybill Number', value: '174379', icon: Hash },
     { label: 'Account Name', value: accountName, icon: User },
     { label: 'Amount Due', value: 'KES 2,000', icon: CircleDollarSign },
   ];
+
+  const toggleMethod = () => {
+    updateData({ 
+      paymentMethod: isManual ? 'stk' : 'manual',
+      mpesaCode: '',
+      phoneNumber: ''
+    });
+  };
+
+  const isFormValid = isManual 
+    ? data.mpesaCode?.length >= 10 
+    : data.phoneNumber && data.phoneNumber.replace(/\D/g, '').length >= 9;
 
   return (
     <motion.div
@@ -41,12 +55,10 @@ export default function PaymentConfirmationForm({ data, updateData, onSubmit, on
       className="max-w-4xl mx-auto"
     >
       <div className="bg-transparent md:bg-white/70 md:backdrop-blur-3xl rounded-none md:rounded-[40px] shadow-none md:shadow-[0_50px_100px_-20px_rgba(24,33,109,0.12)] border-none md:border md:border-white/50 overflow-hidden relative">
-        {/* Decorative Background Elements */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-secondary/5 rounded-full blur-3xl -mr-32 -mt-32" />
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -ml-32 -mb-32" />
 
         <div className="relative z-10">
-          {/* Header Section */}
           <div className="p-8 md:p-12 pb-6 flex flex-col items-center text-center border-b border-primary/5">
             <div className="w-12 h-12 md:w-16 md:h-16 bg-primary/5 rounded-2xl flex items-center justify-center text-primary mb-4 md:mb-6 shadow-inner ring-1 ring-primary/5">
               <Smartphone size={24} className="md:w-8 md:h-8" />
@@ -55,56 +67,82 @@ export default function PaymentConfirmationForm({ data, updateData, onSubmit, on
             <p className="text-[11px] md:text-[13px] text-on-surface-variant/60 font-medium uppercase tracking-[0.2em]">Application Processing Fee</p>
           </div>
 
-          {/* Instructions Section - Unified Horizontal Flow */}
-          <div className="px-10 py-10 md:px-16 grid grid-cols-1 md:grid-cols-3 gap-8 relative overflow-hidden">
-             {instructionItems.map((item, i) => (
-                <div key={item.label} className="flex flex-col items-center text-center group">
-                   <div className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/30 mb-3 group-hover:text-secondary transition-colors duration-500">{item.label}</div>
-                   <div className="flex flex-col items-center">
-                      <div className="text-xl md:text-2xl font-headline font-black text-primary tracking-tight leading-none group-hover:scale-105 transition-transform duration-500 mb-1">{item.value}</div>
-                      <div className="w-1 h-1 rounded-full bg-secondary opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                   </div>
-                </div>
-             ))}
-             
-             {/* Styled Perforation Line */}
-             <div className="absolute bottom-0 left-8 right-8 flex items-center gap-2 opacity-20">
-                <div className="w-3 h-3 rounded-full bg-surface border border-outline-variant/10 -ml-4" />
-                <div className="flex-1 h-[1px] border-t border-dashed border-primary" />
-                <div className="w-3 h-3 rounded-full bg-surface border border-outline-variant/10 -mr-4" />
-             </div>
-          </div>
+          {!isManual && (
+            <div className="px-10 py-10 md:px-16 flex flex-col items-center text-center">
+              <div className="text-xl md:text-2xl font-headline font-black text-primary tracking-tight mb-2">M-PESA Express</div>
+              <p className="text-sm text-on-surface-variant/80 max-w-md mx-auto">
+                Enter your M-PESA phone number below. You will receive a prompt on your phone to enter your PIN.
+              </p>
+            </div>
+          )}
 
-          {/* Verification Section */}
-          <div className="p-10 md:p-16 pt-12">
+          {isManual && (
+            <div className="px-10 py-10 md:px-16 grid grid-cols-1 md:grid-cols-3 gap-8 relative overflow-hidden">
+               {instructionItems.map((item, i) => (
+                  <div key={item.label} className="flex flex-col items-center text-center group">
+                     <div className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/30 mb-3 group-hover:text-secondary transition-colors duration-500">{item.label}</div>
+                     <div className="flex flex-col items-center">
+                        <div className="text-xl md:text-2xl font-headline font-black text-primary tracking-tight leading-none group-hover:scale-105 transition-transform duration-500 mb-1">{item.value}</div>
+                     </div>
+                  </div>
+               ))}
+               <div className="absolute bottom-0 left-8 right-8 flex items-center gap-2 opacity-20">
+                  <div className="w-3 h-3 rounded-full bg-surface border border-outline-variant/10 -ml-4" />
+                  <div className="flex-1 h-[1px] border-t border-dashed border-primary" />
+                  <div className="w-3 h-3 rounded-full bg-surface border border-outline-variant/10 -mr-4" />
+               </div>
+            </div>
+          )}
+
+          <div className="p-10 md:p-16 pt-6">
             <form onSubmit={handleSubmit} className="space-y-10">
+              
               <div className="space-y-6">
-                 <div className="text-center">
-                    <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary/80 mb-2">Enter Transaction Code</h4>
-                    <p className="text-[12px] text-on-surface-variant font-semibold opacity-60 italic">Found in your M-Pesa confirmation SMS</p>
-                 </div>
-
-                 <div className="relative max-w-md mx-auto group">
-                    <input
-                      type="text"
-                      placeholder="e.g. RK91AB23XY"
-                      value={data.mpesaCode}
-                      onChange={(e) => updateData({ mpesaCode: e.target.value.toUpperCase() })}
-                      className="w-full bg-primary/5 border-2 border-transparent rounded-2xl p-6 text-2xl font-mono font-black tracking-[0.3em] text-primary focus:ring-4 focus:ring-secondary/20 focus:bg-white focus:border-secondary transition-all text-center shadow-inner placeholder:opacity-10"
-                      required
-                      maxLength={10}
-                    />
-                    <AnimatePresence>
-                      {data.mpesaCode.length === 10 && (
-                        <motion.div 
-                          initial={{ scale: 0, opacity: 0 }}
-                          animate={{ scale: 1, opacity: 1 }}
-                          className="absolute right-6 top-1/2 -translate-y-1/2 text-green-500"
-                        >
-                           <ShieldCheck size={24} className="drop-shadow-sm" />
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                 {isManual ? (
+                   <>
+                     <div className="text-center">
+                        <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary/80 mb-2">Enter Transaction Code</h4>
+                        <p className="text-[12px] text-on-surface-variant font-semibold opacity-60 italic">Found in your M-Pesa confirmation SMS</p>
+                     </div>
+                     <div className="relative max-w-md mx-auto group">
+                        <input
+                          type="text"
+                          placeholder="e.g. RK91AB23XY"
+                          value={data.mpesaCode || ''}
+                          onChange={(e) => updateData({ mpesaCode: e.target.value.toUpperCase() })}
+                          className="w-full bg-primary/5 border-2 border-transparent rounded-2xl p-6 text-2xl font-mono font-black tracking-[0.3em] text-primary focus:ring-4 focus:ring-secondary/20 focus:bg-white focus:border-secondary transition-all text-center shadow-inner placeholder:opacity-10"
+                          required={isManual}
+                          maxLength={10}
+                        />
+                     </div>
+                   </>
+                 ) : (
+                   <>
+                     <div className="text-center">
+                        <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary/80 mb-2">Enter Phone Number</h4>
+                        <p className="text-[12px] text-on-surface-variant font-semibold opacity-60 italic">e.g. 0712345678 or 2547...</p>
+                     </div>
+                     <div className="relative max-w-md mx-auto group">
+                        <input
+                          type="tel"
+                          placeholder="07XX XXX XXX"
+                          value={data.phoneNumber || ''}
+                          onChange={(e) => updateData({ phoneNumber: e.target.value })}
+                          className="w-full bg-primary/5 border-2 border-transparent rounded-2xl p-6 text-2xl font-mono font-black tracking-[0.2em] text-primary focus:ring-4 focus:ring-secondary/20 focus:bg-white focus:border-secondary transition-all text-center shadow-inner placeholder:opacity-20"
+                          required={!isManual}
+                        />
+                     </div>
+                   </>
+                 )}
+                 
+                 <div className="text-center mt-4">
+                   <button
+                     type="button"
+                     onClick={toggleMethod}
+                     className="text-[11px] font-bold text-secondary hover:text-primary transition-colors underline underline-offset-4 decoration-secondary/30"
+                   >
+                     {isManual ? 'Use M-PESA Express (STK Push) instead' : 'Enter M-PESA code manually instead'}
+                   </button>
                  </div>
               </div>
 
@@ -119,12 +157,12 @@ export default function PaymentConfirmationForm({ data, updateData, onSubmit, on
                    </button>
                    <button
                      type="submit"
-                     disabled={isSubmitting || data.mpesaCode.length < 10}
-                     className={`w-full sm:flex-1 py-6 rounded-2xl font-black transition-all flex items-center justify-center gap-4 group border border-white/20 relative overflow-hidden shadow-[0_20px_40px_rgba(24,33,109,0.1)] ${isSubmitting || data.mpesaCode.length < 10 ? 'bg-surface-variant text-on-surface-variant opacity-40 cursor-not-allowed' : 'bg-secondary text-primary hover:shadow-[0_25px_50px_rgba(255,196,37,0.3)] hover:-translate-y-1 active:scale-95'}`}
+                     disabled={isSubmitting || !isFormValid}
+                     className={`w-full sm:flex-1 py-6 rounded-2xl font-black transition-all flex items-center justify-center gap-4 group border border-white/20 relative overflow-hidden shadow-[0_20px_40px_rgba(24,33,109,0.1)] ${isSubmitting || !isFormValid ? 'bg-surface-variant text-on-surface-variant opacity-40 cursor-not-allowed' : 'bg-secondary text-primary hover:shadow-[0_25px_50px_rgba(255,196,37,0.3)] hover:-translate-y-1 active:scale-95'}`}
                    >
                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
                      <span className="tracking-[0.3em] uppercase text-[12px] relative z-10 font-black">
-                       {isSubmitting ? 'Verifying...' : 'Submit'}
+                       {isSubmitting ? 'Processing...' : (isManual ? 'Submit' : 'Pay & Submit')}
                      </span>
                      {!isSubmitting && <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform relative z-10" />}
                      {isSubmitting && <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin relative z-10" />}

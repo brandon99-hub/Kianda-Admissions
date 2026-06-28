@@ -151,7 +151,7 @@ export default function AssessmentBookView({ initialGradeId }: Props) {
         });
 
         for (const app of rejectedApps) {
-          const emailData = getRejectionEmail(app.candidate?.fullName, "The candidate did not achieve the required benchmark scores during the assessment examination.");
+          const emailData = getRejectionEmail(app.candidate?.fullName, app.academicYear || new Date().getFullYear());
           await authFetch('/api/admin/send-status-email', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

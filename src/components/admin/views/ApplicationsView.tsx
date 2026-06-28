@@ -163,11 +163,11 @@ const ApplicationRow: React.FC<{
 const BulkExportModal: React.FC<{
   apps: any[];
   onClose: () => void;
-  onExport: (filtered: any[], type: 'zip' | 'excel') => void;
+  onExport: (filtered: any[], type: 'zip' | 'excel' | 'email') => void;
   isBulkExporting: boolean;
 }> = ({ apps, onClose, onExport, isBulkExporting }) => {
   const [step, setStep] = useState<1 | 2>(1);
-  const [exportType, setExportType] = useState<'zip' | 'excel'>('zip');
+  const [exportType, setExportType] = useState<'zip' | 'excel' | 'email'>('zip');
   
   const [filterYear, setFilterYear] = useState<number | 'all'>('all');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -252,6 +252,18 @@ const BulkExportModal: React.FC<{
                   <div className="text-xs text-primary/60 font-semibold leading-relaxed">Generates a flat .xlsx file containing all structured data fields for analysis and reporting.</div>
                 </div>
               </button>
+              <button
+                onClick={() => setExportType('email')}
+                className={`w-full text-left p-6 rounded-[24px] border-2 transition-all flex items-center gap-4 ${exportType === 'email' ? 'border-primary bg-primary/5 shadow-md' : 'border-outline-variant/10 hover:border-primary/30 hover:bg-surface-container-lowest'}`}
+              >
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${exportType === 'email' ? 'bg-amber-600 text-white' : 'bg-surface-variant text-on-surface-variant'}`}>
+                  <Mail size={20} />
+                </div>
+                <div>
+                  <div className="font-black text-primary mb-1">Email PDFs to Parents</div>
+                  <div className="text-xs text-primary/60 font-semibold leading-relaxed">Generates and emails PDF copies of the application forms directly to parents.</div>
+                </div>
+              </button>
             </div>
             
             <div className="flex justify-end gap-3">
@@ -275,7 +287,7 @@ const BulkExportModal: React.FC<{
                 </div>
                 <div>
                   <h3 className="text-xl font-black text-primary">Filter Records</h3>
-                  <p className="text-xs font-bold text-primary/40">Step 2: Apply filters for {exportType === 'zip' ? 'ZIP Export' : 'Excel Export'}</p>
+                  <p className="text-xs font-bold text-primary/40">Step 2: Apply filters for {exportType === 'zip' ? 'ZIP Export' : exportType === 'email' ? 'Emailing PDFs' : 'Excel Export'}</p>
                 </div>
               </div>
             </div>
@@ -352,7 +364,7 @@ const BulkExportModal: React.FC<{
               >
                 {isBulkExporting
                   ? <><Loader2 size={14} className="animate-spin" /> Generating...</>
-                  : <><FileDown size={14} /> Export {filtered.length} {exportType === 'zip' ? 'PDFs' : 'Rows'}</>}
+                  : <><FileDown size={14} /> {exportType === 'email' ? 'Email' : 'Export'} {filtered.length} {exportType === 'zip' || exportType === 'email' ? 'PDFs' : 'Rows'}</>}
               </button>
             </div>
           </>
@@ -467,13 +479,29 @@ export default function ApplicationsView() {
     }
   };
 
-  const runBulkExport = async (appsToExport: any[], type: 'zip' | 'excel') => {
+  const runBulkExport = async (appsToExport: any[], type: 'zip' | 'excel' | 'email') => {
     if (appsToExport.length === 0) return;
     setIsBulkExporting(true);
     setIsBulkModalOpen(false);
 
     try {
-      if (type === 'zip') {
+      if (type === 'email') {
+        const appIds = appsToExport.map(a => a.id);
+        const token = localStorage.getItem('kianda_admin_token');
+        const res = await fetch('/api/admin/applications/bulk-send-pdf', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ applicationIds: appIds })
+        });
+        if (!res.ok) throw new Error('Failed to send bulk PDFs');
+        const data = await res.json();
+        // Since toast is not imported directly in this file, we can import it or use alert. Wait, toast is available via react-hot-toast.
+        // I will dispatch a custom event or check if toast is imported.
+        alert(`Successfully sent ${data.sentCount} emails.`);
+      } else if (type === 'zip') {
         const zip = new JSZip();
         for (const app of appsToExport) {
           const doc = await buildApplicationPDF(app);

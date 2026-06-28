@@ -304,6 +304,13 @@ export default function ApplicationDetailsView({ app, onBack, onUpdate, showResu
                        <DetailItem inline icon={<Mail size={14}/>} label="Email" value={parent.motherEmail} />
                        <DetailItem inline label="Profession" value={parent.motherProfession} />
                        <DetailItem inline label="Workplace" value={parent.motherWork} />
+                       
+                       <div className="pt-4 border-t border-primary/5">
+                         <h4 className="text-[10px] font-bold text-primary mb-3 opacity-60 uppercase tracking-widest">Alternative Contact</h4>
+                         <DetailItem inline label="Name" value={parent.motherAltContactName} />
+                         <DetailItem inline icon={<Phone size={14}/>} label="Phone" value={parent.motherAltContactPhone} />
+                         <DetailItem inline label="Relation" value={parent.motherAltContactRelation} />
+                       </div>
                      </div>
                    </div>
                  </div>
@@ -319,6 +326,13 @@ export default function ApplicationDetailsView({ app, onBack, onUpdate, showResu
                        <DetailItem inline icon={<Mail size={14}/>} label="Email" value={parent.fatherEmail} />
                        <DetailItem inline label="Profession" value={parent.fatherProfession} />
                        <DetailItem inline label="Workplace" value={parent.fatherWork} />
+
+                       <div className="pt-4 border-t border-primary/5">
+                         <h4 className="text-[10px] font-bold text-primary mb-3 opacity-60 uppercase tracking-widest">Alternative Contact</h4>
+                         <DetailItem inline label="Name" value={parent.fatherAltContactName} />
+                         <DetailItem inline icon={<Phone size={14}/>} label="Phone" value={parent.fatherAltContactPhone} />
+                         <DetailItem inline label="Relation" value={parent.fatherAltContactRelation} />
+                       </div>
                      </div>
                    </div>
                  </div>
@@ -355,7 +369,7 @@ export default function ApplicationDetailsView({ app, onBack, onUpdate, showResu
                             'School': "Through daughter's school",
                             'Friend': 'Relative / Friend',
                             'Website': 'Kianda Website',
-                            'SocialMedia': 'Social Media',
+                            'SocialMedia': additional.sourceOther ? `Social Media - ${additional.sourceOther}` : 'Social Media',
                             'Other': additional.sourceOther || 'Other'
                           };
                           return <DetailItem inline label="How did you hear about us?" value={sourceMap[additional.source || ''] || additional.source} />;

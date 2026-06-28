@@ -10,6 +10,8 @@ const fetchInterviews = () => authFetch('/api/admin/interviews').then(res => res
 const fetchResults = () => authFetch('/api/admin/results').then(res => res.json());
 const fetchCycles = () => authFetch('/api/admin/cycles').then(res => res.json());
 
+const fetchPayments = () => authFetch('/api/admin/payments').then(res => res.json());
+
 // Main Data Hooks
 export const useCycles = () => useQuery({
   queryKey: ['cycles'],
@@ -17,7 +19,33 @@ export const useCycles = () => useQuery({
   staleTime: 10000,
 });
 
-// Main Data Hooks
+export const usePayments = () => useQuery({
+  queryKey: ['payments'],
+  queryFn: fetchPayments,
+  staleTime: 5000,
+});
+
+export const useMapPayment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { paymentId: number, applicationId: number }) =>
+      authFetch('/api/admin/payments/map', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }).then(res => {
+        if (!res.ok) throw new Error('Failed to map payment');
+        return res.json();
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payments'] });
+      queryClient.invalidateQueries({ queryKey: ['applications'] });
+      toast.success('Payment mapped successfully');
+    },
+    onError: () => toast.error('Failed to map payment'),
+  });
+};
+
 export const useApplications = () => useQuery({
   queryKey: ['applications'],
   queryFn: fetchApplications,

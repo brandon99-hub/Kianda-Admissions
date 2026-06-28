@@ -181,7 +181,7 @@ export default function ApplicationPreview({ data, onClose, onEdit }: Props) {
 
           <Section title="Additional Info" icon={FileText} step="additional">
              <Field label="Motivation" value={data.additional.motivation} />
-             <Field label="Discovery Source" value={data.additional.source === 'Other' ? data.additional.sourceOther : data.additional.source} />
+             <Field label="Discovery Source" value={data.additional.source === 'Other' ? data.additional.sourceOther : ((data.additional.source === 'SocialMedia' || data.additional.source === 'Social Media') && data.additional.sourceOther ? `Social Media - ${data.additional.sourceOther}` : data.additional.source)} />
              <Field label="Previously Applied?" value={data.additional.hasAppliedBefore ? `Yes (${data.additional.previousApplicationYears.join(', ')})` : 'No'} />
              
              {data.additional.siblings.length > 0 && (

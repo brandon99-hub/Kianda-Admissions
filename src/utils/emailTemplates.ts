@@ -198,3 +198,14 @@ export const getAssessmentScheduleEmail = (candidateName: string, date: string, 
   `;
   return { subject, body: getBaseLayout(subject, content) };
 };
+
+export const getApplicationPdfEmail = (candidateName: string) => {
+  const subject = `Kianda School Application Record - ${candidateName}`;
+  const content = `
+    <p>Dear Parents,</p>
+    <p>Please find attached a copy of the official application record for <strong>${candidateName}</strong>.</p>
+    <p>This document is for your reference and records. If you have any questions or notice any discrepancies, please feel free to contact the admissions office.</p>
+    <p>Thank you for choosing Kianda School.</p>
+  `;
+  return { subject, body: getBaseLayout(subject, content) };
+};

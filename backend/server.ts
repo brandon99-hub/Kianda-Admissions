@@ -14,6 +14,9 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 import jwt from 'jsonwebtoken';
+import { initiateSTKPush } from './utils/mpesa';
+import { pushCandidateToProxy } from './utils/businessCentral';
+import { generateApplicationPDFBuffer } from './utils/pdfGenerator';
 
 import {
   getSuccessEmail,
@@ -22,7 +25,8 @@ import {
   getAdmissionOfferEmail,
   getWaitlistEmail,
   getRejectionEmail,
-  getAssessmentScheduleEmail
+  getAssessmentScheduleEmail,
+  getApplicationPdfEmail
 } from '../src/utils/emailTemplates';
 
 dotenv.config();
@@ -36,6 +40,7 @@ const allowedOrigins = [
   'http://192.168.0.100:8094',
   'https://kiandaadmissions.kiandaschool.ac.ke',
   'http://kiandaadmissions.kiandaschool.ac.ke',
+  'https://kianda-admissions.onrender.com'
 ];
 if (process.env.FRONTEND_URL) {
   allowedOrigins.push(process.env.FRONTEND_URL);
@@ -43,7 +48,7 @@ if (process.env.FRONTEND_URL) {
 
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (!origin || allowedOrigins.includes(origin) || origin.includes(':3001') || origin.includes(':8095')) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
@@ -171,96 +176,328 @@ app.post('/api/applications', async (req, res) => {
 
     const admissionType = ['Grade 1', 'Grade 7', 'Grade 10'].includes(candidate.grade) ? 'New' : 'Transfer';
 
-    const newAppId = await db.transaction(async (tx) => {
-      const [newApp] = await tx.insert(schema.applications).values({
-        mpesaCode: payment.mpesaCode,
-        status: initialStatus,
-        academicYear: gradeDetails?.academicYear || new Date().getFullYear(),
-        admissionType: admissionType
-      }).returning();
+    let newAppId = payment.applicationId;
+    let paymentVerified = false;
+    let paymentRecordId = null;
 
-      // 1. Insert Candidate
+    if (payment.mpesaCode) {
+      const code = payment.mpesaCode.trim().toUpperCase();
+      const existingPayment = await db.query.payments.findFirst({
+        where: eq(schema.payments.transactionCode, code)
+      });
+      if (existingPayment && (!existingPayment.mappedApplicationId || existingPayment.mappedApplicationId === newAppId)) {
+        paymentVerified = true;
+        paymentRecordId = existingPayment.id;
+      }
+    }
+
+    await db.transaction(async (tx) => {
+      if (newAppId) {
+        await tx.update(schema.applications).set({
+          mpesaCode: payment.mpesaCode,
+          status: initialStatus,
+          academicYear: gradeDetails?.academicYear || new Date().getFullYear(),
+          admissionType: admissionType,
+          paymentVerified
+        }).where(eq(schema.applications.id, newAppId));
+
+        await tx.delete(schema.candidates).where(eq(schema.candidates.applicationId, newAppId));
+        await tx.delete(schema.schoolsAttended).where(eq(schema.schoolsAttended.applicationId, newAppId));
+        await tx.delete(schema.parentDetails).where(eq(schema.parentDetails.applicationId, newAppId));
+        await tx.delete(schema.siblings).where(eq(schema.siblings.applicationId, newAppId));
+        await tx.delete(schema.additionalInfo).where(eq(schema.additionalInfo.applicationId, newAppId));
+        await tx.delete(schema.documents).where(eq(schema.documents.applicationId, newAppId));
+      } else {
+        const [newApp] = await tx.insert(schema.applications).values({
+          mpesaCode: payment.mpesaCode,
+          status: initialStatus,
+          academicYear: gradeDetails?.academicYear || new Date().getFullYear(),
+          admissionType: admissionType,
+          paymentVerified
+        }).returning();
+        newAppId = newApp.id;
+      }
+
       const { schools, passportPhoto, passportPhotoPreview, ...candidateData } = candidate;
       await tx.insert(schema.candidates).values({
-        applicationId: newApp.id,
+        applicationId: newAppId,
         passportPhotoUrl: passportPhoto,
         ...candidateData
       });
 
-      // 2. Insert Schools
       if (schools && Array.isArray(schools)) {
         const schoolsToInsert = schools.map((s: any) => ({
-          applicationId: newApp.id,
+          applicationId: newAppId,
           schoolType: s.type || 'Unknown',
           schoolName: s.name,
           yearsRange: s.years
         })).filter((s: any) => s.schoolName);
-
         if (schoolsToInsert.length > 0) {
           await tx.insert(schema.schoolsAttended).values(schoolsToInsert);
         }
       }
 
-      // 3. Insert Parent Details
-      await tx.insert(schema.parentDetails).values({
-        applicationId: newApp.id,
-        ...parent
-      });
+      await tx.insert(schema.parentDetails).values({ applicationId: newAppId, ...parent });
 
-      // 4. Insert Additional Info & Siblings
       const { siblings, ...additionalData } = additional;
       if (siblings && siblings.length > 0) {
-        await tx.insert(schema.siblings).values(
-          siblings.map((s: any) => ({ applicationId: newApp.id, ...s }))
-        );
+        await tx.insert(schema.siblings).values(siblings.map((s: any) => ({ applicationId: newAppId, ...s })));
       }
-      await tx.insert(schema.additionalInfo).values({
-        applicationId: newApp.id,
-        ...additionalData
-      });
+      await tx.insert(schema.additionalInfo).values({ applicationId: newAppId, ...additionalData });
 
-      // 5. Insert Documents
       if (documents) {
         const docsToInsert = [];
-        if (documents.letter) docsToInsert.push({ applicationId: newApp.id, documentType: 'Application Letter', fileUrl: documents.letter });
-        if (documents.birthCert) docsToInsert.push({ applicationId: newApp.id, documentType: "Candidate's Birth Certificate", fileUrl: documents.birthCert });
-        if (documents.report) docsToInsert.push({ applicationId: newApp.id, documentType: 'Latest School Report', fileUrl: documents.report });
-
-        if (docsToInsert.length > 0) {
-          await tx.insert(schema.documents).values(docsToInsert);
-        }
+        if (documents.letter) docsToInsert.push({ applicationId: newAppId, documentType: 'Application Letter', fileUrl: documents.letter });
+        if (documents.birthCert) docsToInsert.push({ applicationId: newAppId, documentType: "Candidate's Birth Certificate", fileUrl: documents.birthCert });
+        if (documents.report) docsToInsert.push({ applicationId: newAppId, documentType: 'Latest School Report', fileUrl: documents.report });
+        if (docsToInsert.length > 0) await tx.insert(schema.documents).values(docsToInsert);
       }
 
-      return newApp.id;
+      if (paymentVerified && paymentRecordId) {
+        await tx.update(schema.payments).set({ mappedApplicationId: newAppId }).where(eq(schema.payments.id, paymentRecordId));
+      }
     });
 
-    // Prepare Email
-    const emailContent = getSuccessEmail(candidate.fullName, candidate.grade, gradeDetails?.academicYear || new Date().getFullYear(), gradeDetails?.assessmentDate?.toISOString(), gradeDetails?.location);
-    const parentEmails = [parent.fatherEmail, parent.motherEmail].filter(Boolean).join(', ');
-
-    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-      transporter.sendMail({
-        from: `"Kianda Admissions" <${process.env.EMAIL_USER}>`,
-        to: parentEmails,
-        subject: emailContent.subject,
-        html: emailContent.body,
-        attachments: [{ filename: 'kianda-school-logo-removebg-preview.png', path: path.resolve(__dirname, '../public/kianda-school-logo-removebg-preview.png'), cid: 'kiandalogo' }]
-      }).then(() => {
-        console.log(`[EMAIL SENT] Success email sent to ${parentEmails}`);
-      }).catch((e) => {
-        console.error('[EMAIL ERROR] Failed to send email via nodemailer:', e);
-      });
-    } else {
-      console.log(`[MOCK EMAIL] To: ${parentEmails}\nSubject: ${emailContent.subject}\nBody:\n${emailContent.body}`);
+    let checkoutRequestId = null;
+    if (payment.phoneNumber) {
+      try {
+        // initiate STK push with amount 1 for testing
+        checkoutRequestId = await initiateSTKPush(payment.phoneNumber, 1, `APP-${newAppId}`);
+        await db.update(schema.applications)
+          .set({ checkoutRequestId })
+          .where(eq(schema.applications.id, newAppId));
+      } catch (stkError) {
+        console.error('STK Push Initiation Failed:', stkError);
+        // Continue anyway, user can fallback to manual
+      }
     }
 
-    res.status(201).json({ success: true, applicationId: newAppId });
+    if (!checkoutRequestId) {
+      // Prepare Email
+      const emailContent = getSuccessEmail(candidate.fullName, candidate.grade, gradeDetails?.academicYear || new Date().getFullYear(), gradeDetails?.assessmentDate?.toISOString(), gradeDetails?.location);
+      const parentEmails = [parent.fatherEmail, parent.motherEmail].filter(Boolean).join(', ');
+
+      // Generate PDF for attachment
+      let pdfBuffer: Buffer | null = null;
+      try {
+        const appRecordForPDF = {
+          id: newAppId,
+          academicYear: gradeDetails?.academicYear || new Date().getFullYear(),
+          admissionType: admissionType,
+          candidate: { ...candidate, passportPhotoUrl: candidate.passportPhoto },
+          parentDetails: parent,
+          additionalInfo: additional,
+          schoolsAttended: candidate.schools || [],
+          siblings: additional.siblings,
+          documents: documents ? Object.entries(documents).map(([k, v]) => ({ fileUrl: v })) : []
+        };
+        pdfBuffer = await generateApplicationPDFBuffer(appRecordForPDF);
+      } catch (e) {
+        console.error('Failed to generate PDF for success email', e);
+      }
+
+      if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+        const attachments: any[] = [
+          { filename: 'kianda-school-logo-removebg-preview.png', path: path.resolve(__dirname, '../public/kianda-school-logo-removebg-preview.png'), cid: 'kiandalogo' }
+        ];
+        if (pdfBuffer) {
+          attachments.push({
+            filename: `Kianda_Application_${newAppId}.pdf`,
+            content: pdfBuffer
+          });
+        }
+
+        transporter.sendMail({
+          from: `"Kianda Admissions" <${process.env.EMAIL_USER}>`,
+          to: parentEmails,
+          subject: emailContent.subject,
+          html: emailContent.body,
+          attachments
+        }).then(() => {
+          console.log(`[EMAIL SENT] Success email sent to ${parentEmails}`);
+        }).catch((e) => {
+          console.error('[EMAIL ERROR] Failed to send email via nodemailer:', e);
+        });
+      } else {
+        console.log(`[MOCK EMAIL] To: ${parentEmails}\nSubject: ${emailContent.subject}\nBody:\n${emailContent.body}`);
+      }
+    }
+
+    res.status(201).json({ success: true, applicationId: newAppId, checkoutRequestId });
   } catch (error) {
     res.status(500).json({
       error: 'Internal server error',
       details: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined
     });
+  }
+});
+
+// --- M-PESA Routes ---
+
+app.post('/api/mpesa/callback', async (req, res) => {
+  try {
+    console.log('M-PESA Callback Received:', JSON.stringify(req.body, null, 2));
+    
+    const body = req.body;
+    if (body.Body && body.Body.stkCallback) {
+      const callbackData = body.Body.stkCallback;
+      const resultCode = callbackData.ResultCode;
+      const checkoutRequestId = callbackData.CheckoutRequestID;
+      
+      if (resultCode === 0) {
+        // Success
+        const callbackMetadata = callbackData.CallbackMetadata.Item;
+        const receiptItem = callbackMetadata.find((item: any) => item.Name === 'MpesaReceiptNumber');
+        const amountItem = callbackMetadata.find((item: any) => item.Name === 'Amount');
+        const phoneItem = callbackMetadata.find((item: any) => item.Name === 'PhoneNumber');
+
+        const receiptNumber = receiptItem ? receiptItem.Value : '';
+        const amount = amountItem ? amountItem.Value : 0;
+        const phone = phoneItem ? phoneItem.Value : '';
+        
+        await db.update(schema.applications)
+          .set({ paymentVerified: true, mpesaCode: receiptNumber })
+          .where(eq(schema.applications.checkoutRequestId, checkoutRequestId));
+          
+        console.log(`Payment successful for request ${checkoutRequestId}, receipt ${receiptNumber}`);
+
+        // Fetch application details to send the success email and PDF
+        try {
+          const appRecord = await db.query.applications.findFirst({
+            where: eq(schema.applications.checkoutRequestId, checkoutRequestId),
+            with: {
+              candidate: true,
+              parentDetails: true,
+              additionalInfo: true,
+              siblings: true,
+              schoolsAttended: true,
+              documents: true
+            }
+          });
+
+          if (appRecord) {
+            // Save to payments table
+            try {
+              await db.insert(schema.payments).values({
+                transactionCode: receiptNumber,
+                amount: parseFloat(amount),
+                phoneNumber: String(phone),
+                customerName: appRecord.parentDetails?.fatherName || appRecord.parentDetails?.motherName || 'STK Push Payment',
+                accountReference: appRecord.candidate ? `${appRecord.candidate.fullName} APP` : 'Application',
+                paymentType: 'STK_PUSH',
+                mappedApplicationId: appRecord.id
+              });
+            } catch (e) {
+              console.error('Failed to insert STK push into payments table:', e);
+            }
+          }
+
+          if (appRecord && appRecord.candidate && appRecord.parentDetails) {
+            const gradeDetails = await db.query.gradeManagement.findFirst({
+              where: eq(schema.gradeManagement.gradeName, appRecord.candidate.grade)
+            });
+
+            const emailContent = getSuccessEmail(appRecord.candidate.fullName, appRecord.candidate.grade, appRecord.academicYear || new Date().getFullYear(), gradeDetails?.assessmentDate?.toISOString(), gradeDetails?.location);
+            const parentEmails = [appRecord.parentDetails.fatherEmail, appRecord.parentDetails.motherEmail].filter(Boolean).join(', ');
+
+            let pdfBuffer: Buffer | null = null;
+            try {
+              const appRecordForPDF = {
+                id: appRecord.id,
+                academicYear: appRecord.academicYear || new Date().getFullYear(),
+                admissionType: appRecord.admissionType || 'New',
+                candidate: appRecord.candidate,
+                parentDetails: appRecord.parentDetails,
+                additionalInfo: appRecord.additionalInfo,
+                schoolsAttended: appRecord.schoolsAttended || [],
+                siblings: appRecord.siblings || [],
+                documents: appRecord.documents || []
+              };
+              pdfBuffer = await generateApplicationPDFBuffer(appRecordForPDF);
+            } catch (e) {
+              console.error('Failed to generate PDF for callback email', e);
+            }
+
+            if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+              const attachments: any[] = [
+                { filename: 'kianda-school-logo-removebg-preview.png', path: path.resolve(__dirname, '../public/kianda-school-logo-removebg-preview.png'), cid: 'kiandalogo' }
+              ];
+              if (pdfBuffer) {
+                attachments.push({
+                  filename: `Kianda_Application_${appRecord.id}.pdf`,
+                  content: pdfBuffer
+                });
+              }
+
+              transporter.sendMail({
+                from: `"Kianda Admissions" <${process.env.EMAIL_USER}>`,
+                to: parentEmails,
+                subject: emailContent.subject,
+                html: emailContent.body,
+                attachments
+              }).then(() => {
+                console.log(`[EMAIL SENT] Callback success email sent to ${parentEmails}`);
+              }).catch((e) => {
+                console.error('[EMAIL ERROR] Failed to send callback email via nodemailer:', e);
+              });
+            } else {
+              console.log(`[MOCK EMAIL] To: ${parentEmails}\nSubject: ${emailContent.subject}`);
+            }
+          }
+        } catch (emailError) {
+          console.error('Failed to process post-payment email:', emailError);
+        }
+      } else {
+        console.log(`Payment failed for request ${checkoutRequestId}: ${callbackData.ResultDesc}`);
+      }
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('M-PESA Webhook Error:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+app.get('/api/applications/:id/payment-status', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const appRecord = await db.query.applications.findFirst({
+      where: eq(schema.applications.id, parseInt(id))
+    });
+    
+    if (!appRecord) {
+      return res.status(404).json({ error: 'Application not found' });
+    }
+    
+    res.json({ paymentVerified: appRecord.paymentVerified, mpesaCode: appRecord.mpesaCode });
+  } catch (error) {
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+app.post('/api/mpesa/c2b/validation', async (req, res) => {
+  res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
+});
+
+app.post('/api/mpesa/c2b/confirmation', async (req, res) => {
+  try {
+    const { TransID, TransAmount, MSISDN, FirstName, MiddleName, LastName, BillRefNumber } = req.body;
+    
+    await db.insert(schema.payments).values({
+      transactionCode: TransID,
+      amount: parseFloat(TransAmount) || 0,
+      phoneNumber: String(MSISDN),
+      customerName: [FirstName, MiddleName, LastName].filter(Boolean).join(' '),
+      accountReference: BillRefNumber,
+      paymentType: 'C2B'
+    });
+    
+    res.json({ ResultCode: 0, ResultDesc: 'Success' });
+  } catch (err) {
+    console.error('C2B Confirmation error', err);
+    res.status(500).send('Error');
   }
 });
 
@@ -287,6 +524,45 @@ app.post('/api/admin/login', async (req, res) => {
     }
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// GET Payments
+app.get('/api/admin/payments', authenticateAdmin, async (req, res) => {
+  try {
+    const paymentsList = await db.query.payments.findMany({
+      orderBy: (payments, { desc }) => [desc(payments.createdAt)],
+      with: {
+        application: {
+          with: { candidate: true }
+        }
+      }
+    });
+    res.json(paymentsList);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch payments' });
+  }
+});
+
+// MAP Payment
+app.post('/api/admin/payments/map', authenticateAdmin, async (req, res) => {
+  try {
+    const { paymentId, applicationId } = req.body;
+    
+    await db.update(schema.payments)
+      .set({ mappedApplicationId: applicationId })
+      .where(eq(schema.payments.id, paymentId));
+      
+    const [payment] = await db.select().from(schema.payments).where(eq(schema.payments.id, paymentId));
+    if (payment) {
+      await db.update(schema.applications)
+        .set({ paymentVerified: true, mpesaCode: payment.transactionCode })
+        .where(eq(schema.applications.id, applicationId));
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to map payment' });
   }
 });
 
@@ -345,6 +621,82 @@ app.get('/api/admin/applications', authenticateAdmin, async (req, res) => {
     res.json(allApps);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch applications' });
+  }
+});
+
+app.post('/api/admin/applications/bulk-send-pdf', authenticateAdmin, async (req, res) => {
+  try {
+    const { applicationIds } = req.body;
+    if (!applicationIds || !Array.isArray(applicationIds)) {
+      return res.status(400).json({ error: 'applicationIds array is required' });
+    }
+
+    const apps = await db.query.applications.findMany({
+      where: inArray(schema.applications.id, applicationIds),
+      with: {
+        candidate: true,
+        parentDetails: true,
+        documents: true,
+        additionalInfo: true,
+        siblings: true,
+        schoolsAttended: true
+      }
+    });
+
+    if (apps.length === 0) {
+      return res.status(404).json({ error: 'No applications found' });
+    }
+
+    let sentCount = 0;
+    for (const appRecord of apps) {
+      if (!appRecord.candidate || !appRecord.parentDetails) continue;
+      
+      const parentEmails = [appRecord.parentDetails.fatherEmail, appRecord.parentDetails.motherEmail].filter(Boolean).join(', ');
+      if (!parentEmails) continue;
+
+      let pdfBuffer: Buffer | null = null;
+      try {
+        pdfBuffer = await generateApplicationPDFBuffer(appRecord);
+      } catch (e) {
+        console.error(`Failed to generate PDF for app ${appRecord.id}`, e);
+        continue;
+      }
+
+      const emailContent = getApplicationPdfEmail(appRecord.candidate.fullName);
+      
+      const attachments: any[] = [
+        { filename: 'kianda-school-logo-removebg-preview.png', path: path.resolve(__dirname, '../public/kianda-school-logo-removebg-preview.png'), cid: 'kiandalogo' }
+      ];
+      if (pdfBuffer) {
+        attachments.push({
+          filename: `Kianda_Application_${appRecord.id}.pdf`,
+          content: pdfBuffer
+        });
+      }
+
+      if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+        try {
+          await transporter.sendMail({
+            from: `"Kianda Admissions" <${process.env.EMAIL_USER}>`,
+            to: parentEmails,
+            subject: emailContent.subject,
+            html: emailContent.body,
+            attachments
+          });
+          sentCount++;
+        } catch (e) {
+          console.error(`[EMAIL ERROR] Failed to send PDF for app ${appRecord.id}`, e);
+        }
+      } else {
+        console.log(`[MOCK BULK PDF EMAIL] To: ${parentEmails}`);
+        sentCount++;
+      }
+    }
+
+    res.json({ success: true, sentCount });
+  } catch (error) {
+    console.error('Bulk PDF send error:', error);
+    res.status(500).json({ error: 'Failed to send bulk PDFs' });
   }
 });
 
@@ -410,6 +762,13 @@ app.post('/api/admin/applications/status', authenticateAdmin, async (req, res) =
           await db.update(schema.gradeManagement)
             .set({ vacantSpots: grade.vacantSpots - 1 })
             .where(eq(schema.gradeManagement.id, grade.id));
+
+          // 3. Push to Business Central Proxy
+          try {
+            await pushCandidateToProxy(appData);
+          } catch (error) {
+            console.error('Failed to push candidate to proxy, but application is still accepted', error);
+          }
         } else {
           // No slots left, force waitlist
           status = 'waitlisted';

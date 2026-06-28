@@ -10,6 +10,7 @@ export const applications = pgTable('applications', {
   status: applicationStatusEnum('status').default('pending'),
   paymentVerified: boolean('payment_verified').default(false),
   mpesaCode: varchar('mpesa_code', { length: 20 }),
+  checkoutRequestId: varchar('checkout_request_id', { length: 100 }),
   applicationFeePaidAt: timestamp('application_fee_paid_at'),
   acceptanceFeePaidAt: timestamp('acceptance_fee_paid_at'),
   academicYear: integer('academic_year'),
@@ -18,6 +19,18 @@ export const applications = pgTable('applications', {
   admissionType: varchar('admission_type', { length: 50 }),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const payments = pgTable('payments', {
+  id: serial('id').primaryKey(),
+  transactionCode: varchar('transaction_code', { length: 50 }).notNull().unique(),
+  amount: integer('amount').notNull(),
+  phoneNumber: varchar('phone_number', { length: 50 }),
+  customerName: varchar('customer_name', { length: 255 }),
+  accountReference: varchar('account_reference', { length: 255 }),
+  paymentType: varchar('payment_type', { length: 50 }),
+  mappedApplicationId: integer('mapped_application_id').references(() => applications.id),
+  createdAt: timestamp('created_at').defaultNow(),
 });
 
 export const candidates = pgTable('candidates', {
@@ -176,6 +189,14 @@ export const applicationsRelations = relations(applications, ({ one, many }) => 
   siblings: many(siblings),
   interviews: many(interviewSlots),
   assessmentResults: many(assessmentResults),
+  payments: many(payments),
+}));
+
+export const paymentsRelations = relations(payments, ({ one }) => ({
+  application: one(applications, {
+    fields: [payments.mappedApplicationId],
+    references: [applications.id],
+  }),
 }));
 
 export const candidatesRelations = relations(candidates, ({ one }) => ({

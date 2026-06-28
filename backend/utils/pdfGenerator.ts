@@ -1,5 +1,6 @@
-import jsPDF from 'jspdf';
-import { getToken } from './auth';
+import { jsPDF } from 'jspdf';
+import fs from 'fs';
+import path from 'path';
 
 // ---------------------------------------------------------------------------
 // Helper utilities
@@ -7,69 +8,52 @@ import { getToken } from './auth';
 
 let cachedLogoBase64: string | null = null;
 
-/**
- * Converts an image URL to a base64 data URL.
- *
- * Handles two cases:
- *  1. Already a base64 data URL (e.g. passportPhotoPreview from parent preview) →
- *     returned immediately with no network request.
- *  2. A server URL (e.g. /uploads/...) → fetched with the admin Bearer token
- *     so the protected route returns 200 instead of 401.
- */
-async function getImageBase64(url: string): Promise<string> {
-  if (!url) return '';
-
-  // Case 1 — already base64, no fetch needed
-  if (url.startsWith('data:')) return url;
-
-  // Case 2 — server URL, inject the admin token
+function getLogoBase64(): string {
+  if (cachedLogoBase64) return cachedLogoBase64;
   try {
-    let fetchUrl = url;
-    if (fetchUrl.startsWith('/uploads/')) {
-      fetchUrl = `/api${fetchUrl}`;
-    }
-
-    const token = getToken();
-    const response = await fetch(fetchUrl, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-    if (!response.ok) return '';
-    const blob = await response.blob();
-    return new Promise<string>((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = () => resolve('');
-      reader.readAsDataURL(blob);
-    });
-  } catch {
+    const logoPath = path.join(process.cwd(), 'public/kianda-school-logo-removebg-preview.png');
+    const ext = 'png';
+    const base64 = fs.readFileSync(logoPath).toString('base64');
+    cachedLogoBase64 = `data:image/${ext};base64,${base64}`;
+    return cachedLogoBase64;
+  } catch (error) {
+    console.error('Failed to load logo for PDF:', error);
     return '';
   }
 }
 
-async function getLogoBase64(): Promise<string> {
-  if (cachedLogoBase64) return cachedLogoBase64;
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext('2d')!;
-      ctx.drawImage(img, 0, 0);
-      cachedLogoBase64 = canvas.toDataURL('image/png');
-      resolve(cachedLogoBase64);
-    };
-    img.onerror = () => resolve(''); // Gracefully skip if logo fails
-    img.src = '/kianda-school-logo-removebg-preview.png';
-  });
+function getLocalImageBase64(url: string): string {
+  if (!url) return '';
+  if (url.startsWith('data:')) return url; // Already base64
+
+  try {
+    // Expected format: /api/uploads/candidateName/filename.jpg
+    // or just /uploads/...
+    let relativePath = url;
+    if (relativePath.startsWith('/api/uploads/')) {
+      relativePath = relativePath.replace('/api/uploads/', 'uploads/');
+    } else if (relativePath.startsWith('/uploads/')) {
+      relativePath = relativePath.replace('/uploads/', 'uploads/');
+    }
+
+    const filePath = path.join(process.cwd(), relativePath);
+    if (fs.existsSync(filePath)) {
+      const extMatch = filePath.match(/\.([^.]+)$/);
+      const ext = extMatch ? extMatch[1].toLowerCase() : 'jpeg';
+      const format = ext === 'png' ? 'png' : 'jpeg';
+      const base64 = fs.readFileSync(filePath).toString('base64');
+      return `data:image/${format};base64,${base64}`;
+    }
+  } catch (error) {
+    console.error('Failed to load local image for PDF:', url, error);
+  }
+  return '';
 }
 
 // Primary school colour (deep navy/indigo from the design system)
 const PRIMARY = [24, 33, 109] as [number, number, number];
 const SECONDARY = [212, 160, 23] as [number, number, number]; // gold
 const MUTED = [120, 120, 140] as [number, number, number];
-const LIGHT_GREY = [245, 245, 248] as [number, number, number];
 
 const PAGE_W = 210; // A4 mm
 const MARGIN = 16;
@@ -137,7 +121,7 @@ function checkPage(doc: jsPDF, y: number, needed = 20): number {
 // Public export
 // ---------------------------------------------------------------------------
 
-export async function buildApplicationPDF(app: any): Promise<jsPDF> {
+export async function generateApplicationPDFBuffer(app: any): Promise<Buffer> {
   const doc = new jsPDF('p', 'mm', 'a4');
 
   const candidate = app.candidate || {};
@@ -145,7 +129,6 @@ export async function buildApplicationPDF(app: any): Promise<jsPDF> {
   const additional = app.additionalInfo || {};
   const schools: any[] = app.schoolsAttended || [];
   const siblings: any[] = app.siblings || [];
-  const documents: any[] = app.documents || [];
   const formattedDob = candidate.dob
     ? new Date(candidate.dob).toLocaleDateString('en-GB')
     : 'N/A';
@@ -155,13 +138,17 @@ export async function buildApplicationPDF(app: any): Promise<jsPDF> {
 
   let passportPhotoBase64 = '';
   if (candidate.passportPhotoUrl) {
-     passportPhotoBase64 = await getImageBase64(candidate.passportPhotoUrl);
+     passportPhotoBase64 = getLocalImageBase64(candidate.passportPhotoUrl);
   }
 
   if (passportPhotoBase64) {
-    doc.addImage(passportPhotoBase64, 'JPEG', MARGIN, y, 22, 22);
+    try {
+      doc.addImage(passportPhotoBase64, 'JPEG', MARGIN, y, 22, 22);
+    } catch (e) {
+      // Ignored if invalid format
+    }
   } else {
-    const logoBase64 = await getLogoBase64();
+    const logoBase64 = getLogoBase64();
     if (logoBase64) {
       doc.addImage(logoBase64, 'PNG', MARGIN, y, 22, 22);
     }
@@ -199,17 +186,14 @@ export async function buildApplicationPDF(app: any): Promise<jsPDF> {
   const sA_startY = y;
   let currentY = sA_startY;
 
-  // Grid layout (3 columns) for personal info
   const col1X = MARGIN;
   const col2X = MARGIN + (PAGE_W - MARGIN * 2) / 3;
   const col3X = MARGIN + ((PAGE_W - MARGIN * 2) / 3) * 2;
 
-  // Row 1
   drawField(doc, 'Date of Birth', formattedDob, col1X, currentY);
   drawField(doc, 'Religion', candidate.religion, col2X, currentY);
   currentY = drawField(doc, 'Denomination', candidate.denomination, col3X, currentY) + 2;
 
-  // Row 2
   let appliedBeforeValue = additional.hasAppliedBefore ? 'Yes' : 'No';
   if (additional.hasAppliedBefore && Array.isArray(additional.previousApplicationYears) && additional.previousApplicationYears.length > 0) {
     appliedBeforeValue = `Yes (${additional.previousApplicationYears.join(', ')})`;
@@ -219,7 +203,6 @@ export async function buildApplicationPDF(app: any): Promise<jsPDF> {
   drawField(doc, 'Assessment No', candidate.assessmentNo, col2X, currentY);
   currentY = drawField(doc, 'Have you applied before ?', appliedBeforeValue, col3X, currentY) + 6;
 
-  // Split bottom of Section I into Left (Schools) and Right (Medical History)
   y = currentY + 4;
   const s1LeftX = MARGIN;
   const s1RightX = MARGIN + COL_W + 8;
@@ -247,7 +230,6 @@ export async function buildApplicationPDF(app: any): Promise<jsPDF> {
     leftY += 8;
   }
 
-  // Right column: Medical history
   drawField(doc, 'MEDICAL HISTORY', candidate.medicalInfo || 'No conditions recorded.', s1RightX, rightY + 5, COL_W);
 
   y = Math.max(leftY, rightY + 16) + 4;
@@ -265,14 +247,12 @@ export async function buildApplicationPDF(app: any): Promise<jsPDF> {
   const leftX = MARGIN;
   const rightX = MARGIN + COL_W + 8;
 
-  // Draw vertical line separator for the parent table
   doc.setDrawColor(...MUTED);
   doc.setLineWidth(0.2);
   doc.line(PAGE_W / 2, sB_startY, PAGE_W / 2, sB_startY + 65);
 
-  const labelW = 26; // Width for larger labels
+  const labelW = 26;
   
-  // Father column
   drawText(doc, "FATHER'S DETAILS", leftX, mY, { size: 8, bold: true, color: SECONDARY });
   mY += 8;
   
@@ -307,7 +287,6 @@ export async function buildApplicationPDF(app: any): Promise<jsPDF> {
   drawText(doc, 'RELATION', leftX, mY, { size: 7, bold: true, color: MUTED });
   drawText(doc, parent.fatherAltContactRelation || 'N/A', leftX + labelW, mY, { size: 9, color: PRIMARY, bold: true });
 
-  // Mother column
   drawText(doc, "MOTHER'S DETAILS", rightX, fY, { size: 8, bold: true, color: SECONDARY });
   fY += 8;
   
@@ -344,7 +323,6 @@ export async function buildApplicationPDF(app: any): Promise<jsPDF> {
 
   y = Math.max(mY, fY) + 16;
 
-  // Residential details
   drawText(doc, 'FAMILY RESIDENCY', leftX, y, { size: 7, bold: true, color: MUTED });
   drawText(doc, parent.residency || 'Not provided', leftX + 45, y, { size: 9, bold: true, color: PRIMARY });
 
@@ -356,13 +334,11 @@ export async function buildApplicationPDF(app: any): Promise<jsPDF> {
   y = checkPage(doc, y, 50);
   y = drawSectionHeader(doc, 'Section III: Background & Health Disclosures', y);
 
-  // 1. Siblings Information
   y = checkPage(doc, y, 40);
   drawText(doc, 'SIBLINGS INFORMATION:', MARGIN, y, { size: 8, bold: true, color: MUTED });
   y += 6;
   
   if (siblings.length > 0) {
-    // Draw table header
     doc.setFillColor(PRIMARY[0], PRIMARY[1], PRIMARY[2]);
     doc.roundedRect(MARGIN, y, PAGE_W - MARGIN * 2, 7, 1, 1, 'F');
     const cols = [
@@ -377,7 +353,6 @@ export async function buildApplicationPDF(app: any): Promise<jsPDF> {
     });
     y += 7;
 
-    // Draw rows
     siblings.forEach((sib: any, index: number) => {
       y = checkPage(doc, y, 10);
       if (index % 2 === 1) {
@@ -405,7 +380,6 @@ export async function buildApplicationPDF(app: any): Promise<jsPDF> {
   }
   y += 12;
 
-  // 2. Motivation - Quote Block Style
   y = checkPage(doc, y, 30);
   const mtvText = additional.motivation || 'Not provided.';
   
@@ -423,7 +397,6 @@ export async function buildApplicationPDF(app: any): Promise<jsPDF> {
   
   y += mtvHeight + 12;
 
-  // 3. Source
   y = checkPage(doc, y, 20);
   const sourceMap: any = {
     'Parent': 'Parent',
@@ -458,5 +431,6 @@ export async function buildApplicationPDF(app: any): Promise<jsPDF> {
     doc.text(pageText, PAGE_W - MARGIN, footerY, { align: 'right' });
   }
 
-  return doc;
+  // Generate buffer
+  return Buffer.from(doc.output('arraybuffer'));
 }

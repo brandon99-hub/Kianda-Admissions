@@ -83,7 +83,7 @@ export default function AdditionalInfoForm({ data, updateData, onNext, onBack, o
           {/* Siblings */}
           <div className="space-y-6">
             <div className="flex justify-between items-center border-b border-outline-variant/10 pb-2">
-              <h4 className="text-sm font-extrabold uppercase tracking-[0.3em] text-secondary">Connections to Kianda</h4>
+              <h4 className="text-[10px] md:text-xs font-bold uppercase tracking-widest leading-relaxed text-secondary pr-4 max-w-3xl">Do you have any siblings, relatives, or friends connected to Kianda School?</h4>
               <button 
                 type="button" 
                 onClick={addSibling}

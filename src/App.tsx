@@ -11,8 +11,9 @@ import ParentInfoForm from './components/ParentInfoForm';
 import AdditionalInfoForm from './components/AdditionalInfoForm';
 import DocumentUploadForm from './components/DocumentUploadForm';
 import PaymentConfirmationForm from './components/PaymentConfirmationForm';
+import PaymentPolling from './components/PaymentPolling';
 import { ApplicationState, Step } from './types';
-import { LayoutDashboard, Users, GraduationCap, Calendar, LogOut, Search, Filter, ArrowUpRight, Clock, MapPin, ChevronLeft, ChevronRight, ListChecks, FileText } from 'lucide-react';
+import { LayoutDashboard, Users, GraduationCap, Calendar, LogOut, Search, Filter, ArrowUpRight, Clock, MapPin, ChevronLeft, ChevronRight, ListChecks, FileText, CreditCard } from 'lucide-react';
 import { AdminContentView } from './components/AdminViews';
 import { saveToken, removeToken, isTokenValid } from './utils/auth';
 
@@ -38,6 +39,7 @@ const INITIAL_STATE: ApplicationState = {
   },
   payment: {
     mpesaCode: '',
+    paymentMethod: 'stk',
   },
   documents: {
     letter: '',
@@ -109,16 +111,18 @@ export default function App() {
 
   const nextStep = () => {
     const steps: Step[] = ['candidate', 'parent', 'additional', 'documents', 'payment'];
-    const currentIdx = steps.indexOf(state.currentStep);
-    if (currentIdx < steps.length - 1) {
+    if (state.currentStep === 'payment') {
+      submissionMutation.mutate(state);
+      return;
+    }
+    const currentIdx = steps.indexOf(state.currentStep as Step);
+    if (currentIdx !== -1 && currentIdx < steps.length - 1) {
       setState(prev => ({ 
         ...prev, 
         currentStep: steps[currentIdx + 1], 
         highestStepIdx: Math.max(prev.highestStepIdx || 0, currentIdx + 1),
         lastUpdated: new Date().toISOString() 
       }));
-    } else {
-      submissionMutation.mutate(state);
     }
   };
 
@@ -161,9 +165,14 @@ export default function App() {
       return response.json();
     },
     onSuccess: (data) => {
-      toast.success('Application submitted successfully! Please check your email for the next steps.');
-      setState(INITIAL_STATE);
-      localStorage.removeItem('kianda_admission_state');
+      if (data.checkoutRequestId) {
+        updateState('payment', { ...state.payment, checkoutRequestId: data.checkoutRequestId, applicationId: data.applicationId });
+        jumpToStep('payment_polling');
+      } else {
+        toast.success('Application submitted successfully! Please check your email for the next steps.');
+        setState(INITIAL_STATE);
+        localStorage.removeItem('kianda_admission_state');
+      }
     },
     onError: (error) => {
       console.error('Submission error:', error);
@@ -319,6 +328,7 @@ export default function App() {
              { id: 'assessments', label: 'Assessments', icon: ListChecks },
              { id: 'interviews', label: 'Interviews', icon: Calendar },
              { id: 'documents', label: 'Process Documents', icon: FileText },
+             { id: 'payments', label: 'Payments', icon: CreditCard },
            ].map(item => (
              <div key={item.id} className="relative group/tooltip">
                <button
@@ -471,6 +481,21 @@ export default function App() {
                   jumpToStep={jumpToStep}
                   candidateName={state.candidate.fullName}
                   isSubmitting={submissionMutation.isPending}
+                />
+              </motion.div>
+            )}
+            {state.currentStep === 'payment_polling' && (
+              <motion.div key="polling" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+                <PaymentPolling 
+                  applicationId={state.payment.applicationId!}
+                  phoneNumber={state.payment.phoneNumber}
+                  onSuccess={() => {
+                    toast.success('Application submitted successfully! Please check your email for the next steps.');
+                    setState(INITIAL_STATE);
+                    localStorage.removeItem('kianda_admission_state');
+                  }}
+                  onBack={() => jumpToStep('payment')}
+                  onCancel={resetApplication}
                 />
               </motion.div>
             )}
