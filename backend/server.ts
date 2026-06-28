@@ -116,11 +116,16 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
 
 // Nodemailer Config
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 465,
+  secure: true,
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
+  tls: {
+    rejectUnauthorized: false
+  }
 });
 
 // Health Check
@@ -262,7 +267,8 @@ app.post('/api/applications', async (req, res) => {
     if (payment.phoneNumber) {
       try {
         // initiate STK push with amount 1 for testing
-        checkoutRequestId = await initiateSTKPush(payment.phoneNumber, 1, `APP-${newAppId}`);
+        const accountRef = candidate.fullName ? `${candidate.fullName.trim().split(/\s+/).slice(0, 2).join(' ')} APP` : `APP-${newAppId}`;
+        checkoutRequestId = await initiateSTKPush(payment.phoneNumber, 1, accountRef);
         await db.update(schema.applications)
           .set({ checkoutRequestId })
           .where(eq(schema.applications.id, newAppId));
@@ -383,8 +389,8 @@ app.post('/api/mpesa/callback', async (req, res) => {
                 transactionCode: receiptNumber,
                 amount: parseFloat(amount),
                 phoneNumber: String(phone),
-                customerName: appRecord.parentDetails?.fatherName || appRecord.parentDetails?.motherName || 'STK Push Payment',
-                accountReference: appRecord.candidate ? `${appRecord.candidate.fullName} APP` : 'Application',
+                customerName: [appRecord.parentDetails?.fatherName, appRecord.parentDetails?.motherName].filter(Boolean).join(' & ') || 'STK Push Payment',
+                accountReference: appRecord.candidate ? `${appRecord.candidate.fullName.trim().split(/\s+/).slice(0, 2).join(' ')} APP` : 'Application',
                 paymentType: 'STK_PUSH',
                 mappedApplicationId: appRecord.id
               });

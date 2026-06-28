@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { Search, MapPin, RefreshCw, CheckCircle, Clock, Link as LinkIcon, AlertCircle } from 'lucide-react';
+import { Search, MapPin, RefreshCw, CheckCircle, Clock, Link as LinkIcon, AlertCircle, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import * as XLSX from 'xlsx';
 import AdminPageHeader from '../AdminPageHeader';
 import { usePayments, useApplications, useMapPayment } from '../../../hooks/useAdminData';
 
@@ -50,53 +51,81 @@ export default function PaymentsView() {
     }
   };
 
+  const handleExportExcel = () => {
+    try {
+      const exportData = filteredPayments.map((p: any) => ({
+        'Transaction Code': p.transactionCode,
+        'Customer Name': p.customerName || 'N/A',
+        'Account Reference': p.accountReference || 'N/A',
+        'Amount (KES)': p.amount,
+        'Type': p.paymentType,
+        'Status': p.mappedApplicationId ? `Mapped (App ${p.mappedApplicationId})` : 'Unmapped',
+        'Date': new Date(p.createdAt).toLocaleString('en-GB')
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Payments");
+      XLSX.writeFile(workbook, `Kianda_Payments_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    } catch (err) {
+      console.error('Export failed', err);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <AdminPageHeader 
         title="Payments"
         description="Monitor and manage STK Push and Manual Paybill transactions."
         icon={RefreshCw}
-      />
+      >
+        <div className="flex flex-col md:flex-row items-center gap-3 w-full lg:w-auto">
+          <div className="relative group/search flex-1 min-w-[250px]">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/20 group-focus-within/search:text-primary transition-colors" size={16} />
+            <input
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="pl-12 pr-6 py-4 bg-white border border-outline-variant/10 rounded-2xl text-xs font-black placeholder:text-primary/20 focus:ring-4 focus:ring-primary/5 transition-all w-full shadow-sm"
+              placeholder="Search by name, code, or account reference..."
+            />
+          </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-outline-variant/10 shadow-sm">
-        <div className="flex flex-1 min-w-[300px] items-center gap-2 px-4 py-2 bg-surface-container-lowest rounded-xl border border-outline-variant/20 focus-within:border-secondary transition-colors">
-          <Search size={18} className="text-on-surface-variant/40" />
-          <input 
-            type="text"
-            placeholder="Search by name, code, or account reference..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="bg-transparent border-none outline-none w-full text-sm text-primary placeholder:text-on-surface-variant/40"
-          />
-        </div>
-
-        <div className="flex gap-2">
           <select 
             value={filterType}
             onChange={(e) => setFilterType(e.target.value as any)}
-            className="text-sm bg-surface-container-lowest border border-outline-variant/20 rounded-xl px-4 py-2.5 outline-none text-primary cursor-pointer hover:border-secondary/50 transition-colors"
+            className="appearance-none bg-white px-5 py-4 rounded-2xl font-black text-primary border border-outline-variant/10 focus:ring-4 focus:ring-primary/5 cursor-pointer transition-all shadow-sm text-xs"
           >
             <option value="ALL">All Types</option>
             <option value="STK_PUSH">STK Push</option>
             <option value="C2B">Paybill (C2B)</option>
           </select>
+
           <select 
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value as any)}
-            className="text-sm bg-surface-container-lowest border border-outline-variant/20 rounded-xl px-4 py-2.5 outline-none text-primary cursor-pointer hover:border-secondary/50 transition-colors"
+            className="appearance-none bg-white px-5 py-4 rounded-2xl font-black text-primary border border-outline-variant/10 focus:ring-4 focus:ring-primary/5 cursor-pointer transition-all shadow-sm text-xs"
           >
             <option value="ALL">All Status</option>
             <option value="MAPPED">Mapped</option>
             <option value="UNMAPPED">Unmapped</option>
           </select>
+
           <button
             onClick={() => refetch()}
-            className="p-2.5 bg-surface-container-lowest border border-outline-variant/20 rounded-xl hover:border-secondary/50 hover:bg-secondary/5 transition-colors text-primary flex items-center justify-center group"
+            className="px-5 py-4 bg-white border border-outline-variant/10 rounded-2xl hover:border-secondary/50 hover:bg-secondary/5 transition-colors text-primary shadow-sm flex items-center justify-center group"
           >
-            <RefreshCw size={18} className={`${isFetching ? 'animate-spin text-secondary' : 'group-hover:text-secondary'}`} />
+            <RefreshCw size={16} className={`${isFetching ? 'animate-spin text-secondary' : 'group-hover:text-secondary'}`} />
+          </button>
+          
+          <button
+            onClick={handleExportExcel}
+            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-5 py-4 rounded-2xl font-black text-xs transition-all shadow-md hover:shadow-lg"
+          >
+            <FileText size={16} />
+            <span className="hidden sm:inline">Export Excel</span>
           </button>
         </div>
-      </div>
+      </AdminPageHeader>
 
       <div className="bg-white rounded-3xl border border-outline-variant/10 overflow-hidden shadow-sm">
         <div className="overflow-x-auto">

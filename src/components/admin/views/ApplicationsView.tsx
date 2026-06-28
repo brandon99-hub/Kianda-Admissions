@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import toast from 'react-hot-toast';
 import { Users, Search, User, Mail, ChevronRight, Loader2, ChevronDown, Archive, CheckSquare, Square, X, Filter, FileDown, FileText, ArrowLeft } from 'lucide-react';
 import AdminPageHeader from '../AdminPageHeader';
 import ApplicationDetailsView from './ApplicationDetailsView';
@@ -498,9 +499,7 @@ export default function ApplicationsView() {
         });
         if (!res.ok) throw new Error('Failed to send bulk PDFs');
         const data = await res.json();
-        // Since toast is not imported directly in this file, we can import it or use alert. Wait, toast is available via react-hot-toast.
-        // I will dispatch a custom event or check if toast is imported.
-        alert(`Successfully sent ${data.sentCount} emails.`);
+        toast.success(`Successfully sent ${data.sentCount} emails.`);
       } else if (type === 'zip') {
         const zip = new JSZip();
         for (const app of appsToExport) {
