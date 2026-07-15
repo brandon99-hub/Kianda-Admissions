@@ -6,10 +6,11 @@ interface DatePickerProps {
   value: string; // YYYY-MM-DD
   onChange: (value: string) => void;
   placeholder?: string;
-  label?: string;
+  label?: React.ReactNode;
+  maxDate?: Date;
 }
 
-export default function DatePicker({ value, onChange, placeholder = "Select Date", label }: DatePickerProps) {
+export default function DatePicker({ value, onChange, placeholder = "Select Date", label, maxDate }: DatePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [viewDate, setViewDate] = useState(value ? new Date(value) : new Date());
   const [showYearSelector, setShowYearSelector] = useState(false);
@@ -65,14 +66,19 @@ export default function DatePicker({ value, onChange, placeholder = "Select Date
     for (let i = 1; i <= totalDays; i++) {
       const isSelected = value === `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
       const isToday = new Date().toDateString() === new Date(year, month, i).toDateString();
+      const currentIterDate = new Date(year, month, i);
+      const isFuture = maxDate ? currentIterDate > maxDate : false;
       
       days.push(
         <button
           key={i}
           type="button"
-          onClick={() => handleDateSelect(i)}
+          onClick={() => !isFuture && handleDateSelect(i)}
+          disabled={isFuture}
           className={`h-10 w-10 rounded-full text-xs font-bold transition-all flex items-center justify-center relative group
-            ${isSelected ? 'bg-secondary text-primary shadow-lg shadow-secondary/20' : 'hover:bg-primary/5 text-primary/80'}
+            ${isSelected ? 'bg-secondary text-primary shadow-lg shadow-secondary/20' : 
+              isFuture ? 'text-primary/20 cursor-not-allowed bg-surface-container-low' : 
+              'hover:bg-primary/5 text-primary/80'}
           `}
         >
           {isToday && !isSelected && <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-secondary rounded-full" />}

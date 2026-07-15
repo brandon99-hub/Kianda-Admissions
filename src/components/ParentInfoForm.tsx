@@ -63,11 +63,12 @@ export default function ParentInfoForm({ data, updateData, onNext, onBack, onCan
                     {f.label} {isFatherFilled && f.key !== 'Email' && <span className="text-red-500">*</span>}
                   </label>
                   <input
-                    type={f.key === 'Email' ? 'email' : 'text'}
+                    type={f.key === 'Email' ? 'email' : f.key === 'Phone' ? 'tel' : 'text'}
                     value={(data as any)[`father${f.key}`] || ''}
                     onChange={(e) => updateData({ [`father${f.key}`]: e.target.value })}
                     className="w-full bg-white border-2 border-outline-variant/40 rounded-xl p-4 focus:ring-2 focus:ring-primary focus:border-primary transition-all text-sm font-medium shadow-sm placeholder:opacity-40"
                     required={isFatherFilled && f.key !== 'Email'}
+                    {...(f.key === 'Phone' ? { pattern: "^\\+?[0-9\\s\\-()]{8,20}$", title: "Please enter a valid phone number" } : {})}
                   />
                 </div>
               ))}
@@ -81,7 +82,7 @@ export default function ParentInfoForm({ data, updateData, onNext, onBack, onCan
                   </div>
                   <div className="space-y-2">
                     <label className="block text-[10px] font-bold uppercase tracking-widest text-primary">Phone {isFatherFilled && <span className="text-red-500">*</span>}</label>
-                    <input type="text" value={data.fatherAltContactPhone || ''} onChange={e => updateData({ fatherAltContactPhone: e.target.value })} required={isFatherFilled} className="w-full bg-white border-2 border-outline-variant/40 rounded-xl p-3 focus:ring-2 focus:ring-primary focus:border-primary text-sm font-medium shadow-sm placeholder:opacity-40" />
+                    <input type="tel" pattern="^\+?[0-9\s\-()]{8,20}$" title="Please enter a valid phone number" value={data.fatherAltContactPhone || ''} onChange={e => updateData({ fatherAltContactPhone: e.target.value })} required={isFatherFilled} className="w-full bg-white border-2 border-outline-variant/40 rounded-xl p-3 focus:ring-2 focus:ring-primary focus:border-primary text-sm font-medium shadow-sm placeholder:opacity-40" />
                   </div>
                   <div className="space-y-2">
                     <label className="block text-[10px] font-bold uppercase tracking-widest text-primary">Relationship {isFatherFilled && <span className="text-red-500">*</span>}</label>
@@ -101,11 +102,12 @@ export default function ParentInfoForm({ data, updateData, onNext, onBack, onCan
                     {f.label} {isMotherFilled && f.key !== 'Email' && <span className="text-red-500">*</span>}
                   </label>
                   <input
-                    type={f.key === 'Email' ? 'email' : 'text'}
+                    type={f.key === 'Email' ? 'email' : f.key === 'Phone' ? 'tel' : 'text'}
                     value={(data as any)[`mother${f.key}`] || ''}
                     onChange={(e) => updateData({ [`mother${f.key}`]: e.target.value })}
                     className="w-full bg-white border-2 border-outline-variant/40 rounded-xl p-4 focus:ring-2 focus:ring-primary focus:border-primary transition-all text-sm font-medium shadow-sm placeholder:opacity-40"
                     required={isMotherFilled && f.key !== 'Email'}
+                    {...(f.key === 'Phone' ? { pattern: "^\\+?[0-9\\s\\-()]{8,20}$", title: "Please enter a valid phone number" } : {})}
                   />
                 </div>
               ))}
@@ -119,7 +121,7 @@ export default function ParentInfoForm({ data, updateData, onNext, onBack, onCan
                   </div>
                   <div className="space-y-2">
                     <label className="block text-[10px] font-bold uppercase tracking-widest text-primary">Phone {isMotherFilled && <span className="text-red-500">*</span>}</label>
-                    <input type="text" value={data.motherAltContactPhone || ''} onChange={e => updateData({ motherAltContactPhone: e.target.value })} required={isMotherFilled} className="w-full bg-white border-2 border-outline-variant/40 rounded-xl p-3 focus:ring-2 focus:ring-primary focus:border-primary text-sm font-medium shadow-sm placeholder:opacity-40" />
+                    <input type="tel" pattern="^\+?[0-9\s\-()]{8,20}$" title="Please enter a valid phone number" value={data.motherAltContactPhone || ''} onChange={e => updateData({ motherAltContactPhone: e.target.value })} required={isMotherFilled} className="w-full bg-white border-2 border-outline-variant/40 rounded-xl p-3 focus:ring-2 focus:ring-primary focus:border-primary text-sm font-medium shadow-sm placeholder:opacity-40" />
                   </div>
                   <div className="space-y-2">
                     <label className="block text-[10px] font-bold uppercase tracking-widest text-primary">Relationship {isMotherFilled && <span className="text-red-500">*</span>}</label>

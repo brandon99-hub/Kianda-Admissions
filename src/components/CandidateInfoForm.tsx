@@ -223,6 +223,7 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
                  value={data.dob}
                  onChange={(val) => updateData({ dob: val })}
                  placeholder="Select Date of Birth"
+                 maxDate={new Date()}
                />
             </div>
 

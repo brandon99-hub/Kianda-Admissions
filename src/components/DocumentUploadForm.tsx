@@ -101,7 +101,7 @@ export default function DocumentUploadForm({ onNext, onBack, onCancel, consentGi
                     : 'bg-surface-container-low border-transparent hover:border-primary/10 hover:bg-white hover:shadow-xl hover:-translate-y-1'
                 }`}
               >
-                <input type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => handleUpload(doc.id, e)} disabled={isUploading} />
+                <input type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" onChange={(e) => handleUpload(doc.id, e)} disabled={isUploading} />
                 
                 <div className="flex gap-4 items-center">
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${isUploaded ? 'bg-green-100 text-green-600' : 'bg-primary/5 text-primary'}`}>
@@ -145,7 +145,7 @@ export default function DocumentUploadForm({ onNext, onBack, onCancel, consentGi
         <div className="bg-primary/5 p-6 rounded-2xl mt-8 flex gap-4 items-start border border-primary/5">
           <div className="text-primary mt-1"><Upload size={18} /></div>
           <p className="text-[10px] text-on-surface-variant leading-relaxed font-medium uppercase tracking-tight">
-            Accepted formats: **PDF, JPG, PNG**. Max file size: **10MB**. Please ensure all documents are legible and officially stamped where required.
+            Accepted formats: **PDF, JPG, PNG, DOC, DOCX**. Max file size: **10MB**. Please ensure all documents are legible and officially stamped where required.
 
           </p>
         </div>

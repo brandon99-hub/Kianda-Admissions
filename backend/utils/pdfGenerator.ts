@@ -40,7 +40,7 @@ function getLocalImageBase64(url: string): string {
       relativePath = relativePath.replace('/uploads/', 'uploads/');
     }
 
-    const filePath = path.join(__dirname, '../', relativePath);
+    const filePath = path.join(process.cwd(), relativePath);
     if (fs.existsSync(filePath)) {
       const extMatch = filePath.match(/\.([^.]+)$/);
       const ext = extMatch ? extMatch[1].toLowerCase() : 'jpeg';

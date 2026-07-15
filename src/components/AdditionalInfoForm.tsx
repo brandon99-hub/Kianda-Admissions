@@ -179,7 +179,7 @@ export default function AdditionalInfoForm({ data, updateData, onNext, onBack, o
                               exit={{ opacity: 0, y: -10 }}
                               className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-primary/5 py-2 z-50 max-h-48 overflow-y-auto"
                             >
-                              {['Playgroup', 'PP1', 'PP2', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9'].map(g => (
+                              {['Playgroup', 'PP1', 'PP2', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11'].map(g => (
                                 <button
                                   key={g}
                                   type="button"
