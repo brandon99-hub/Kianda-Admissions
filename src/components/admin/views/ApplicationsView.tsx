@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import toast from 'react-hot-toast';
-import { Users, Search, User, Mail, ChevronRight, Loader2, ChevronDown, Archive, CheckSquare, Square, X, Filter, FileDown, FileText, ArrowLeft } from 'lucide-react';
+import { Users, Search, User, Mail, ChevronRight, Loader2, ChevronDown, Archive, CheckSquare, Square, X, Filter, FileDown, FileText, ArrowLeft, Send } from 'lucide-react';
 import AdminPageHeader from '../AdminPageHeader';
 import ApplicationDetailsView from './ApplicationDetailsView';
 import TablePagination from '../TablePagination';
@@ -19,7 +19,8 @@ const ApplicationRow: React.FC<{
   isSelectMode: boolean;
   isSelected: boolean;
   onToggleSelect: (e: React.MouseEvent) => void;
-}> = ({ app, onViewDetails, isSelectMode, isSelected, onToggleSelect }) => {
+  onSendPdf: (id: number) => void;
+}> = ({ app, onViewDetails, isSelectMode, isSelected, onToggleSelect, onSendPdf }) => {
   const [parentToggle, setParentToggle] = useState<'mother' | 'father'>('mother');
 
   return (
@@ -150,8 +151,17 @@ const ApplicationRow: React.FC<{
       </td>
       <td className="px-6 py-6 text-right">
         {!isSelectMode && (
-          <div className="w-8 h-8 inline-flex items-center justify-center bg-primary/5 rounded-full text-primary hover:bg-secondary hover:text-primary transition-all shadow-inner group-hover:-translate-x-1">
-            <ChevronRight size={16} />
+          <div className="flex flex-col items-end gap-2">
+            <button
+               onClick={(e) => { e.stopPropagation(); onSendPdf(app.id); }}
+               className="w-8 h-8 inline-flex items-center justify-center bg-primary/5 rounded-full text-primary hover:bg-secondary hover:text-primary transition-all shadow-inner group-hover:-translate-x-1"
+               title="Email PDF to Parent"
+            >
+               <Send size={14} />
+            </button>
+            <div className="w-8 h-8 inline-flex items-center justify-center bg-primary/5 rounded-full text-primary hover:bg-secondary hover:text-primary transition-all shadow-inner group-hover:-translate-x-1">
+              <ChevronRight size={16} />
+            </div>
           </div>
         )}
       </td>
@@ -164,11 +174,11 @@ const ApplicationRow: React.FC<{
 const BulkExportModal: React.FC<{
   apps: any[];
   onClose: () => void;
-  onExport: (filtered: any[], type: 'zip' | 'excel' | 'email') => void;
+  onExport: (filtered: any[], type: 'zip' | 'excel' | 'documents_zip') => void;
   isBulkExporting: boolean;
 }> = ({ apps, onClose, onExport, isBulkExporting }) => {
   const [step, setStep] = useState<1 | 2>(1);
-  const [exportType, setExportType] = useState<'zip' | 'excel' | 'email'>('zip');
+  const [exportType, setExportType] = useState<'zip' | 'excel' | 'documents_zip'>('zip');
   
   const [filterYear, setFilterYear] = useState<number | 'all'>('all');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -254,15 +264,15 @@ const BulkExportModal: React.FC<{
                 </div>
               </button>
               <button
-                onClick={() => setExportType('email')}
-                className={`w-full text-left p-6 rounded-[24px] border-2 transition-all flex items-center gap-4 ${exportType === 'email' ? 'border-primary bg-primary/5 shadow-md' : 'border-outline-variant/10 hover:border-primary/30 hover:bg-surface-container-lowest'}`}
+                onClick={() => setExportType('documents_zip')}
+                className={`w-full text-left p-6 rounded-[24px] border-2 transition-all flex items-center gap-4 ${exportType === 'documents_zip' ? 'border-primary bg-primary/5 shadow-md' : 'border-outline-variant/10 hover:border-primary/30 hover:bg-surface-container-lowest'}`}
               >
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${exportType === 'email' ? 'bg-amber-600 text-white' : 'bg-surface-variant text-on-surface-variant'}`}>
-                  <Mail size={20} />
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${exportType === 'documents_zip' ? 'bg-amber-600 text-white' : 'bg-surface-variant text-on-surface-variant'}`}>
+                  <Archive size={20} />
                 </div>
                 <div>
-                  <div className="font-black text-primary mb-1">Email PDFs to Parents</div>
-                  <div className="text-xs text-primary/60 font-semibold leading-relaxed">Generates and emails PDF copies of the application forms directly to parents.</div>
+                  <div className="font-black text-primary mb-1">ZIP Archive (Documents)</div>
+                  <div className="text-xs text-primary/60 font-semibold leading-relaxed">Downloads all submitted documents organized in folders per application.</div>
                 </div>
               </button>
             </div>
@@ -288,7 +298,7 @@ const BulkExportModal: React.FC<{
                 </div>
                 <div>
                   <h3 className="text-xl font-black text-primary">Filter Records</h3>
-                  <p className="text-xs font-bold text-primary/40">Step 2: Apply filters for {exportType === 'zip' ? 'ZIP Export' : exportType === 'email' ? 'Emailing PDFs' : 'Excel Export'}</p>
+                  <p className="text-xs font-bold text-primary/40">Step 2: Apply filters for {exportType === 'zip' ? 'ZIP Export' : exportType === 'documents_zip' ? 'Documents ZIP' : 'Excel Export'}</p>
                 </div>
               </div>
             </div>
@@ -365,7 +375,7 @@ const BulkExportModal: React.FC<{
               >
                 {isBulkExporting
                   ? <><Loader2 size={14} className="animate-spin" /> Generating...</>
-                  : <><FileDown size={14} /> {exportType === 'email' ? 'Email' : 'Export'} {filtered.length} {exportType === 'zip' || exportType === 'email' ? 'PDFs' : 'Rows'}</>}
+                  : <><FileDown size={14} /> Export {filtered.length} {exportType === 'zip' ? 'PDFs' : exportType === 'documents_zip' ? 'Applications' : 'Rows'}</>}
               </button>
             </div>
           </>
@@ -413,6 +423,12 @@ export default function ApplicationsView() {
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const [isBulkExporting, setIsBulkExporting] = useState(false);
 
+  const [pdfEmailAppId, setPdfEmailAppId] = useState<number | null>(null);
+  const [isSendingPdf, setIsSendingPdf] = useState(false);
+  
+  const [tableGradeFilter, setTableGradeFilter] = useState('all');
+  const [isGradeFilterOpen, setIsGradeFilterOpen] = useState(false);
+
   // Reset pagination on filter changes
   React.useEffect(() => {
     setCurrentPage(1);
@@ -438,8 +454,34 @@ export default function ApplicationsView() {
     if (statusFilter === 'pending') matchesStatus = ['pending', 'assessment_scheduled'].includes(app.status);
     if (statusFilter === 'passed_assessment') matchesStatus = ['passed_assessment', 'interview_scheduled'].includes(app.status);
     const matchesSearch = !searchQuery || app.candidate?.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) || app.id.toString().includes(searchQuery);
-    return matchesYear && matchesStatus && matchesSearch;
+    const matchesGrade = tableGradeFilter === 'all' || app.candidate?.grade === tableGradeFilter;
+    return matchesYear && matchesStatus && matchesSearch && matchesGrade;
   }).sort((a: any, b: any) => b.id - a.id);
+
+  const handleConfirmSendPdf = async () => {
+    if (!pdfEmailAppId) return;
+    setIsSendingPdf(true);
+    const toastId = toast.loading('Sending PDF to parent...');
+    try {
+      const token = localStorage.getItem('kianda_admin_token');
+      const res = await fetch('/api/admin/applications/bulk-send-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ applicationIds: [pdfEmailAppId] })
+      });
+      if (!res.ok) throw new Error('Failed to send PDF');
+      toast.success('Successfully sent PDF email.', { id: toastId });
+      setPdfEmailAppId(null);
+    } catch (err) {
+      console.error('Send PDF failed', err);
+      toast.error('Failed to send PDF', { id: toastId });
+    } finally {
+      setIsSendingPdf(false);
+    }
+  };
 
   const totalPages = Math.ceil(filteredApps.length / itemsPerPage);
   const paginatedApps = filteredApps.slice(
@@ -480,26 +522,50 @@ export default function ApplicationsView() {
     }
   };
 
-  const runBulkExport = async (appsToExport: any[], type: 'zip' | 'excel' | 'email') => {
+  const runBulkExport = async (appsToExport: any[], type: 'zip' | 'excel' | 'documents_zip') => {
     if (appsToExport.length === 0) return;
     setIsBulkExporting(true);
     setIsBulkModalOpen(false);
 
     try {
-      if (type === 'email') {
-        const appIds = appsToExport.map(a => a.id);
-        const token = localStorage.getItem('kianda_admin_token');
-        const res = await fetch('/api/admin/applications/bulk-send-pdf', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ applicationIds: appIds })
-        });
-        if (!res.ok) throw new Error('Failed to send bulk PDFs');
-        const data = await res.json();
-        toast.success(`Successfully sent ${data.sentCount} emails.`);
+      if (type === 'documents_zip') {
+        const zip = new JSZip();
+        for (const app of appsToExport) {
+          const name = app.candidate?.fullName?.replace(/\s+/g, '_') || `APP_${app.id}`;
+          const folderName = `APP-${app.id.toString().padStart(4, '0')}_${name}`;
+          const appFolder = zip.folder(folderName);
+          if (!appFolder) continue;
+
+          if (app.documents && app.documents.length > 0) {
+            for (const doc of app.documents) {
+              if (!doc.fileUrl) continue;
+              let fetchUrl = encodeURI(doc.fileUrl);
+              if (fetchUrl.startsWith('/uploads/')) {
+                fetchUrl = `/api${fetchUrl}`;
+              }
+              const token = localStorage.getItem('kianda_admin_token');
+              const res = await fetch(fetchUrl, {
+                headers: token ? { Authorization: `Bearer ${token}` } : {}
+              });
+              
+              const contentType = res.headers.get('content-type') || '';
+              if (res.ok && !contentType.includes('text/html')) {
+                const blob = await res.blob();
+                const extMatch = doc.fileUrl.match(/\.([^.]+)$/);
+                const ext = extMatch ? extMatch[1] : 'pdf';
+                const docName = (doc.documentType || 'Document').replace(/\s+/g, '_');
+                appFolder.file(`${docName}.${ext}`, blob);
+              }
+            }
+          }
+        }
+        const blob = await zip.generateAsync({ type: 'blob' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Kianda_Documents_${new Date().toISOString().slice(0, 10)}.zip`;
+        a.click();
+        URL.revokeObjectURL(url);
       } else if (type === 'zip') {
         const zip = new JSZip();
         for (const app of appsToExport) {
@@ -540,6 +606,7 @@ export default function ApplicationsView() {
           'Mother Phone': app.parentDetails?.motherPhone,
           'Mother Email': app.parentDetails?.motherEmail,
           
+          'Previous Schools': app.schoolsAttended?.map((s: any) => `${s.schoolName} (${s.yearsRange || 'N/A'})`).join(', ') || 'N/A',
           'Payment Verified': app.paymentVerified ? 'Yes' : 'No',
           'M-PESA Code': app.mpesaCode
         }));
@@ -683,7 +750,52 @@ export default function ApplicationsView() {
                 <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-primary/40">Candidate</th>
                 <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-primary/40">DOB (Age)</th>
                 <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-primary/40">Religion</th>
-                <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-primary/40">Grade</th>
+                <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-primary/40 relative">
+                  <div className="flex items-center gap-2 cursor-pointer w-fit" onClick={() => setIsGradeFilterOpen(!isGradeFilterOpen)}>
+                    Grade
+                    <div className="relative hover:text-primary transition-colors">
+                      <Filter size={12} className={tableGradeFilter !== 'all' ? 'text-secondary' : ''} />
+                      {tableGradeFilter !== 'all' && (
+                        <span className="absolute -top-1 -right-1 w-2 h-2 bg-secondary rounded-full" />
+                      )}
+                    </div>
+                  </div>
+                  <AnimatePresence>
+                    {isGradeFilterOpen && (
+                      <>
+                        <div className="fixed inset-0 z-30" onClick={() => setIsGradeFilterOpen(false)} />
+                        <motion.div
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          className="absolute top-full left-4 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-outline-variant/10 z-40 overflow-hidden"
+                        >
+                          <div className="max-h-64 overflow-y-auto">
+                            <button
+                              onClick={() => { setTableGradeFilter('all'); setIsGradeFilterOpen(false); }}
+                              className={`w-full text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest transition-colors ${tableGradeFilter === 'all' ? 'bg-primary/5 text-primary' : 'text-primary/60 hover:bg-surface-container-lowest'}`}
+                            >
+                              All Grades
+                            </button>
+                            {Array.from(new Set(apps.map((a: any) => a.candidate?.grade).filter(Boolean))).map((g: any) => {
+                              const count = apps.filter((a: any) => a.candidate?.grade === g && a.academicYear === selectedYear).length;
+                              return (
+                                <button
+                                  key={g}
+                                  onClick={() => { setTableGradeFilter(g); setIsGradeFilterOpen(false); }}
+                                  className={`w-full flex items-center justify-between px-4 py-3 text-[10px] font-black uppercase tracking-widest transition-colors ${tableGradeFilter === g ? 'bg-primary/5 text-primary' : 'text-primary/60 hover:bg-surface-container-lowest'}`}
+                                >
+                                  <span>{g}</span>
+                                  <span className="bg-surface-container-low px-2 py-0.5 rounded-full text-primary/40">{count}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </motion.div>
+                      </>
+                    )}
+                  </AnimatePresence>
+                </th>
                 <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-primary/40">Parent Info</th>
                 <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-primary/40">Prev. Schools</th>
                 <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-primary/40">Motivation</th>
@@ -702,6 +814,7 @@ export default function ApplicationsView() {
                   isSelected={selectedIds.has(app.id)}
                   onToggleSelect={(e) => { e.stopPropagation(); toggleSelectApp(app.id); }}
                   onViewDetails={() => setSelectedApp(app)}
+                  onSendPdf={(id) => setPdfEmailAppId(id)}
                 />
               ))}
               {!isLoading && filteredApps.length === 0 && (
@@ -733,6 +846,32 @@ export default function ApplicationsView() {
             onExport={runBulkExport}
             isBulkExporting={isBulkExporting}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Send PDF Confirm Modal */}
+      <AnimatePresence>
+        {pdfEmailAppId !== null && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-primary/40 backdrop-blur-sm" onClick={() => !isSendingPdf && setPdfEmailAppId(null)} />
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-white max-w-sm w-full rounded-[32px] p-8 relative z-10 shadow-2xl border border-outline-variant/10 text-center">
+               <div className="w-16 h-16 bg-primary/5 rounded-full flex items-center justify-center text-primary mx-auto mb-6">
+                  <Mail size={28} />
+               </div>
+               <h3 className="text-xl font-black text-primary font-headline mb-2">Send Application PDF</h3>
+               <p className="text-sm font-medium text-on-surface-variant/70 leading-relaxed mb-8">Are you sure you want to send a copy of the application PDF via email to the parents?</p>
+               <div className="flex gap-4">
+                  <button disabled={isSendingPdf} onClick={() => setPdfEmailAppId(null)} className="flex-1 py-4 text-[11px] font-black uppercase tracking-widest text-primary/60 hover:bg-primary/5 rounded-xl disabled:opacity-50 transition-colors">Cancel</button>
+                  <button 
+                   disabled={isSendingPdf} 
+                   onClick={handleConfirmSendPdf} 
+                   className="flex-[2] py-4 bg-primary text-secondary shadow-lg shadow-primary/20 text-[11px] font-black uppercase tracking-widest rounded-xl hover:opacity-90 disabled:opacity-50 disabled:shadow-none transition-all flex justify-center items-center gap-2"
+                  >
+                    {isSendingPdf ? <><Loader2 size={14} className="animate-spin" /> Sending</> : 'Confirm & Send'}
+                  </button>
+               </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>

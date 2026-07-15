@@ -327,8 +327,8 @@ export default function App() {
              { id: 'grades', label: 'Grade Management', icon: GraduationCap },
              { id: 'assessments', label: 'Assessments', icon: ListChecks },
              { id: 'interviews', label: 'Interviews', icon: Calendar },
-             { id: 'documents', label: 'Process Documents', icon: FileText },
              { id: 'payments', label: 'Payments', icon: CreditCard },
+             { id: 'documents', label: 'Process Documents', icon: FileText },
            ].map(item => (
              <div key={item.id} className="relative group/tooltip">
                <button
