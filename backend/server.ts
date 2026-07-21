@@ -39,8 +39,7 @@ const allowedOrigins = [
   'http://127.0.0.1:3001',
   'http://localhost:8090',
   'http://192.168.0.100:8090',
-  'https://kiandaadmissions.kiandaschool.ac.ke',
-  'https://kianda-admissions.onrender.com'
+  'https://kiandaadmissions.kiandaschool.ac.ke/',
 ];
 if (process.env.FRONTEND_URL) {
   allowedOrigins.push(process.env.FRONTEND_URL);
