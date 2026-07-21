@@ -37,11 +37,9 @@ const port = process.env.PORT || 8095;
 const allowedOrigins = [
   'http://localhost:3001',
   'http://127.0.0.1:3001',
-  'http://192.168.0.100:8094',
+  'http://localhost:8090',
+  'http://192.168.0.100:8090',
   'https://kiandaadmissions.kiandaschool.ac.ke',
-  'https://kiandaadmissions.kiandaschool.ac.ke:8094',
-  'http://kiandaadmissions.kiandaschool.ac.ke',
-  'https://erp.kiandaschool.ac.ke',
   'https://kianda-admissions.onrender.com'
 ];
 if (process.env.FRONTEND_URL) {
