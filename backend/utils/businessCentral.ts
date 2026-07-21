@@ -1,4 +1,4 @@
-export async function pushCandidateToProxy(appData: any) {
+export async function pushCandidateToProxy(appData: any, erpAdmissionNo?: string | null) {
   // Check if integration is enabled
   const isEnabled = process.env.BC_INTEGRATION_ENABLED === 'true';
   const proxyUrl = process.env.BC_PROXY_URL;
@@ -6,11 +6,12 @@ export async function pushCandidateToProxy(appData: any) {
 
   if (!proxyUrl || !apiKey) {
     console.warn('[BC Integration] BC_PROXY_URL or BC_PROXY_API_KEY is not defined in .env.');
-    if (isEnabled) return; 
+    if (isEnabled) return null; 
   }
 
   // Format the payload to match AdmissionsPayload in C# proxy
   const payload = {
+    Admission_No: erpAdmissionNo || '',
     Candidate: {
       FullName: appData.candidate?.fullName || '',
       Dob: appData.candidate?.dob || '',
@@ -21,8 +22,16 @@ export async function pushCandidateToProxy(appData: any) {
     },
     ParentDetails: {
       Residency: appData.parentDetails?.residency || '',
-      HouseTelephoneNo: appData.parentDetails?.houseTelephoneNo || '',
-      HouseNo: appData.parentDetails?.houseNo ? parseInt(appData.parentDetails.houseNo, 10) : 0
+      FatherName: appData.parentDetails?.fatherName || '',
+      FatherPhone: appData.parentDetails?.fatherPhone || '',
+      FatherProfession: appData.parentDetails?.fatherProfession || '',
+      FatherWork: appData.parentDetails?.fatherWork || '',
+      FatherEmail: appData.parentDetails?.fatherEmail || '',
+      MotherName: appData.parentDetails?.motherName || '',
+      MotherPhone: appData.parentDetails?.motherPhone || '',
+      MotherProfession: appData.parentDetails?.motherProfession || '',
+      MotherWork: appData.parentDetails?.motherWork || '',
+      MotherEmail: appData.parentDetails?.motherEmail || ''
     },
     AdditionalInfo: {
       Source: appData.additionalInfo?.source || '',
@@ -45,7 +54,7 @@ export async function pushCandidateToProxy(appData: any) {
     console.log('\n[DRY RUN] BC Integration is disabled. Would push to Proxy:');
     console.log(JSON.stringify(payload, null, 2));
     console.log('');
-    return;
+    return null;
   }
 
   try {
@@ -61,15 +70,21 @@ export async function pushCandidateToProxy(appData: any) {
     });
 
     const responseText = await response.text();
+    let jsonResponse: any = {};
+    try {
+      jsonResponse = JSON.parse(responseText);
+    } catch(e) {}
 
     if (!response.ok) {
-      throw new Error(`Proxy responded with ${response.status}: ${responseText}`);
+      const error: any = new Error(`Proxy responded with ${response.status}: ${responseText}`);
+      error.admissionNo = jsonResponse?.admissionNo;
+      throw error;
     }
 
     console.log(`[BC Integration] Successfully pushed to proxy: ${responseText}`);
+    return jsonResponse?.admissionNo;
   } catch (error) {
     console.error('[BC Integration ERROR] Failed to communicate with proxy:', error);
-    // Rethrowing allows the caller to decide whether to fail the main request or swallow the error
     throw error;
   }
 }

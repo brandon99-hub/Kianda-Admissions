@@ -160,8 +160,19 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
           if (!data.fullName) return toast.error('Please enter the Full Name.');
           if (!data.dob) return toast.error('Please select the Date of Birth.');
           if (!data.birthOrder) return toast.error('Please select the Birth Order.');
+          
+          if (data.grade) {
+             const gradeNum = parseInt(data.grade.replace(/\D/g, ''));
+             if (gradeNum >= 4 && gradeNum <= 9 && (!data.assessmentNo || data.assessmentNo.trim() === '')) {
+                 return toast.error('Please enter the Assessment Number.');
+             }
+          }
+
+          if (!data.religion) return toast.error('Please select a Religion.');
           if (data.religion === 'Other') return toast.error('Please specify your religion.');
+          if (data.religion === 'Christian' && !data.denomination) return toast.error('Please select a Denomination.');
           if (data.religion === 'Christian' && data.denomination === 'Other') return toast.error('Please specify your denomination.');
+          
           if (!data.passportPhoto) return toast.error('Please upload a Passport Photo.');
           onNext(); 
         }}>

@@ -79,51 +79,61 @@ export default function PaymentsView() {
         description="Monitor and manage STK Push and Manual Paybill transactions."
         icon={RefreshCw}
       >
-        <div className="flex flex-col md:flex-row items-center gap-3 w-full lg:w-auto">
-          <div className="relative group/search flex-1 min-w-[250px]">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/20 group-focus-within/search:text-primary transition-colors" size={16} />
-            <input
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              className="pl-12 pr-6 py-4 bg-white border border-outline-variant/10 rounded-2xl text-xs font-black placeholder:text-primary/20 focus:ring-4 focus:ring-primary/5 transition-all w-full shadow-sm"
-              placeholder="Search by name, code, or account reference..."
-            />
+        <div className="flex flex-col gap-4 w-full lg:w-auto">
+          {/* Row 1: Search and Refresh */}
+          <div className="flex flex-col md:flex-row items-center gap-3 w-full">
+            <div className="relative group/search flex-1 min-w-[250px] w-full">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/20 group-focus-within/search:text-primary transition-colors" size={16} />
+              <input
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                className="pl-12 pr-6 py-4 bg-white border border-outline-variant/10 rounded-2xl text-xs font-black placeholder:text-primary/20 focus:ring-4 focus:ring-primary/5 transition-all w-full shadow-sm"
+                placeholder="Search by name, code, or account reference..."
+              />
+            </div>
+
+            <button
+              onClick={async () => {
+                await refetch();
+                import('react-hot-toast').then(m => m.default.success('Payments synchronized'));
+              }}
+              className="px-6 py-4 bg-white border border-outline-variant/10 rounded-2xl hover:border-secondary/50 hover:bg-secondary/5 transition-colors text-primary shadow-sm flex items-center justify-center group w-full md:w-auto"
+              title="Refresh Payments"
+            >
+              <RefreshCw size={16} className={`${isFetching ? 'animate-spin text-secondary' : 'group-hover:text-secondary'}`} />
+            </button>
           </div>
 
-          <select 
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value as any)}
-            className="appearance-none bg-white px-5 py-4 rounded-2xl font-black text-primary border border-outline-variant/10 focus:ring-4 focus:ring-primary/5 cursor-pointer transition-all shadow-sm text-xs"
-          >
-            <option value="ALL">All Types</option>
-            <option value="STK_PUSH">STK Push</option>
-            <option value="C2B">Paybill (C2B)</option>
-          </select>
+          {/* Row 2: Filters and Export */}
+          <div className="flex flex-col md:flex-row items-center gap-3 w-full">
+            <select 
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value as any)}
+              className="appearance-none bg-white px-5 py-4 rounded-2xl font-black text-primary border border-outline-variant/10 focus:ring-4 focus:ring-primary/5 cursor-pointer transition-all shadow-sm text-xs flex-1 w-full md:w-auto"
+            >
+              <option value="ALL">All Types</option>
+              <option value="STK_PUSH">STK Push</option>
+              <option value="C2B">Paybill (C2B)</option>
+            </select>
 
-          <select 
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value as any)}
-            className="appearance-none bg-white px-5 py-4 rounded-2xl font-black text-primary border border-outline-variant/10 focus:ring-4 focus:ring-primary/5 cursor-pointer transition-all shadow-sm text-xs"
-          >
-            <option value="ALL">All Status</option>
-            <option value="MAPPED">Mapped</option>
-            <option value="UNMAPPED">Unmapped</option>
-          </select>
+            <select 
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value as any)}
+              className="appearance-none bg-white px-5 py-4 rounded-2xl font-black text-primary border border-outline-variant/10 focus:ring-4 focus:ring-primary/5 cursor-pointer transition-all shadow-sm text-xs flex-1 w-full md:w-auto"
+            >
+              <option value="ALL">All Status</option>
+              <option value="MAPPED">Mapped</option>
+              <option value="UNMAPPED">Unmapped</option>
+            </select>
 
-          <button
-            onClick={() => refetch()}
-            className="px-5 py-4 bg-white border border-outline-variant/10 rounded-2xl hover:border-secondary/50 hover:bg-secondary/5 transition-colors text-primary shadow-sm flex items-center justify-center group"
-          >
-            <RefreshCw size={16} className={`${isFetching ? 'animate-spin text-secondary' : 'group-hover:text-secondary'}`} />
-          </button>
-          
-          <button
-            onClick={handleExportExcel}
-            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-5 py-4 rounded-2xl font-black text-xs transition-all shadow-md hover:shadow-lg"
-          >
-            <FileText size={16} />
-            <span className="hidden sm:inline">Export Excel</span>
-          </button>
+            <button
+              onClick={handleExportExcel}
+              className="flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-6 py-4 rounded-2xl font-black text-xs transition-all shadow-md hover:shadow-lg w-full md:w-auto"
+            >
+              <FileText size={16} />
+              <span>Export Excel</span>
+            </button>
+          </div>
         </div>
       </AdminPageHeader>
 

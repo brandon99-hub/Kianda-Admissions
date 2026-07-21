@@ -122,7 +122,9 @@ const ApplicationRow: React.FC<{
           </div>
       </td>
       <td className="px-6 py-6">
-        <div className="text-xs font-mono font-black tracking-[0.2em] text-primary/80 bg-primary/5 px-3 py-1 rounded-md border border-primary/10 w-fit">
+        <div className={`text-xs font-mono font-black tracking-[0.2em] px-3 py-1 rounded-md border w-fit ${
+          app.paymentVerified ? 'text-primary/80 bg-primary/5 border-primary/10' : 'text-red-500 bg-red-50 border-red-100'
+        }`}>
           {app.mpesaCode || 'N/A'}
         </div>
       </td>
@@ -246,7 +248,7 @@ const BulkExportModal: React.FC<{
               </div>
             </div>
             
-            <div className="space-y-4 mb-8">
+            <div className="space-y-4 mb-8 overflow-y-auto custom-scrollbar max-h-[50vh] pr-2">
               <button
                 onClick={() => setExportType('zip')}
                 className={`w-full text-left p-6 rounded-[24px] border-2 transition-all flex items-center gap-4 ${exportType === 'zip' ? 'border-primary bg-primary/5 shadow-md' : 'border-outline-variant/10 hover:border-primary/30 hover:bg-surface-container-lowest'}`}
@@ -255,7 +257,7 @@ const BulkExportModal: React.FC<{
                   <Archive size={20} />
                 </div>
                 <div>
-                  <div className="font-black text-primary mb-1">ZIP Archive (PDFs)</div>
+                  <div className="font-black text-primary mb-1">Zip Application PDF</div>
                   <div className="text-xs text-primary/60 font-semibold leading-relaxed">Generates individual PDF dossiers for each candidate, packaged into a single ZIP file.</div>
                 </div>
               </button>
@@ -280,7 +282,7 @@ const BulkExportModal: React.FC<{
                   <Archive size={20} />
                 </div>
                 <div>
-                  <div className="font-black text-primary mb-1">ZIP Archive (Documents)</div>
+                  <div className="font-black text-primary mb-1">Zip Documents</div>
                   <div className="text-xs text-primary/60 font-semibold leading-relaxed">Downloads all submitted documents organized in folders per application.</div>
                 </div>
               </button>

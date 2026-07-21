@@ -14,7 +14,7 @@ export default function AdminPageHeader({ title, description, icon: Icon, childr
     <motion.div 
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-12"
+      className="flex flex-col md:flex-row justify-between items-start md:items-start gap-6 mb-12"
     >
       <div className="flex items-center gap-6">
         <div className="w-16 h-16 bg-white rounded-[24px] shadow-[0_15px_30px_rgba(24,33,109,0.08)] flex items-center justify-center text-primary border border-outline-variant/10">

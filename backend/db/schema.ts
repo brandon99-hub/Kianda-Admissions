@@ -5,6 +5,10 @@ export const applicationStatusEnum = pgEnum('application_status', [
   'pending', 'assessment_scheduled', 'passed_assessment', 'interview_scheduled', 'accepted', 'rejected', 'failed', 'waitlisted'
 ]);
 
+export const erpSyncStatusEnum = pgEnum('erp_sync_status', [
+  'pending', 'synced', 'failed', 'failed_partially'
+]);
+
 export const applications = pgTable('applications', {
   id: serial('id').primaryKey(),
   status: applicationStatusEnum('status').default('pending'),
@@ -18,6 +22,8 @@ export const applications = pgTable('applications', {
   rejectionRemarks: text('rejection_remarks'),
   rejectionDate: timestamp('rejection_date'),
   admissionType: varchar('admission_type', { length: 50 }),
+  erpSyncStatus: erpSyncStatusEnum('erp_sync_status').default('pending'),
+  erpAdmissionNo: varchar('erp_admission_no', { length: 50 }),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });

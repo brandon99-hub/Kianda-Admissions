@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, User, MapPin, Phone, Mail, Hash, BookOpen, Clock, HeartPulse, GraduationCap, Download, FileText, CheckCircle, Users, X, Loader2, Edit2 } from 'lucide-react';
+import { ArrowLeft, User, MapPin, Phone, Mail, Hash, BookOpen, Clock, HeartPulse, GraduationCap, Download, FileText, CheckCircle, XCircle, Users, X, Loader2, Edit2 } from 'lucide-react';
 import { authFetch, getToken } from '../../../utils/auth';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -177,9 +177,13 @@ export default function ApplicationDetailsView({ app, onBack, onUpdate, showResu
             <h3 className="text-[10px] font-black uppercase tracking-[0.3em] mb-2 opacity-40 text-primary flex items-center gap-2">
               <Hash size={12} /> Transaction Code
             </h3>
-            <div className="text-2xl font-mono font-black tracking-widest text-primary flex items-center gap-3">
+            <div className={`text-2xl font-mono font-black tracking-widest flex items-center gap-3 ${app.paymentVerified ? 'text-primary' : 'text-red-500'}`}>
               {app.mpesaCode || 'PENDING'}
-              <CheckCircle size={20} className="text-green-500" />
+              {app.paymentVerified ? (
+                <CheckCircle size={20} className="text-green-500" />
+              ) : (
+                <XCircle size={20} className="text-red-500" />
+              )}
             </div>
           </div>
 

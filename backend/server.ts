@@ -882,7 +882,7 @@ app.post('/api/admin/applications/status', authenticateAdmin, async (req, res) =
     // Fetch deep candidate data to construct emails
     const appData = await db.query.applications.findFirst({
       where: eq(schema.applications.id, applicationId),
-      with: { candidate: true, parentDetails: true }
+      with: { candidate: true, parentDetails: true, additionalInfo: true, schoolsAttended: true, siblings: true }
     });
 
     if (appData && appData.candidate && appData.parentDetails) {
@@ -923,11 +923,23 @@ app.post('/api/admin/applications/status', authenticateAdmin, async (req, res) =
             .where(eq(schema.gradeManagement.id, grade.id));
 
           // 3. Push to Business Central Proxy
+          let syncStatus = 'synced';
+          let admissionNo = null;
           try {
-            await pushCandidateToProxy(appData);
-          } catch (error) {
+            admissionNo = await pushCandidateToProxy(appData, appData.erpAdmissionNo);
+          } catch (error: any) {
             console.error('Failed to push candidate to proxy, but application is still accepted', error);
+            admissionNo = error.admissionNo || appData.erpAdmissionNo;
+            syncStatus = admissionNo ? 'failed_partially' : 'failed';
           }
+
+          // @ts-ignore - Ignoring type error if schema isn't fully updated in TS types yet
+          await db.update(schema.applications)
+            .set({ 
+              erpSyncStatus: syncStatus, 
+              erpAdmissionNo: admissionNo 
+            } as any)
+            .where(eq(schema.applications.id, applicationId));
         } else {
           // No slots left, force waitlist
           status = 'waitlisted';
@@ -957,10 +969,55 @@ app.post('/api/admin/applications/status', authenticateAdmin, async (req, res) =
       }
     }
 
-    res.json({ success: true, status });
+    let responseData: any = { success: true, status };
+    if (status === 'accepted') {
+      const updatedApp = await db.query.applications.findFirst({
+        where: eq(schema.applications.id, applicationId)
+      });
+      responseData.erpSyncStatus = (updatedApp as any)?.erpSyncStatus;
+      responseData.erpAdmissionNo = (updatedApp as any)?.erpAdmissionNo;
+    }
+    res.json(responseData);
   } catch (error) {
     console.error('Status error:', error);
     res.status(500).json({ error: 'Failed to update status' });
+  }
+});
+
+app.post('/api/admin/applications/:id/resync', authenticateAdmin, async (req, res) => {
+  try {
+    const applicationId = parseInt(req.params.id);
+
+    const appData = await db.query.applications.findFirst({
+      where: eq(schema.applications.id, applicationId),
+      with: { candidate: true, parentDetails: true, additionalInfo: true, schoolsAttended: true, siblings: true }
+    });
+
+    if (!appData) {
+      return res.status(404).json({ error: 'Application not found' });
+    }
+
+    let syncStatus = 'synced';
+    let admissionNo = null;
+    try {
+      admissionNo = await pushCandidateToProxy(appData, (appData as any).erpAdmissionNo);
+    } catch (error: any) {
+      console.error('Failed to resync candidate to proxy', error);
+      admissionNo = error.admissionNo || (appData as any).erpAdmissionNo;
+      syncStatus = admissionNo ? 'failed_partially' : 'failed';
+    }
+
+    await db.update(schema.applications)
+      .set({ 
+        erpSyncStatus: syncStatus, 
+        erpAdmissionNo: admissionNo 
+      } as any)
+      .where(eq(schema.applications.id, applicationId));
+
+    res.json({ success: true, erpSyncStatus: syncStatus, erpAdmissionNo: admissionNo });
+  } catch (error) {
+    console.error('Resync error:', error);
+    res.status(500).json({ error: 'Failed to resync application' });
   }
 });
 
@@ -1426,7 +1483,7 @@ app.post('/api/admin/interviews/outcome', authenticateAdmin, async (req, res) =>
 
     const appData = await db.query.applications.findFirst({
       where: eq(schema.applications.id, applicationId),
-      with: { candidate: true, parentDetails: true }
+      with: { candidate: true, parentDetails: true, additionalInfo: true, schoolsAttended: true, siblings: true }
     });
 
     if (appData && appData.candidate && appData.parentDetails) {
@@ -1449,6 +1506,26 @@ app.post('/api/admin/interviews/outcome', authenticateAdmin, async (req, res) =>
           await db.update(schema.gradeManagement)
             .set({ vacantSpots: grade.vacantSpots - 1 })
             .where(eq(schema.gradeManagement.id, grade.id));
+
+          // 3. Push to Business Central Proxy
+          let syncStatus = 'synced';
+          let admissionNo = null;
+          try {
+            admissionNo = await pushCandidateToProxy(appData, (appData as any).erpAdmissionNo);
+          } catch (error: any) {
+            console.error('Failed to push candidate to proxy, but application is still accepted', error);
+            admissionNo = error.admissionNo || (appData as any).erpAdmissionNo;
+            syncStatus = admissionNo ? 'failed_partially' : 'failed';
+          }
+
+          // @ts-ignore
+          await db.update(schema.applications)
+            .set({ 
+              erpSyncStatus: syncStatus, 
+              erpAdmissionNo: admissionNo 
+            } as any)
+            .where(eq(schema.applications.id, applicationId));
+
         } else {
           // No slots left, set to waitlisted instead
           emailContent = getWaitlistEmail(appData.candidate.fullName);
@@ -1479,7 +1556,16 @@ app.post('/api/admin/interviews/outcome', authenticateAdmin, async (req, res) =>
       }
     }
 
-    res.json({ success: true });
+    let responseData: any = { success: true };
+    if (outcome === 'accepted') {
+      const updatedApp = await db.query.applications.findFirst({
+        where: eq(schema.applications.id, applicationId)
+      });
+      responseData.erpSyncStatus = (updatedApp as any)?.erpSyncStatus;
+      responseData.erpAdmissionNo = (updatedApp as any)?.erpAdmissionNo;
+    }
+
+    res.json(responseData);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to record outcome' });

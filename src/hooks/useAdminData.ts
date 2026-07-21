@@ -263,3 +263,30 @@ export const useDeleteCycle = () => {
     }
   });
 };
+
+export const useResyncErp = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (applicationId: number) => {
+      const res = await authFetch(`/api/admin/applications/${applicationId}/resync`, {
+        method: 'POST'
+      });
+      if (!res.ok) throw new Error('Resync failed');
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['applications'] });
+      queryClient.invalidateQueries({ queryKey: ['interviews'] });
+      if (data.erpSyncStatus === 'synced') {
+        toast.success('ERP Synchronization successful.');
+      } else if (data.erpSyncStatus === 'failed_partially') {
+        toast.error('ERP Partial failure. Check proxy logs.');
+      } else {
+        toast.error('ERP Sync failed.');
+      }
+    },
+    onError: () => {
+      toast.error('Failed to communicate with resync endpoint.');
+    }
+  });
+};

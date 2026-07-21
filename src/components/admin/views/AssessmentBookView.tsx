@@ -141,49 +141,56 @@ export default function AssessmentBookView({ initialGradeId }: Props) {
     if (!pending) return;
 
     bulkSyncMutation.mutate(pending, {
-      onSuccess: async () => {
-        // Handle Automated Emails in the background/sequential
-        // Note: Ideally the backend should handle bulk email, but we keep the current pattern for UI logic
-        
-        const rejectedApps = gradeApps.filter(app => {
-          const syncRes = pending.find((p: any) => p.applicationId === app.id);
-          return syncRes && !syncRes.passed && ['pending', 'assessment_scheduled'].includes(app.status);
-        });
-
-        for (const app of rejectedApps) {
-          const emailData = getRejectionEmail(app.candidate?.fullName, app.academicYear || new Date().getFullYear());
-          await authFetch('/api/admin/send-status-email', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              email: app.parentDetails?.fatherEmail || app.parentDetails?.motherEmail,
-              candidateName: app.candidate?.fullName,
-              subject: emailData.subject,
-              content: emailData.body
-            })
-          });
-        }
-
-        const passedApps = gradeApps.filter(app => {
-          const syncRes = pending.find((p: any) => p.applicationId === app.id);
-          return syncRes && syncRes.passed && ['pending', 'assessment_scheduled'].includes(app.status);
-        });
-
-        for (const app of passedApps) {
-          const emailData = getAssessmentPassEmail(app.candidate?.fullName);
-          await authFetch('/api/admin/send-status-email', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              email: app.parentDetails?.fatherEmail || app.parentDetails?.motherEmail,
-              candidateName: app.candidate?.fullName,
-              subject: emailData.subject,
-              content: emailData.body
-            })
-          });
-        }
-        
+      onSuccess: () => {
+        // Close modal immediately
         setSyncStatus(null);
+        
+        // Handle Automated Emails in the background/sequential
+        const sendEmails = async () => {
+          const rejectedApps = gradeApps.filter(app => {
+            const syncRes = pending.find((p: any) => p.applicationId === app.id);
+            return syncRes && !syncRes.passed && ['pending', 'assessment_scheduled'].includes(app.status);
+          });
+
+          for (const app of rejectedApps) {
+            const emailData = getRejectionEmail(app.candidate?.fullName, app.academicYear || new Date().getFullYear());
+            await authFetch('/api/admin/send-status-email', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                email: app.parentDetails?.fatherEmail || app.parentDetails?.motherEmail,
+                candidateName: app.candidate?.fullName,
+                subject: emailData.subject,
+                content: emailData.body
+              })
+            });
+          }
+
+          const passedApps = gradeApps.filter(app => {
+            const syncRes = pending.find((p: any) => p.applicationId === app.id);
+            return syncRes && syncRes.passed && ['pending', 'assessment_scheduled'].includes(app.status);
+          });
+
+          for (const app of passedApps) {
+            const emailData = getAssessmentPassEmail(app.candidate?.fullName);
+            await authFetch('/api/admin/send-status-email', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                email: app.parentDetails?.fatherEmail || app.parentDetails?.motherEmail,
+                candidateName: app.candidate?.fullName,
+                subject: emailData.subject,
+                content: emailData.body
+              })
+            });
+          }
+        };
+
+        toast.promise(sendEmails(), {
+          loading: 'Sending outcome emails...',
+          success: 'Outcome emails sent successfully!',
+          error: 'Failed to send some outcome emails.'
+        });
       }
     });
   };

@@ -1,25 +1,28 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Clock, MapPin, Calendar, Plus, Search, Loader2, Check, X, ChevronDown, ChevronRight, Mail, LayoutGrid, CalendarCheck, UserMinus, UserPlus, Phone } from 'lucide-react';
+import { Clock, MapPin, Calendar, Plus, Search, Loader2, Check, X, ChevronDown, ChevronRight, Mail, LayoutGrid, CalendarCheck, UserMinus, UserPlus, Phone, RefreshCw, CheckCircle2, AlertTriangle, XCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import AdminPageHeader from '../AdminPageHeader';
 import DatePicker from '../../DatePicker';
 import MultiSelect from '../MultiSelect';
 import TablePagination from '../TablePagination';
-import { useApplications, useInterviews, useCreateInterview, useRecordInterviewOutcome, useResults, useGrades } from '../../../hooks/useAdminData';
+import { useApplications, useInterviews, useCreateInterview, useRecordInterviewOutcome, useResults, useAssessments, useGrades, useResyncErp } from '../../../hooks/useAdminData';
 import ApplicationDetailsView from './ApplicationDetailsView';
+import AssessmentMarksSwitcher from '../AssessmentMarksSwitcher';
 
 interface ScheduledInterviewRowProps {
   key?: React.Key;
   slot: any;
+  marks: any[];
   onAccept: (applicationId: number) => void;
   onReject: (applicationId: number, name: string) => void;
+  onResync: (applicationId: number) => void;
   onViewDetails: (app: any) => void;
   isProcessing: boolean;
   vacantSpots: number;
   index: number;
 }
 
-function ScheduledInterviewRow({ slot, onAccept, onReject, onViewDetails, isProcessing, vacantSpots, index }: ScheduledInterviewRowProps) {
+function ScheduledInterviewRow({ slot, marks, onAccept, onReject, onResync, onViewDetails, isProcessing, vacantSpots, index }: ScheduledInterviewRowProps) {
   const [parentToggle, setParentToggle] = useState<'mother' | 'father'>('mother');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -37,10 +40,38 @@ function ScheduledInterviewRow({ slot, onAccept, onReject, onViewDetails, isProc
   }, []);
 
   return (
-    <tr className="hover:bg-primary/[0.02] transition-colors group">
+    <tr 
+      className="hover:bg-primary/[0.02] transition-colors group cursor-pointer hover:relative hover:z-[100]"
+      onClick={() => onViewDetails(slot.application)}
+    >
        <td className="px-8 py-6">
           <div className="font-bold text-primary text-sm flex items-center gap-2">{slot.application?.candidate?.fullName}</div>
           <div className="text-[10px] font-medium text-on-surface-variant/40 uppercase tracking-widest">APP-{slot.applicationId.toString().padStart(4, '0')}</div>
+       </td>
+       <td className="px-8 py-6">
+         <div className="flex flex-col">
+            <div className="font-bold text-primary text-sm whitespace-nowrap">
+                {slot.application?.candidate?.dob ? new Date(slot.application.candidate.dob).toLocaleDateString('en-GB') : 'N/A'}
+            </div>
+            <div className="text-[10px] font-black text-secondary uppercase tracking-widest">
+                ({(() => {
+                    if (!slot.application?.candidate?.dob) return '0';
+                    const birth = new Date(slot.application.candidate.dob);
+                    const now = new Date();
+                    let age = now.getFullYear() - birth.getFullYear();
+                    const m = now.getMonth() - birth.getMonth();
+                    if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--;
+                    return age;
+                })()} yrs)
+            </div>
+         </div>
+       </td>
+       <td className="px-8 py-6 text-sm font-bold text-on-surface-variant/60 italic">
+          {slot.application?.candidate?.religion || 'N/A'} 
+          {slot.application?.candidate?.denomination && <span className="text-secondary ml-1">({slot.application.candidate.denomination})</span>}
+       </td>
+       <td className="px-8 py-6">
+          <AssessmentMarksSwitcher marks={marks} />
        </td>
        <td className="px-8 py-6">
           <div className="flex flex-col">
@@ -57,11 +88,11 @@ function ScheduledInterviewRow({ slot, onAccept, onReject, onViewDetails, isProc
           <div className="flex flex-col gap-2">
             <div className="flex bg-primary/5 rounded-full p-0.5 border border-primary/10 w-fit">
                <button 
-                 onClick={() => setParentToggle('mother')}
+                 onClick={(e) => { e.stopPropagation(); setParentToggle('mother'); }}
                  className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest transition-all ${parentToggle === 'mother' ? 'bg-primary text-white' : 'text-primary/40 hover:text-primary'}`}
                >Mother</button>
                <button 
-                 onClick={() => setParentToggle('father')}
+                 onClick={(e) => { e.stopPropagation(); setParentToggle('father'); }}
                  className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest transition-all ${parentToggle === 'father' ? 'bg-primary text-white' : 'text-primary/40 hover:text-primary'}`}
                >Father</button>
             </div>
@@ -83,14 +114,9 @@ function ScheduledInterviewRow({ slot, onAccept, onReject, onViewDetails, isProc
             </AnimatePresence>
           </div>
        </td>
-       <td className="px-8 py-6">
-          <div className="flex items-center gap-2 text-[10px] font-bold text-primary">
-            <MapPin size={12} className="text-secondary" /> {slot.location}
-          </div>
-       </td>
        <td className="px-8 py-6 text-right">
           <div className="flex justify-end items-center gap-4">
-            <div className="relative" ref={dropdownRef}>
+            <div className="relative" ref={dropdownRef} onClick={(e) => e.stopPropagation()}>
                <button 
                  disabled={isProcessing}
                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
@@ -133,7 +159,7 @@ function ScheduledInterviewRow({ slot, onAccept, onReject, onViewDetails, isProc
             </div>
 
             <button 
-              onClick={() => onViewDetails(slot.application)}
+              onClick={(e) => { e.stopPropagation(); onViewDetails(slot.application); }}
               className="w-10 h-10 inline-flex items-center justify-center bg-primary/5 rounded-full text-primary hover:bg-secondary hover:text-primary transition-all shadow-inner group-hover:-translate-x-1"
               title="View Application Details"
             >
@@ -148,16 +174,18 @@ function ScheduledInterviewRow({ slot, onAccept, onReject, onViewDetails, isProc
 interface AwaitingInterviewRowProps {
   key?: React.Key;
   app: any;
+  marks: any[];
   onSchedule: (id: number) => void;
   onAccept: (applicationId: number) => void;
   onReject: (applicationId: number, name: string) => void;
+  onResync: (applicationId: number) => void;
   onViewDetails: (app: any) => void;
   isProcessing: boolean;
   vacantSpots: number;
   index: number;
 }
 
-function AwaitingInterviewRow({ app, onSchedule, onAccept, onReject, onViewDetails, isProcessing, vacantSpots, index }: AwaitingInterviewRowProps) {
+function AwaitingInterviewRow({ app, marks, onSchedule, onAccept, onReject, onResync, onViewDetails, isProcessing, vacantSpots, index }: AwaitingInterviewRowProps) {
   const [parentToggle, setParentToggle] = useState<'mother' | 'father'>('mother');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -175,21 +203,49 @@ function AwaitingInterviewRow({ app, onSchedule, onAccept, onReject, onViewDetai
   }, []);
 
   return (
-    <tr className="hover:bg-primary/[0.02] transition-colors">
+    <tr 
+      className="hover:bg-primary/[0.02] transition-colors group cursor-pointer hover:relative hover:z-[100]"
+      onClick={() => onViewDetails(app)}
+    >
        <td className="px-8 py-6">
           <div className="font-bold text-primary text-sm">{app.candidate?.fullName}</div>
           <div className="text-[10px] font-medium text-on-surface-variant/40 uppercase tracking-widest">APP-{app.id.toString().padStart(4, '0')}</div>
+       </td>
+       <td className="px-8 py-6">
+         <div className="flex flex-col">
+            <div className="font-bold text-primary text-sm whitespace-nowrap">
+                {app.candidate?.dob ? new Date(app.candidate.dob).toLocaleDateString('en-GB') : 'N/A'}
+            </div>
+            <div className="text-[10px] font-black text-secondary uppercase tracking-widest">
+                ({(() => {
+                    if (!app.candidate?.dob) return '0';
+                    const birth = new Date(app.candidate.dob);
+                    const now = new Date();
+                    let age = now.getFullYear() - birth.getFullYear();
+                    const m = now.getMonth() - birth.getMonth();
+                    if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--;
+                    return age;
+                })()} yrs)
+            </div>
+         </div>
+       </td>
+       <td className="px-8 py-6 text-sm font-bold text-on-surface-variant/60 italic">
+          {app.candidate?.religion || 'N/A'} 
+          {app.candidate?.denomination && <span className="text-secondary ml-1">({app.candidate.denomination})</span>}
+       </td>
+       <td className="px-8 py-6">
+          <AssessmentMarksSwitcher marks={marks} />
        </td>
        <td className="px-8 py-6 text-sm font-black text-secondary">{app.candidate?.grade}</td>
        <td className="px-8 py-6">
           <div className="flex flex-col gap-2">
             <div className="flex bg-primary/5 rounded-full p-0.5 border border-primary/10 w-fit">
                <button 
-                 onClick={() => setParentToggle('mother')}
+                 onClick={(e) => { e.stopPropagation(); setParentToggle('mother'); }}
                  className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest transition-all ${parentToggle === 'mother' ? 'bg-primary text-white' : 'text-primary/40 hover:text-primary'}`}
                >Mother</button>
                <button 
-                 onClick={() => setParentToggle('father')}
+                 onClick={(e) => { e.stopPropagation(); setParentToggle('father'); }}
                  className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest transition-all ${parentToggle === 'father' ? 'bg-primary text-white' : 'text-primary/40 hover:text-primary'}`}
                >Father</button>
             </div>
@@ -216,7 +272,7 @@ function AwaitingInterviewRow({ app, onSchedule, onAccept, onReject, onViewDetai
        </td>
        <td className="px-8 py-6 text-right">
           <div className="flex justify-end items-center gap-6">
-            <div className="relative" ref={dropdownRef}>
+            <div className="relative" ref={dropdownRef} onClick={(e) => e.stopPropagation()}>
                <button 
                  disabled={isProcessing}
                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
@@ -267,7 +323,137 @@ function AwaitingInterviewRow({ app, onSchedule, onAccept, onReject, onViewDetai
             </div>
 
             <button 
-              onClick={() => onViewDetails(app)}
+              onClick={(e) => { e.stopPropagation(); onViewDetails(app); }}
+              className="w-10 h-10 inline-flex items-center justify-center bg-primary/5 rounded-full text-primary hover:bg-secondary hover:text-primary transition-all shadow-inner group-hover:-translate-x-1"
+              title="View Application Details"
+            >
+              <ChevronRight size={18} />
+            </button>
+          </div>
+       </td>
+    </tr>
+  );
+}
+
+interface OutcomeRowProps {
+  key?: React.Key;
+  app: any;
+  marks: any[];
+  onResync: (applicationId: number) => void;
+  onViewDetails: (app: any) => void;
+  index: number;
+}
+
+function OutcomeRow({ app, marks, onResync, onViewDetails, isResyncing }: any) {
+  const [parentToggle, setParentToggle] = useState<'mother' | 'father'>('mother');
+  const parentDetails = app.parentDetails;
+
+  return (
+    <tr 
+      className="hover:bg-primary/[0.02] transition-colors group cursor-pointer hover:relative hover:z-[100]"
+      onClick={() => onViewDetails(app)}
+    >
+       <td className="px-8 py-6">
+          <div className="font-bold text-primary text-sm">{app.candidate?.fullName}</div>
+          <div className="text-[10px] font-medium text-on-surface-variant/40 uppercase tracking-widest">APP-{app.id.toString().padStart(4, '0')}</div>
+       </td>
+       <td className="px-8 py-6">
+         <div className="flex flex-col">
+            <div className="font-bold text-primary text-sm whitespace-nowrap">
+                {app.candidate?.dob ? new Date(app.candidate.dob).toLocaleDateString('en-GB') : 'N/A'}
+            </div>
+            <div className="text-[10px] font-black text-secondary uppercase tracking-widest">
+                ({(() => {
+                    if (!app.candidate?.dob) return '0';
+                    const birth = new Date(app.candidate.dob);
+                    const now = new Date();
+                    let age = now.getFullYear() - birth.getFullYear();
+                    const m = now.getMonth() - birth.getMonth();
+                    if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--;
+                    return age;
+                })()} yrs)
+            </div>
+         </div>
+       </td>
+       <td className="px-8 py-6 text-sm font-bold text-on-surface-variant/60 italic">
+          {app.candidate?.religion || 'N/A'} 
+          {app.candidate?.denomination && <span className="text-secondary ml-1">({app.candidate.denomination})</span>}
+       </td>
+       <td className="px-8 py-6">
+          <AssessmentMarksSwitcher marks={marks} />
+       </td>
+       <td className="px-8 py-6 text-sm font-black text-secondary">{app.candidate?.grade}</td>
+       <td className="px-8 py-6">
+          <div className="flex flex-col gap-2">
+            <div className="flex bg-primary/5 rounded-full p-0.5 border border-primary/10 w-fit">
+               <button 
+                 onClick={(e) => { e.stopPropagation(); setParentToggle('mother'); }}
+                 className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest transition-all ${parentToggle === 'mother' ? 'bg-primary text-white' : 'text-primary/40 hover:text-primary'}`}
+               >Mother</button>
+               <button 
+                 onClick={(e) => { e.stopPropagation(); setParentToggle('father'); }}
+                 className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest transition-all ${parentToggle === 'father' ? 'bg-primary text-white' : 'text-primary/40 hover:text-primary'}`}
+               >Father</button>
+            </div>
+            <AnimatePresence mode="wait">
+              <motion.div 
+                key={parentToggle}
+                initial={{ opacity: 0, x: -5 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 5 }}
+                className="space-y-0.5"
+              >
+                 <div className="text-xs font-bold text-primary truncate max-w-[150px]">
+                    {parentDetails?.[`${parentToggle}Name`] || 'Not provided'}
+                 </div>
+                 <div className="text-[9px] font-bold text-primary/40 flex items-center gap-1">
+                    <Phone size={10} /> {parentDetails?.[`${parentToggle}Phone`] || '—'}
+                 </div>
+              </motion.div>
+            </AnimatePresence>
+          </div>
+       </td>
+       <td className="px-8 py-6">
+          <div className="flex flex-col gap-1.5 items-start">
+             <span className={`px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-full border ${
+               app.status === 'accepted' ? 'bg-green-50 text-green-600 border-green-100' :
+               app.status === 'waitlisted' ? 'bg-amber-50 text-amber-600 border-amber-100' :
+               'bg-red-50 text-red-600 border-red-100'
+             }`}>
+               {app.status}
+             </span>
+             {app.status === 'accepted' && (
+                <div className="text-[8px] font-black tracking-widest uppercase mt-1">
+                  {app.erpSyncStatus === 'failed_partially' && (
+                    <span className="text-orange-500 flex items-center gap-1"><AlertTriangle size={10} /> Partial Sync</span>
+                  )}
+                  {app.erpSyncStatus === 'failed' && (
+                    <span className="text-red-500 flex items-center gap-1"><XCircle size={10} /> ERP Failed</span>
+                  )}
+                </div>
+             )}
+          </div>
+       </td>
+       <td className="px-8 py-6 text-right relative">
+          <div className="flex flex-col justify-end items-center gap-2 relative">
+            {app.status === 'accepted' && (app.erpSyncStatus === 'failed' || app.erpSyncStatus === 'failed_partially') && (
+               <button 
+                 onClick={(e) => { e.stopPropagation(); onResync(app.id); }} 
+                 disabled={isResyncing}
+                 className="px-3 py-1.5 bg-orange-50 hover:bg-orange-100 text-orange-600 rounded-lg transition-colors flex items-center gap-1.5 shadow-sm border border-orange-200/50 group/resync relative" 
+                 title="Retry Sync to Business Central"
+               >
+                 {isResyncing ? (
+                   <Loader2 size={12} className="animate-spin" />
+                 ) : (
+                   <RefreshCw size={12} className="group-hover/resync:rotate-180 transition-transform duration-500" />
+                 )}
+                 <span className="text-[9px] font-black uppercase tracking-widest">{isResyncing ? 'Syncing...' : 'Retry Sync'}</span>
+               </button>
+            )}
+
+            <button 
+              onClick={(e) => { e.stopPropagation(); onViewDetails(app); }}
               className="w-10 h-10 inline-flex items-center justify-center bg-primary/5 rounded-full text-primary hover:bg-secondary hover:text-primary transition-all shadow-inner group-hover:-translate-x-1"
               title="View Application Details"
             >
@@ -285,16 +471,24 @@ export default function InterviewsView() {
   const { data: grades = [] } = useGrades();
   const { data: interviews = [], isLoading: interviewsLoading, refetch: refetchInterviews } = useInterviews();
   const { data: results = [] } = useResults();
+  const { data: assessments = [] } = useAssessments();
   const createInterviewMutation = useCreateInterview();
   const recordOutcomeMutation = useRecordInterviewOutcome();
+  const resyncMutation = useResyncErp();
 
-  const [activeTab, setActiveTab] = useState<'scheduled' | 'awaiting'>('scheduled');
+  const handleResync = (applicationId: number) => {
+    resyncMutation.mutate(applicationId);
+  };
+
+  const [activeTab, setActiveTab] = useState<'scheduled' | 'awaiting' | 'outcomes'>('scheduled');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const [selectedApp, setSelectedApp] = useState<any | null>(null);
+  const [showAcceptProgress, setShowAcceptProgress] = useState(false);
 
   const [selectedSlot, setSelectedSlot] = useState<string>('All Slots');
+  const [outcomeFilter, setOutcomeFilter] = useState<'All Outcomes' | 'accepted' | 'rejected' | 'waitlisted'>('All Outcomes');
 
   // Modals
   const [showScheduleModal, setShowScheduleModal] = useState(false);
@@ -303,7 +497,7 @@ export default function InterviewsView() {
   // Reset pagination on tab or filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeTab, searchQuery, selectedSlot]);
+  }, [activeTab, searchQuery, selectedSlot, outcomeFilter]);
 
   // Schedule Form State
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
@@ -329,9 +523,12 @@ export default function InterviewsView() {
   }
 
   // Filter Logic
+  const decidedStatuses = ['accepted', 'rejected', 'waitlisted'];
+
   const awaitingScheduling = applications.filter((app: any) => 
     app.status === 'passed_assessment' && 
-    !interviews.some((int: any) => int.applicationId === app.id)
+    !interviews.some((int: any) => int.applicationId === app.id) &&
+    !decidedStatuses.includes(app.status)
   );
 
   const getSlotString = (slot: any) => {
@@ -340,9 +537,10 @@ export default function InterviewsView() {
     return end ? `${start} - ${end}` : start;
   };
 
-  const availableSlots = Array.from(new Set(interviews.map(getSlotString))).sort();
+  const pendingInterviews = interviews.filter((int: any) => !decidedStatuses.includes(int.application?.status));
+  const availableSlots = Array.from(new Set(pendingInterviews.map(getSlotString))).sort();
 
-  const filteredInterviews = interviews.filter((int: any) => {
+  const filteredInterviews = pendingInterviews.filter((int: any) => {
     const matchesSearch = int.application?.candidate?.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           int.applicationId.toString().includes(searchQuery);
     const matchesSlot = selectedSlot === 'All Slots' || getSlotString(int) === selectedSlot;
@@ -354,8 +552,16 @@ export default function InterviewsView() {
     app.id.toString().includes(searchQuery)
   );
 
-  const totalItems = activeTab === 'scheduled' ? filteredInterviews.length : filteredAwaiting.length;
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const outcomesApps = applications.filter((app: any) => decidedStatuses.includes(app.status));
+  
+  const filteredOutcomes = outcomesApps.filter((app: any) => {
+    const matchesSearch = app.candidate?.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) || app.id.toString().includes(searchQuery);
+    const matchesOutcome = outcomeFilter === 'All Outcomes' || app.status === outcomeFilter;
+    return matchesSearch && matchesOutcome;
+  }).sort((a: any, b: any) => b.id - a.id);
+
+  const totalItems = activeTab === 'scheduled' ? filteredInterviews.length : activeTab === 'awaiting' ? filteredAwaiting.length : filteredOutcomes.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
 
   const paginatedInterviews = filteredInterviews.slice(
     (currentPage - 1) * itemsPerPage,
@@ -363,6 +569,11 @@ export default function InterviewsView() {
   );
 
   const paginatedAwaiting = filteredAwaiting.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const paginatedOutcomes = filteredOutcomes.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
@@ -389,6 +600,9 @@ export default function InterviewsView() {
   };
 
   const handleOutcome = (applicationId: number, outcome: 'accepted' | 'rejected') => {
+    if (outcome === 'accepted') {
+      setShowAcceptProgress(true);
+    }
     recordOutcomeMutation.mutate({
       applicationId,
       outcome,
@@ -397,6 +611,14 @@ export default function InterviewsView() {
       onSuccess: () => {
         setShowOutcomeModal(null);
         setOutcomeReason('');
+        if (outcome === 'accepted') {
+          setTimeout(() => setShowAcceptProgress(false), 2000);
+        }
+      },
+      onError: () => {
+        if (outcome === 'accepted') {
+          setTimeout(() => setShowAcceptProgress(false), 2000);
+        }
       }
     });
   };
@@ -426,6 +648,21 @@ export default function InterviewsView() {
               <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-primary/40 pointer-events-none group-hover:text-primary transition-colors" />
             </div>
           )}
+          {activeTab === 'outcomes' && (
+            <div className="relative group">
+              <select 
+                value={outcomeFilter}
+                onChange={(e: any) => setOutcomeFilter(e.target.value)}
+                className="appearance-none bg-white px-6 py-3 rounded-xl font-bold text-primary min-w-[180px] border border-outline-variant/10 focus:ring-4 focus:ring-primary/5 cursor-pointer transition-all pr-12 shadow-sm text-xs"
+              >
+                <option value="All Outcomes">All Outcomes</option>
+                <option value="accepted">Accepted</option>
+                <option value="rejected">Rejected</option>
+                <option value="waitlisted">Waitlisted</option>
+              </select>
+              <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-primary/40 pointer-events-none group-hover:text-primary transition-colors" />
+            </div>
+          )}
           <div className="relative group/search">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/20 group-focus-within/search:text-primary transition-colors" size={16} />
             <input 
@@ -445,20 +682,27 @@ export default function InterviewsView() {
       </AdminPageHeader>
 
       {/* Tabs */}
-      <div className="flex gap-4 border-b border-outline-variant/10 pb-4">
+      <div className="flex flex-wrap gap-4 border-b border-outline-variant/10 pb-4">
         <button 
           onClick={() => setActiveTab('scheduled')}
           className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-2 ${activeTab === 'scheduled' ? 'bg-primary text-secondary shadow-lg shadow-primary/10' : 'text-primary/40 hover:text-primary'}`}
         >
-          <CalendarCheck size={14} /> Scheduled Interviews
-          <span className={`px-2 py-0.5 rounded-full text-[8px] ${activeTab === 'scheduled' ? 'bg-white/20' : 'bg-primary/5'}`}>{interviews.length}</span>
+          <CalendarCheck size={14} /> Scheduled
+          <span className={`px-2 py-0.5 rounded-full text-[8px] ${activeTab === 'scheduled' ? 'bg-white/20' : 'bg-primary/5'}`}>{filteredInterviews.length}</span>
         </button>
         <button 
           onClick={() => setActiveTab('awaiting')}
           className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-2 ${activeTab === 'awaiting' ? 'bg-secondary text-primary shadow-lg shadow-secondary/10' : 'text-primary/40 hover:text-primary'}`}
         >
           <LayoutGrid size={14} /> Awaiting Scheduling
-          <span className={`px-2 py-0.5 rounded-full text-[8px] ${activeTab === 'awaiting' ? 'bg-primary/10' : 'bg-primary/5'}`}>{awaitingScheduling.length}</span>
+          <span className={`px-2 py-0.5 rounded-full text-[8px] ${activeTab === 'awaiting' ? 'bg-primary/10' : 'bg-primary/5'}`}>{filteredAwaiting.length}</span>
+        </button>
+        <button 
+          onClick={() => setActiveTab('outcomes')}
+          className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-2 ${activeTab === 'outcomes' ? 'bg-green-100 text-green-700 shadow-lg shadow-green-100/50' : 'text-primary/40 hover:text-primary'}`}
+        >
+          <CheckCircle2 size={14} /> Outcomes
+          <span className={`px-2 py-0.5 rounded-full text-[8px] ${activeTab === 'outcomes' ? 'bg-green-700/10' : 'bg-primary/5'}`}>{filteredOutcomes.length}</span>
         </button>
       </div>
 
@@ -473,6 +717,9 @@ export default function InterviewsView() {
              <thead className="bg-surface-container-low/50 border-b border-outline-variant/10">
                 <tr>
                    <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-primary/40">Candidate Dossier</th>
+                   <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-primary/40">DOB / Age</th>
+                   <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-primary/40">Religion</th>
+                   <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-primary/40">Ass. Marks</th>
                    {activeTab === 'scheduled' ? (
                      <>
                         <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-primary/40">Interview Schedule</th>
@@ -480,11 +727,18 @@ export default function InterviewsView() {
                         <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-primary/40">Location</th>
                         <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-primary/40 text-right">Actions</th>
                      </>
+                   ) : activeTab === 'awaiting' ? (
+                     <>
+                        <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-primary/40">Grade Applied</th>
+                        <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-primary/40">Parent Info</th>
+                        <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-primary/40">Exam Status</th>
+                        <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-primary/40 text-right">Actions</th>
+                     </>
                    ) : (
                      <>
                         <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-primary/40">Grade Applied</th>
                         <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-primary/40">Parent Info</th>
-                        <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-primary/40">Assessment Status</th>
+                        <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-primary/40">Status</th>
                         <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-primary/40 text-right">Actions</th>
                      </>
                    )}
@@ -492,45 +746,84 @@ export default function InterviewsView() {
              </thead>
              <tbody className="divide-y divide-outline-variant/5">
                 {activeTab === 'scheduled' ? (
-                  paginatedInterviews.map((slot: any, i: number) => (
+                  paginatedInterviews.map((slot: any, i: number) => {
+                    const appResults = results.filter((r: any) => r.applicationId === slot.applicationId);
+                    const marks = appResults.map((r: any) => {
+                       const ass = assessments.find((a: any) => a.id === r.assessmentId);
+                       return { assessmentTitle: ass?.title || 'Assessment', marksObtained: r.marksObtained, maxMarks: ass?.maxMarks || 100, passed: r.passed };
+                    });
+                    return (
                     <ScheduledInterviewRow 
                       key={i} 
                       index={i}
                       slot={slot} 
+                      marks={marks}
                       isProcessing={recordOutcomeMutation.isPending}
                       vacantSpots={grades.find((g: any) => g.gradeName === slot.application?.candidate?.grade)?.vacantSpots || 0}
                       onAccept={handleOutcome.bind(null, slot.applicationId, 'accepted')}
                       onReject={(id, name) => setShowOutcomeModal({ id, name })}
+                      onResync={handleResync}
                       onViewDetails={(app) => {
                         const fullApp = applications.find((a: any) => a.id === app.id);
                         const appObj = fullApp || app;
-                        const appResults = results.filter((r: any) => r.applicationId === appObj.id);
                         setSelectedApp({ ...appObj, assessmentResults: appResults });
                       }}
                     />
-                  ))
-                ) : (
-                  paginatedAwaiting.map((app: any, i: number) => (
+                    );
+                  })
+                ) : activeTab === 'awaiting' ? (
+                  paginatedAwaiting.map((app: any, i: number) => {
+                    const appResults = results.filter((r: any) => r.applicationId === app.id);
+                    const marks = appResults.map((r: any) => {
+                       const ass = assessments.find((a: any) => a.id === r.assessmentId);
+                       return { assessmentTitle: ass?.title || 'Assessment', marksObtained: r.marksObtained, maxMarks: ass?.maxMarks || 100, passed: r.passed };
+                    });
+                    return (
                     <AwaitingInterviewRow 
                       key={i} 
                       index={i}
                       app={app} 
+                      marks={marks}
                       isProcessing={recordOutcomeMutation.isPending}
                       vacantSpots={grades.find((g: any) => g.gradeName === app.candidate?.grade)?.vacantSpots || 0}
                       onAccept={handleOutcome.bind(null, app.id, 'accepted')}
                       onReject={(id, name) => setShowOutcomeModal({ id, name })}
+                      onResync={handleResync}
                       onSchedule={(id) => { setSelectedIds([id]); setShowScheduleModal(true); }}
                       onViewDetails={(app) => {
                         const fullApp = applications.find((a: any) => a.id === app.id);
                         const appObj = fullApp || app;
-                        const appResults = results.filter((r: any) => r.applicationId === appObj.id);
                         setSelectedApp({ ...appObj, assessmentResults: appResults });
                       }}
                     />
-                  ))
+                    );
+                  })
+                ) : (
+                  paginatedOutcomes.map((app: any, i: number) => {
+                    const appResults = results.filter((r: any) => r.applicationId === app.id);
+                    const marks = appResults.map((r: any) => {
+                       const ass = assessments.find((a: any) => a.id === r.assessmentId);
+                       return { assessmentTitle: ass?.title || 'Assessment', marksObtained: r.marksObtained, maxMarks: ass?.maxMarks || 100, passed: r.passed };
+                    });
+                    return (
+                    <OutcomeRow 
+                      key={i} 
+                      index={i}
+                      app={app} 
+                      marks={marks}
+                      onResync={handleResync}
+                      isResyncing={resyncMutation.isPending && resyncMutation.variables === app.id}
+                      onViewDetails={(app) => {
+                        const fullApp = applications.find((a: any) => a.id === app.id);
+                        const appObj = fullApp || app;
+                        setSelectedApp({ ...appObj, assessmentResults: appResults });
+                      }}
+                    />
+                    );
+                  })
                 )}
                 
-                {!isLoading && ((activeTab === 'scheduled' && filteredInterviews.length === 0) || (activeTab === 'awaiting' && filteredAwaiting.length === 0)) && (
+                {!isLoading && ((activeTab === 'scheduled' && filteredInterviews.length === 0) || (activeTab === 'awaiting' && filteredAwaiting.length === 0) || (activeTab === 'outcomes' && filteredOutcomes.length === 0)) && (
                   <tr>
                     <td colSpan={5} className="px-8 py-24 text-center">
                        <div className="flex flex-col items-center gap-3 opacity-20">
@@ -552,6 +845,61 @@ export default function InterviewsView() {
           />
         </div>
       </div>
+
+      {/* Schedule Modal */}
+      <AnimatePresence>
+        {showAcceptProgress && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-6">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-primary/40 backdrop-blur-md" />
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="relative bg-white w-full max-w-sm rounded-[32px] p-8 shadow-2xl overflow-hidden flex flex-col items-center text-center"
+            >
+               <div className="w-16 h-16 bg-primary/5 text-primary rounded-full flex items-center justify-center mb-6">
+                  {recordOutcomeMutation.isPending ? (
+                     <Loader2 size={32} className="animate-spin" />
+                  ) : recordOutcomeMutation.isError ? (
+                     <XCircle size={32} className="text-red-500" />
+                  ) : (
+                     <CheckCircle2 size={32} className="text-green-500" />
+                  )}
+               </div>
+               
+               <h3 className="text-xl font-black text-primary mb-2 tracking-tight">Processing Acceptance</h3>
+               <p className="text-xs font-medium text-on-surface-variant/70 mb-8 max-w-[250px] mx-auto">
+                 {recordOutcomeMutation.isPending 
+                   ? "Updating local database, sending parent emails, and synchronizing with Business Central..." 
+                   : recordOutcomeMutation.isError 
+                     ? "An error occurred during acceptance." 
+                     : "Application successfully accepted!"}
+               </p>
+
+               <div className="w-full space-y-3">
+                 <div className="flex items-center gap-3 text-left">
+                   <div className={`w-6 h-6 rounded-full flex items-center justify-center ${recordOutcomeMutation.isPending || recordOutcomeMutation.isSuccess ? 'bg-green-100 text-green-600' : 'bg-outline-variant/20 text-primary/40'}`}>
+                     {(recordOutcomeMutation.isPending || recordOutcomeMutation.isSuccess) && <Check size={12} strokeWidth={4} />}
+                   </div>
+                   <span className={`text-xs font-bold ${recordOutcomeMutation.isPending || recordOutcomeMutation.isSuccess ? 'text-primary' : 'text-primary/40'}`}>Local Status Updated</span>
+                 </div>
+                 <div className="flex items-center gap-3 text-left">
+                   <div className={`w-6 h-6 rounded-full flex items-center justify-center ${recordOutcomeMutation.isPending || recordOutcomeMutation.isSuccess ? 'bg-green-100 text-green-600' : 'bg-outline-variant/20 text-primary/40'}`}>
+                     {(recordOutcomeMutation.isPending || recordOutcomeMutation.isSuccess) && <Check size={12} strokeWidth={4} />}
+                   </div>
+                   <span className={`text-xs font-bold ${recordOutcomeMutation.isPending || recordOutcomeMutation.isSuccess ? 'text-primary' : 'text-primary/40'}`}>Offer Email Sent</span>
+                 </div>
+                 <div className="flex items-center gap-3 text-left">
+                   <div className={`w-6 h-6 rounded-full flex items-center justify-center ${recordOutcomeMutation.isSuccess ? 'bg-green-100 text-green-600' : recordOutcomeMutation.isPending ? 'bg-amber-100 text-amber-600' : 'bg-outline-variant/20 text-primary/40'}`}>
+                     {recordOutcomeMutation.isSuccess ? <Check size={12} strokeWidth={4} /> : recordOutcomeMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : null}
+                   </div>
+                   <span className={`text-xs font-bold ${recordOutcomeMutation.isSuccess ? 'text-primary' : recordOutcomeMutation.isPending ? 'text-amber-600' : 'text-primary/40'}`}>ERP Synchronization</span>
+                 </div>
+               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Schedule Modal */}
       <AnimatePresence>
