@@ -121,7 +121,7 @@ function drawRule(doc: jsPDF, y: number, x1 = MARGIN, x2 = PAGE_W - MARGIN, weig
 function drawSectionHeader(doc: jsPDF, title: string, y: number): number {
   drawText(doc, title, MARGIN, y + 5, { size: 9, bold: true, color: PRIMARY });
   drawRule(doc, y + 7.5, MARGIN, PAGE_W - MARGIN, 0.8); // Professional full-width underline
-  return y + 15;
+  return y + 11;
 }
 
 /** Check if we need a new page and add one if so. Returns updated y. */
@@ -207,7 +207,7 @@ export async function buildApplicationPDF(app: any): Promise<jsPDF> {
   // Row 1
   drawField(doc, 'Date of Birth', formattedDob, col1X, currentY);
   drawField(doc, 'Religion', candidate.religion, col2X, currentY);
-  currentY = drawField(doc, 'Denomination', candidate.denomination, col3X, currentY) + 2;
+  currentY = drawField(doc, 'Denomination', candidate.denomination, col3X, currentY) + 1;
 
   // Row 2
   let appliedBeforeValue = additional.hasAppliedBefore ? 'Yes' : 'No';
@@ -217,7 +217,7 @@ export async function buildApplicationPDF(app: any): Promise<jsPDF> {
   
   drawField(doc, 'Birth Order', candidate.birthOrder, col1X, currentY);
   drawField(doc, 'Assessment No', candidate.assessmentNo, col2X, currentY);
-  currentY = drawField(doc, 'Have you applied before ?', appliedBeforeValue, col3X, currentY) + 6;
+  currentY = drawField(doc, 'Have you applied before ?', appliedBeforeValue, col3X, currentY) + 3;
 
   // Split bottom of Section I into Left (Schools) and Right (Medical History)
   y = currentY + 4;
@@ -296,6 +296,10 @@ export async function buildApplicationPDF(app: any): Promise<jsPDF> {
   drawText(doc, parent.fatherWork || 'N/A', leftX + labelW, mY, { size: 9, color: PRIMARY, bold: true, maxWidth: COL_W - labelW - 4 });
   mY += 10;
 
+  drawText(doc, 'RESIDENCY', leftX, mY, { size: 7, bold: true, color: MUTED });
+  drawText(doc, parent.fatherResidency || parent.residency || 'N/A', leftX + labelW, mY, { size: 9, color: PRIMARY, bold: true, maxWidth: COL_W - labelW - 4 });
+  mY += 10;
+
   drawText(doc, 'ALTERNATIVE CONTACT', leftX, mY, { size: 7, bold: true, color: MUTED });
   mY += 6;
   drawText(doc, 'NAME', leftX, mY, { size: 7, bold: true, color: MUTED });
@@ -331,6 +335,10 @@ export async function buildApplicationPDF(app: any): Promise<jsPDF> {
   drawText(doc, parent.motherWork || 'N/A', rightX + labelW, fY, { size: 9, color: PRIMARY, bold: true, maxWidth: COL_W - labelW - 4 });
   fY += 10;
 
+  drawText(doc, 'RESIDENCY', rightX, fY, { size: 7, bold: true, color: MUTED });
+  drawText(doc, parent.motherResidency || parent.residency || 'N/A', rightX + labelW, fY, { size: 9, color: PRIMARY, bold: true, maxWidth: COL_W - labelW - 4 });
+  fY += 10;
+
   drawText(doc, 'ALTERNATIVE CONTACT', rightX, fY, { size: 7, bold: true, color: MUTED });
   fY += 6;
   drawText(doc, 'NAME', rightX, fY, { size: 7, bold: true, color: MUTED });
@@ -342,13 +350,8 @@ export async function buildApplicationPDF(app: any): Promise<jsPDF> {
   drawText(doc, 'RELATION', rightX, fY, { size: 7, bold: true, color: MUTED });
   drawText(doc, parent.motherAltContactRelation || 'N/A', rightX + labelW, fY, { size: 9, color: PRIMARY, bold: true });
 
-  y = Math.max(mY, fY) + 16;
+  y = Math.max(mY, fY) + 6;
 
-  // Residential details
-  drawText(doc, 'FAMILY RESIDENCY', leftX, y, { size: 7, bold: true, color: MUTED });
-  drawText(doc, parent.residency || 'Not provided', leftX + 45, y, { size: 9, bold: true, color: PRIMARY });
-
-  y += 12;
   drawRule(doc, y);
   y += 8;
 

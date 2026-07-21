@@ -72,6 +72,18 @@ export default function ParentInfoForm({ data, updateData, onNext, onBack, onCan
                   />
                 </div>
               ))}
+              <div className="space-y-2">
+                <label className="block text-[11px] font-bold uppercase tracking-widest text-primary">
+                  Physical Address / Estate {isFatherFilled && <span className="text-red-500">*</span>}
+                </label>
+                <input
+                  type="text"
+                  value={data.fatherResidency || ''}
+                  onChange={(e) => updateData({ fatherResidency: e.target.value })}
+                  className="w-full bg-white border-2 border-outline-variant/40 rounded-xl p-4 focus:ring-2 focus:ring-primary focus:border-primary transition-all text-sm font-medium shadow-sm placeholder:opacity-40"
+                  required={isFatherFilled}
+                />
+              </div>
             </div>
             <div className="pt-4 mt-4 border-t border-outline-variant/5">
                <h5 className="text-[11px] font-bold uppercase tracking-[0.2em] text-primary/60 mb-4">Alternative Contact if the Father isn't available</h5>
@@ -111,6 +123,18 @@ export default function ParentInfoForm({ data, updateData, onNext, onBack, onCan
                   />
                 </div>
               ))}
+              <div className="space-y-2">
+                <label className="block text-[11px] font-bold uppercase tracking-widest text-primary">
+                  Physical Address / Estate {isMotherFilled && <span className="text-red-500">*</span>}
+                </label>
+                <input
+                  type="text"
+                  value={data.motherResidency || ''}
+                  onChange={(e) => updateData({ motherResidency: e.target.value })}
+                  className="w-full bg-white border-2 border-outline-variant/40 rounded-xl p-4 focus:ring-2 focus:ring-primary focus:border-primary transition-all text-sm font-medium shadow-sm placeholder:opacity-40"
+                  required={isMotherFilled}
+                />
+              </div>
             </div>
             <div className="pt-4 mt-4 border-t border-outline-variant/5">
                <h5 className="text-[11px] font-bold uppercase tracking-[0.2em] text-primary/60 mb-4">Alternative Contact if the Mother isn't available</h5>
@@ -128,23 +152,6 @@ export default function ParentInfoForm({ data, updateData, onNext, onBack, onCan
                     <input type="text" value={data.motherAltContactRelation || ''} onChange={e => updateData({ motherAltContactRelation: e.target.value })} required={isMotherFilled} className="w-full bg-white border-2 border-outline-variant/40 rounded-xl p-3 focus:ring-2 focus:ring-primary focus:border-primary text-sm font-medium shadow-sm placeholder:opacity-40" />
                   </div>
                </div>
-            </div>
-          </div>
-
-          {/* Residency Details */}
-          <div className="space-y-6">
-            <h4 className="text-sm font-extrabold uppercase tracking-[0.3em] text-secondary border-b border-outline-variant/10 pb-2">Family Residency</h4>
-            <div className="grid grid-cols-1 gap-x-12 gap-y-6">
-              <div className="space-y-2">
-                <label className="block text-[11px] font-bold uppercase tracking-widest text-primary">Physical Address / Estate</label>
-                <input
-                  type="text"
-                  value={(data as any).residency || ''}
-                  onChange={(e) => updateData({ residency: e.target.value })}
-                  className="w-full bg-white border-2 border-outline-variant/40 rounded-xl p-4 focus:ring-2 focus:ring-primary focus:border-primary transition-all text-sm font-medium shadow-sm placeholder:opacity-40"
-                  required={false}
-                />
-              </div>
             </div>
           </div>
 

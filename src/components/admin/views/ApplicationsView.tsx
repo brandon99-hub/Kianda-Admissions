@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import toast from 'react-hot-toast';
-import { Users, Search, User, Mail, ChevronRight, Loader2, ChevronDown, Archive, CheckSquare, Square, X, Filter, FileDown, FileText, ArrowLeft, Send } from 'lucide-react';
+import { Users, Search, User, Mail, ChevronRight, Loader2, ChevronDown, Archive, CheckSquare, Square, X, Filter, FileDown, FileText, ArrowLeft, Send, Edit2 } from 'lucide-react';
 import AdminPageHeader from '../AdminPageHeader';
 import ApplicationDetailsView from './ApplicationDetailsView';
 import TablePagination from '../TablePagination';
@@ -10,6 +10,7 @@ import { useApplications, useUpdateApplicationStatus, useCycles } from '../../..
 import { buildApplicationPDF } from '../../../utils/buildApplicationPDF';
 import JSZip from 'jszip';
 import * as XLSX from 'xlsx';
+import EditApplicationModal from '../modals/EditApplicationModal';
 
 // ── Application Row ───────────────────────────────────────────────────────────
 
@@ -20,7 +21,8 @@ const ApplicationRow: React.FC<{
   isSelected: boolean;
   onToggleSelect: (e: React.MouseEvent) => void;
   onSendPdf: (id: number) => void;
-}> = ({ app, onViewDetails, isSelectMode, isSelected, onToggleSelect, onSendPdf }) => {
+  onEdit: (app: any) => void;
+}> = ({ app, onViewDetails, isSelectMode, isSelected, onToggleSelect, onSendPdf, onEdit }) => {
   const [parentToggle, setParentToggle] = useState<'mother' | 'father'>('mother');
 
   return (
@@ -158,6 +160,13 @@ const ApplicationRow: React.FC<{
                title="Email PDF to Parent"
             >
                <Send size={14} />
+            </button>
+            <button
+               onClick={(e) => { e.stopPropagation(); onEdit(app); }}
+               className="w-8 h-8 inline-flex items-center justify-center bg-primary/5 rounded-full text-primary hover:bg-secondary hover:text-primary transition-all shadow-inner group-hover:-translate-x-1"
+               title="Edit Application"
+            >
+               <Edit2 size={14} />
             </button>
             <div className="w-8 h-8 inline-flex items-center justify-center bg-primary/5 rounded-full text-primary hover:bg-secondary hover:text-primary transition-all shadow-inner group-hover:-translate-x-1">
               <ChevronRight size={16} />
@@ -428,6 +437,7 @@ export default function ApplicationsView() {
   
   const [tableGradeFilter, setTableGradeFilter] = useState('all');
   const [isGradeFilterOpen, setIsGradeFilterOpen] = useState(false);
+  const [appToEdit, setAppToEdit] = useState<any | null>(null);
 
   // Reset pagination on filter changes
   React.useEffect(() => {
@@ -815,6 +825,7 @@ export default function ApplicationsView() {
                   onToggleSelect={(e) => { e.stopPropagation(); toggleSelectApp(app.id); }}
                   onViewDetails={() => setSelectedApp(app)}
                   onSendPdf={(id) => setPdfEmailAppId(id)}
+                  onEdit={(app) => setAppToEdit(app)}
                 />
               ))}
               {!isLoading && filteredApps.length === 0 && (
@@ -872,6 +883,20 @@ export default function ApplicationsView() {
                </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* Edit Application Modal */}
+      <AnimatePresence>
+        {appToEdit && (
+          <EditApplicationModal
+            app={appToEdit}
+            onClose={() => setAppToEdit(null)}
+            onUpdate={() => {
+              setAppToEdit(null);
+              refetch();
+            }}
+          />
         )}
       </AnimatePresence>
     </div>

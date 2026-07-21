@@ -56,12 +56,14 @@ export const parentDetails = pgTable('parent_details', {
   fatherEmail: varchar('father_email', { length: 255 }),
   fatherProfession: varchar('father_profession', { length: 255 }),
   fatherWork: varchar('father_work', { length: 255 }),
+  fatherResidency: varchar('father_residency', { length: 255 }),
   // Mother
   motherName: varchar('mother_name', { length: 255 }),
   motherPhone: varchar('mother_phone', { length: 50 }),
   motherEmail: varchar('mother_email', { length: 255 }),
   motherProfession: varchar('mother_profession', { length: 255 }),
   motherWork: varchar('mother_work', { length: 255 }),
+  motherResidency: varchar('mother_residency', { length: 255 }),
   residency: varchar('residency', { length: 255 }),
   
   fatherAltContactName: varchar('father_alt_contact_name', { length: 255 }),

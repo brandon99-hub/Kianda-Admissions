@@ -268,9 +268,10 @@ app.post('/api/applications', async (req, res) => {
     let checkoutRequestId = null;
     if (payment.phoneNumber) {
       try {
-        // initiate STK push with amount 1 for testing
+        // initiate STK push with amount 1 for testing, 2000 for production
         const accountRef = candidate.fullName ? `${candidate.fullName.trim().split(/\s+/).slice(0, 2).join(' ')} APP` : `APP-${newAppId}`;
-        checkoutRequestId = await initiateSTKPush(payment.phoneNumber, 1, accountRef);
+        const stkAmount = process.env.MPESA_ENVIRONMENT === 'sandbox' ? 1 : 2000;
+        checkoutRequestId = await initiateSTKPush(payment.phoneNumber, stkAmount, accountRef);
         await db.update(schema.applications)
           .set({ checkoutRequestId })
           .where(eq(schema.applications.id, newAppId));
@@ -295,7 +296,11 @@ app.post('/api/applications', async (req, res) => {
           candidate: { ...candidate, passportPhotoUrl: candidate.passportPhoto },
           parentDetails: parent,
           additionalInfo: additional,
-          schoolsAttended: candidate.schools || [],
+          schoolsAttended: (candidate.schools || []).map((s: any) => ({
+            schoolType: s.type,
+            schoolName: s.name,
+            yearsRange: s.years
+          })),
           siblings: additional.siblings,
           documents: documents ? Object.entries(documents).map(([k, v]) => ({ fileUrl: v })) : []
         };
@@ -705,6 +710,64 @@ app.post('/api/admin/applications/bulk-send-pdf', authenticateAdmin, async (req,
   } catch (error) {
     console.error('Bulk PDF send error:', error);
     res.status(500).json({ error: 'Failed to send bulk PDFs' });
+  }
+});
+
+// Update Application Details
+app.put('/api/admin/applications/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { candidate, parentDetails, additionalInfo } = req.body;
+    
+    const appId = parseInt(id);
+    if (isNaN(appId)) return res.status(400).json({ error: 'Invalid ID' });
+
+    if (candidate) {
+      await db.update(schema.candidates)
+        .set({
+          fullName: candidate.fullName,
+          grade: candidate.grade,
+          dob: candidate.dob,
+          religion: candidate.religion,
+          denomination: candidate.denomination,
+          birthOrder: candidate.birthOrder,
+          medicalInfo: candidate.medicalInfo,
+        })
+        .where(eq(schema.candidates.applicationId, appId));
+    }
+
+    if (parentDetails) {
+      await db.update(schema.parentDetails)
+        .set({
+          fatherName: parentDetails.fatherName,
+          fatherPhone: parentDetails.fatherPhone,
+          fatherEmail: parentDetails.fatherEmail,
+          fatherProfession: parentDetails.fatherProfession,
+          motherName: parentDetails.motherName,
+          motherPhone: parentDetails.motherPhone,
+          motherEmail: parentDetails.motherEmail,
+          motherProfession: parentDetails.motherProfession,
+          residency: parentDetails.residency,
+          fatherResidency: parentDetails.fatherResidency,
+          motherResidency: parentDetails.motherResidency,
+        })
+        .where(eq(schema.parentDetails.applicationId, appId));
+    }
+
+    if (additionalInfo) {
+      await db.update(schema.additionalInfo)
+        .set({
+          motivation: additionalInfo.motivation,
+          source: additionalInfo.source,
+          sourceOther: additionalInfo.sourceOther,
+        })
+        .where(eq(schema.additionalInfo.applicationId, appId));
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Update Application Error:', error);
+    res.status(500).json({ error: 'Failed to update application' });
   }
 });
 

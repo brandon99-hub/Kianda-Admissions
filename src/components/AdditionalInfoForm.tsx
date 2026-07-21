@@ -75,15 +75,15 @@ export default function AdditionalInfoForm({ data, updateData, onNext, onBack, o
           if (data.hasAppliedBefore && (!data.previousApplicationYears || data.previousApplicationYears.length === 0)) {
             return toast.error('Please select the year(s) you previously applied.');
           }
-          if (data.source === 'Other' && !data.sourceOther) {
-            return toast.error('Please specify how you heard about us.');
+          if ((data.source === 'Other' || data.source === 'Friend') && !data.sourceOther) {
+            return toast.error(data.source === 'Friend' ? 'Please provide the name of the relative/friend.' : 'Please specify how you heard about us.');
           }
           onNext(); 
         }}>
           {/* Siblings */}
           <div className="space-y-6">
             <div className="flex justify-between items-center border-b border-outline-variant/10 pb-2">
-              <h4 className="text-[10px] md:text-xs font-bold uppercase tracking-widest leading-relaxed text-secondary pr-4 max-w-3xl">Do you have any siblings, relatives, or friends connected to Kianda School?</h4>
+              <h4 className="text-[10px] md:text-xs font-bold uppercase tracking-widest leading-relaxed text-secondary pr-4 max-w-3xl">Do you have any siblings connected to Kianda School?</h4>
               <button 
                 type="button" 
                 onClick={addSibling}
@@ -135,16 +135,13 @@ export default function AdditionalInfoForm({ data, updateData, onNext, onBack, o
                               exit={{ opacity: 0, y: -10 }}
                               className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-primary/5 py-2 z-50 max-h-48 overflow-y-auto"
                             >
-                              {['Brother', 'Sister', 'Relative', 'Friend'].map(rel => (
+                              {['Brother', 'Sister'].map(rel => (
                                 <button
                                   key={rel}
                                   type="button"
                                   onClick={() => { 
                                     const newSiblings = [...data.siblings];
                                     newSiblings[index] = { ...newSiblings[index], relationship: rel };
-                                    if (rel === 'Relative' || rel === 'Friend') {
-                                       newSiblings[index].schoolType = 'Kianda School';
-                                    }
                                     updateData({ siblings: newSiblings });
                                     setActiveDropdown(null); 
                                   }}
@@ -195,12 +192,6 @@ export default function AdditionalInfoForm({ data, updateData, onNext, onBack, o
                      </div>
                      
                      <div className="relative">
-                        {sibling.relationship === 'Relative' || sibling.relationship === 'Friend' ? (
-                          <div className="w-full bg-white border-2 border-outline-variant/40 rounded-xl p-3.5 text-xs font-bold text-primary flex justify-between items-center focus:ring-2 focus:ring-primary/20 cursor-default">
-                             Kianda School
-                          </div>
-                        ) : (
-                          <>
                             <button
                               type="button"
                               onClick={() => setActiveDropdown(activeDropdown === `sib-${index}-sch` ? null : `sib-${index}-sch`)}
@@ -232,8 +223,6 @@ export default function AdditionalInfoForm({ data, updateData, onNext, onBack, o
                                 </motion.div>
                               )}
                             </AnimatePresence>
-                          </>
-                        )}
                      </div>
                      
                      {sibling.schoolType === 'Other' && (
@@ -245,7 +234,7 @@ export default function AdditionalInfoForm({ data, updateData, onNext, onBack, o
                         />
                      )}
                      
-                     {sibling.schoolType === 'Kianda School' && sibling.relationship !== 'Relative' && sibling.relationship !== 'Friend' && (
+                     {sibling.schoolType === 'Kianda School' && (
                        <div className="relative">
                           <button
                             type="button"
@@ -331,7 +320,7 @@ export default function AdditionalInfoForm({ data, updateData, onNext, onBack, o
                           <button
                             key={opt.value}
                             type="button"
-                            onClick={() => { updateData({ source: opt.value, sourceOther: (opt.value === 'Other' || opt.value === 'SocialMedia') ? data.sourceOther : '' }); setActiveDropdown(null); }}
+                            onClick={() => { updateData({ source: opt.value, sourceOther: (opt.value === 'Other' || opt.value === 'SocialMedia' || opt.value === 'Friend') ? data.sourceOther : '' }); setActiveDropdown(null); }}
                             className={`w-full px-6 py-3 text-left text-xs font-black tracking-widest hover:bg-secondary/10 transition-colors flex items-center justify-between ${data.source === opt.value ? 'bg-secondary/5 text-secondary' : 'text-primary'}`}
                           >
                             {opt.label}
@@ -387,17 +376,19 @@ export default function AdditionalInfoForm({ data, updateData, onNext, onBack, o
                     </motion.div>
                   )}
                   
-                  {data.source === 'Other' && (
+                  {(data.source === 'Other' || data.source === 'Friend') && (
                     <motion.div 
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.95 }}
                       className="space-y-2"
                     >
-                      <label className="block text-[11px] font-bold uppercase tracking-widest text-primary">Please specify</label>
+                      <label className="block text-[11px] font-bold uppercase tracking-widest text-primary">
+                        {data.source === 'Friend' ? "Relative/Friend's Name" : "Please specify"}
+                      </label>
                       <input
                         type="text"
-                        placeholder="E.g. Billboard, Radio..."
+                        placeholder={data.source === 'Friend' ? "Enter full name" : "E.g. Billboard, Radio..."}
                         value={data.sourceOther}
                         onChange={(e) => updateData({ sourceOther: e.target.value })}
                         className="w-full bg-white border-2 border-outline-variant/40 rounded-xl p-4 focus:ring-2 focus:ring-secondary focus:border-secondary transition-all text-sm font-medium shadow-sm placeholder:opacity-40"

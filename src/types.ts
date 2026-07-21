@@ -40,6 +40,8 @@ export interface ParentDetails {
   motherAltContactRelation: string;
   
   residency: string;
+  fatherResidency?: string;
+  motherResidency?: string;
 }
 
 export interface Sibling {
