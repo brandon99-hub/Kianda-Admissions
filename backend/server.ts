@@ -270,7 +270,7 @@ app.post('/api/applications', async (req, res) => {
       try {
         // initiate STK push with amount 1 for testing, 10 for production testing
         const accountRef = candidate.fullName ? `${candidate.fullName.trim().split(/\s+/).slice(0, 2).join(' ')} APP` : `APP-${newAppId}`;
-        const stkAmount = process.env.MPESA_ENVIRONMENT === 'sandbox' ? 1 : 10;
+        const stkAmount = process.env.MPESA_ENVIRONMENT === 'sandbox' ? 1 : 2000;
         checkoutRequestId = await initiateSTKPush(payment.phoneNumber, stkAmount, accountRef);
         await db.update(schema.applications)
           .set({ checkoutRequestId })
@@ -351,13 +351,13 @@ app.post('/api/applications', async (req, res) => {
 app.post('/api/mpesa/callback', async (req, res) => {
   try {
     console.log('M-PESA Callback Received:', JSON.stringify(req.body, null, 2));
-    
+
     const body = req.body;
     if (body.Body && body.Body.stkCallback) {
       const callbackData = body.Body.stkCallback;
       const resultCode = callbackData.ResultCode;
       const checkoutRequestId = callbackData.CheckoutRequestID;
-      
+
       if (resultCode === 0) {
         // Success
         const callbackMetadata = callbackData.CallbackMetadata.Item;
@@ -368,11 +368,11 @@ app.post('/api/mpesa/callback', async (req, res) => {
         const receiptNumber = receiptItem ? receiptItem.Value : '';
         const amount = amountItem ? amountItem.Value : 0;
         const phone = phoneItem ? phoneItem.Value : '';
-        
+
         await db.update(schema.applications)
           .set({ paymentVerified: true, mpesaCode: receiptNumber })
           .where(eq(schema.applications.checkoutRequestId, checkoutRequestId));
-          
+
         console.log(`Payment successful for request ${checkoutRequestId}, receipt ${receiptNumber}`);
 
         // Fetch application details to send the success email and PDF
@@ -468,7 +468,7 @@ app.post('/api/mpesa/callback', async (req, res) => {
           .where(eq(schema.applications.checkoutRequestId, checkoutRequestId));
       }
     }
-    
+
     res.json({ success: true });
   } catch (error) {
     console.error('M-PESA Webhook Error:', error);
@@ -482,11 +482,11 @@ app.get('/api/applications/:id/payment-status', async (req, res) => {
     const appRecord = await db.query.applications.findFirst({
       where: eq(schema.applications.id, parseInt(id))
     });
-    
+
     if (!appRecord) {
       return res.status(404).json({ error: 'Application not found' });
     }
-    
+
     res.json({ paymentVerified: appRecord.paymentVerified, mpesaCode: appRecord.mpesaCode, stkPushFailed: appRecord.stkPushFailed });
   } catch (error) {
     res.status(500).json({ error: 'Internal Server Error' });
@@ -497,13 +497,13 @@ app.post('/api/applications/:id/submit-mpesa-code', async (req, res) => {
   try {
     const { id } = req.params;
     const { mpesaCode } = req.body;
-    
+
     if (!mpesaCode) {
       return res.status(400).json({ error: 'M-PESA Code is required' });
     }
 
     const appId = parseInt(id);
-    
+
     await db.update(schema.applications)
       .set({ mpesaCode: mpesaCode.toUpperCase().trim(), stkPushFailed: false })
       .where(eq(schema.applications.id, appId));
@@ -588,7 +588,7 @@ app.post('/api/mpesa/c2b/validation', async (req, res) => {
 app.post('/api/mpesa/c2b/confirmation', async (req, res) => {
   try {
     const { TransID, TransAmount, MSISDN, FirstName, MiddleName, LastName, BillRefNumber } = req.body;
-    
+
     await db.insert(schema.payments).values({
       transactionCode: TransID,
       amount: parseFloat(TransAmount) || 0,
@@ -597,7 +597,7 @@ app.post('/api/mpesa/c2b/confirmation', async (req, res) => {
       accountReference: BillRefNumber,
       paymentType: 'C2B'
     });
-    
+
     res.json({ ResultCode: 0, ResultDesc: 'Success' });
   } catch (err) {
     console.error('C2B Confirmation error', err);
@@ -652,11 +652,11 @@ app.get('/api/admin/payments', authenticateAdmin, async (req, res) => {
 app.post('/api/admin/payments/map', authenticateAdmin, async (req, res) => {
   try {
     const { paymentId, applicationId } = req.body;
-    
+
     await db.update(schema.payments)
       .set({ mappedApplicationId: applicationId })
       .where(eq(schema.payments.id, paymentId));
-      
+
     const [payment] = await db.select().from(schema.payments).where(eq(schema.payments.id, paymentId));
     if (payment) {
       await db.update(schema.applications)
@@ -754,7 +754,7 @@ app.post('/api/admin/applications/bulk-send-pdf', authenticateAdmin, async (req,
     let sentCount = 0;
     for (const appRecord of apps) {
       if (!appRecord.candidate || !appRecord.parentDetails) continue;
-      
+
       const parentEmails = [appRecord.parentDetails.fatherEmail, appRecord.parentDetails.motherEmail].filter(Boolean).join(', ');
       if (!parentEmails) continue;
 
@@ -767,7 +767,7 @@ app.post('/api/admin/applications/bulk-send-pdf', authenticateAdmin, async (req,
       }
 
       const emailContent = getApplicationPdfEmail(appRecord.candidate.fullName);
-      
+
       const attachments: any[] = [
         { filename: 'kianda-school-logo-removebg-preview.png', path: path.resolve(__dirname, '../public/kianda-school-logo-removebg-preview.png'), cid: 'kiandalogo' }
       ];
@@ -809,7 +809,7 @@ app.put('/api/admin/applications/:id', authenticateAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { candidate, parentDetails, additionalInfo } = req.body;
-    
+
     const appId = parseInt(id);
     if (isNaN(appId)) return res.status(400).json({ error: 'Invalid ID' });
 

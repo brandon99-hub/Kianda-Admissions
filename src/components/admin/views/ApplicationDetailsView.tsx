@@ -183,17 +183,17 @@ export default function ApplicationDetailsView({ app, onBack, onUpdate, showResu
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col items-stretch gap-3 min-w-[140px] z-20 relative">
             <button
               onClick={() => setIsEditModalOpen(true)}
-              className="px-6 py-3.5 bg-surface-variant text-on-surface-variant rounded-2xl font-black text-[10px] uppercase tracking-widest hover:scale-105 transition-all flex items-center gap-2 border border-outline-variant/10"
+              className="px-6 py-3 bg-white text-primary rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:border-primary/30 hover:bg-primary/5 transition-all flex items-center justify-center gap-2 border-2 border-primary/10 shadow-sm hover:shadow-md"
             >
               <Edit2 size={14} /> Edit Details
             </button>
             <button
               onClick={handleExportPDF}
               disabled={isExporting}
-              className="px-6 py-3.5 bg-primary text-secondary rounded-2xl font-black text-[10px] uppercase tracking-widest hover:scale-105 disabled:hover:scale-100 disabled:opacity-70 disabled:cursor-not-allowed transition-all shadow-xl shadow-primary/20 flex items-center gap-2"
+              className="px-6 py-3 bg-primary text-secondary rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:shadow-[0_15px_30px_rgba(24,33,109,0.25)] hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-70 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
             >
               {isExporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
               {isExporting ? 'Exporting...' : 'Export PDF'}
@@ -377,7 +377,7 @@ export default function ApplicationDetailsView({ app, onBack, onUpdate, showResu
                       const sourceMap: any = {
                         'Parent': 'Parent',
                         'School': "Through daughter's school",
-                        'Friend': 'Relative / Friend',
+                        'Friend': additional.sourceOther ? `Relative / Friend (${additional.sourceOther})` : 'Relative / Friend',
                         'Website': 'Kianda Website',
                         'SocialMedia': additional.sourceOther ? `Social Media - ${additional.sourceOther}` : 'Social Media',
                         'Other': additional.sourceOther || 'Other'

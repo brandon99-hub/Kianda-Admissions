@@ -207,7 +207,7 @@ export async function buildApplicationPDF(app: any): Promise<jsPDF> {
   // Row 1
   drawField(doc, 'Date of Birth', formattedDob, col1X, currentY);
   drawField(doc, 'Religion', candidate.religion, col2X, currentY);
-  currentY = drawField(doc, 'Denomination', candidate.denomination, col3X, currentY) + 1;
+  currentY = drawField(doc, 'Denomination', candidate.denomination, col3X, currentY) + 2;
 
   // Row 2
   let appliedBeforeValue = additional.hasAppliedBefore ? 'Yes' : 'No';
@@ -217,7 +217,7 @@ export async function buildApplicationPDF(app: any): Promise<jsPDF> {
   
   drawField(doc, 'Birth Order', candidate.birthOrder, col1X, currentY);
   drawField(doc, 'Assessment No', candidate.assessmentNo, col2X, currentY);
-  currentY = drawField(doc, 'Have you applied before ?', appliedBeforeValue, col3X, currentY) + 3;
+  currentY = drawField(doc, 'Have you applied before ?', appliedBeforeValue, col3X, currentY) + 6;
 
   // Split bottom of Section I into Left (Schools) and Right (Medical History)
   y = currentY + 4;
@@ -251,8 +251,6 @@ export async function buildApplicationPDF(app: any): Promise<jsPDF> {
   drawField(doc, 'MEDICAL HISTORY', candidate.medicalInfo || 'No conditions recorded.', s1RightX, rightY + 5, COL_W);
 
   y = Math.max(leftY, rightY + 16) + 4;
-  drawRule(doc, y);
-  y += 8;
 
   // ── PART II: PARENTAL & GUARDIANSHIP DETAILS ────────────────────────────
   y = checkPage(doc, y, 80);
@@ -294,11 +292,13 @@ export async function buildApplicationPDF(app: any): Promise<jsPDF> {
 
   drawText(doc, 'WORK', leftX, mY, { size: 7, bold: true, color: MUTED });
   drawText(doc, parent.fatherWork || 'N/A', leftX + labelW, mY, { size: 9, color: PRIMARY, bold: true, maxWidth: COL_W - labelW - 4 });
-  mY += 10;
+  mY += 8;
 
-  drawText(doc, 'RESIDENCY', leftX, mY, { size: 7, bold: true, color: MUTED });
-  drawText(doc, parent.fatherResidency || parent.residency || 'N/A', leftX + labelW, mY, { size: 9, color: PRIMARY, bold: true, maxWidth: COL_W - labelW - 4 });
-  mY += 10;
+  if (!parent.residency) {
+    drawText(doc, 'RESIDENCY', leftX, mY, { size: 7, bold: true, color: MUTED });
+    drawText(doc, parent.fatherResidency || 'N/A', leftX + labelW, mY, { size: 9, color: PRIMARY, bold: true, maxWidth: COL_W - labelW - 4 });
+    mY += 8;
+  }
 
   drawText(doc, 'ALTERNATIVE CONTACT', leftX, mY, { size: 7, bold: true, color: MUTED });
   mY += 6;
@@ -333,11 +333,13 @@ export async function buildApplicationPDF(app: any): Promise<jsPDF> {
 
   drawText(doc, 'WORK', rightX, fY, { size: 7, bold: true, color: MUTED });
   drawText(doc, parent.motherWork || 'N/A', rightX + labelW, fY, { size: 9, color: PRIMARY, bold: true, maxWidth: COL_W - labelW - 4 });
-  fY += 10;
+  fY += 8;
 
-  drawText(doc, 'RESIDENCY', rightX, fY, { size: 7, bold: true, color: MUTED });
-  drawText(doc, parent.motherResidency || parent.residency || 'N/A', rightX + labelW, fY, { size: 9, color: PRIMARY, bold: true, maxWidth: COL_W - labelW - 4 });
-  fY += 10;
+  if (!parent.residency) {
+    drawText(doc, 'RESIDENCY', rightX, fY, { size: 7, bold: true, color: MUTED });
+    drawText(doc, parent.motherResidency || 'N/A', rightX + labelW, fY, { size: 9, color: PRIMARY, bold: true, maxWidth: COL_W - labelW - 4 });
+    fY += 8;
+  }
 
   drawText(doc, 'ALTERNATIVE CONTACT', rightX, fY, { size: 7, bold: true, color: MUTED });
   fY += 6;
@@ -350,17 +352,20 @@ export async function buildApplicationPDF(app: any): Promise<jsPDF> {
   drawText(doc, 'RELATION', rightX, fY, { size: 7, bold: true, color: MUTED });
   drawText(doc, parent.motherAltContactRelation || 'N/A', rightX + labelW, fY, { size: 9, color: PRIMARY, bold: true });
 
-  y = Math.max(mY, fY) + 6;
+  y = Math.max(mY, fY) + 12;
 
-  drawRule(doc, y);
-  y += 8;
+  if (parent.residency) {
+    drawText(doc, 'FAMILY RESIDENCY', leftX, y, { size: 7, bold: true, color: MUTED });
+    drawText(doc, parent.residency, leftX + 45, y, { size: 9, bold: true, color: PRIMARY });
+    y += 12;
+  }
 
   // ── Section III: Background & Health Disclosures ────────────────────────
-  y = checkPage(doc, y, 50);
+  y = checkPage(doc, y, 30);
   y = drawSectionHeader(doc, 'Section III: Background & Health Disclosures', y);
 
   // 1. Siblings Information
-  y = checkPage(doc, y, 40);
+  y = checkPage(doc, y, 15);
   drawText(doc, 'SIBLINGS INFORMATION:', MARGIN, y, { size: 8, bold: true, color: MUTED });
   y += 6;
   
@@ -431,9 +436,9 @@ export async function buildApplicationPDF(app: any): Promise<jsPDF> {
   const sourceMap: any = {
     'Parent': 'Parent',
     'School': "Through daughter's school",
-    'Friend': 'Relative / Friend',
+    'Friend': additional.sourceOther ? `Relative / Friend (${additional.sourceOther})` : 'Relative / Friend',
     'Website': 'Kianda Website',
-    'SocialMedia': additional.socialPlatform ? `Social Media (${additional.socialPlatform})` : 'Social Media',
+    'SocialMedia': additional.sourceOther ? `Social Media - ${additional.sourceOther}` : 'Social Media',
     'Other': additional.sourceOther || 'Other'
   };
   const sourceDisplay = sourceMap[additional.source || ''] || additional.source || 'N/A';
