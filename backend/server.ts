@@ -268,9 +268,9 @@ app.post('/api/applications', async (req, res) => {
     let checkoutRequestId = null;
     if (payment.phoneNumber) {
       try {
-        // initiate STK push with amount 1 for testing, 2000 for production
+        // initiate STK push with amount 1 for testing, 10 for production testing
         const accountRef = candidate.fullName ? `${candidate.fullName.trim().split(/\s+/).slice(0, 2).join(' ')} APP` : `APP-${newAppId}`;
-        const stkAmount = process.env.MPESA_ENVIRONMENT === 'sandbox' ? 1 : 2000;
+        const stkAmount = process.env.MPESA_ENVIRONMENT === 'sandbox' ? 1 : 10;
         checkoutRequestId = await initiateSTKPush(payment.phoneNumber, stkAmount, accountRef);
         await db.update(schema.applications)
           .set({ checkoutRequestId })
