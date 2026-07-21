@@ -72,9 +72,9 @@ export default function PaymentConfirmationForm({ data, updateData, onSubmit, on
 
           {!isManual && (
             <div className="px-10 py-10 md:px-16 flex flex-col items-center text-center">
-              <div className="text-xl md:text-2xl font-headline font-black text-primary tracking-tight mb-2">M-PESA Express</div>
+              <div className="text-xl md:text-2xl font-headline font-black text-primary tracking-tight mb-2">Enter Phone Number</div>
               <p className="text-sm text-on-surface-variant/80 max-w-md mx-auto">
-                Enter your M-PESA phone number below. You will receive a prompt on your phone to enter your PIN.
+                Enter your M-PESA phone number below e.g 0712345678/ 2547.... You will receive a prompt on your phone to enter your PIN.
               </p>
             </div>
           )}
@@ -121,10 +121,6 @@ export default function PaymentConfirmationForm({ data, updateData, onSubmit, on
                    </>
                  ) : (
                    <>
-                     <div className="text-center">
-                        <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary/80 mb-2">Enter Phone Number</h4>
-                        <p className="text-[12px] text-on-surface-variant font-semibold opacity-60 italic">e.g. 0712345678 or 2547...</p>
-                     </div>
                      <div className="relative max-w-md mx-auto group">
                         <input
                           type="tel"

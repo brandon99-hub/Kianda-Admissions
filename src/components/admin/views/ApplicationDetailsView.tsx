@@ -310,7 +310,7 @@ export default function ApplicationDetailsView({ app, onBack, onUpdate, showResu
                       <DetailItem inline icon={<Mail size={14} />} label="Email" value={parent.motherEmail} />
                       <DetailItem inline label="Profession" value={parent.motherProfession} />
                       <DetailItem inline label="Workplace" value={parent.motherWork} />
-                      <DetailItem inline label="Residency" value={parent.motherResidency || parent.residency} />
+                      {!parent.residency && <DetailItem inline label="Residency" value={parent.motherResidency} />}
 
                       <div className="pt-4 border-t border-primary/5">
                         <h4 className="text-[10px] font-bold text-primary mb-3 opacity-60 uppercase tracking-widest">Alternative Contact</h4>
@@ -333,7 +333,7 @@ export default function ApplicationDetailsView({ app, onBack, onUpdate, showResu
                       <DetailItem inline icon={<Mail size={14} />} label="Email" value={parent.fatherEmail} />
                       <DetailItem inline label="Profession" value={parent.fatherProfession} />
                       <DetailItem inline label="Workplace" value={parent.fatherWork} />
-                      <DetailItem inline label="Residency" value={parent.fatherResidency || parent.residency} />
+                      {!parent.residency && <DetailItem inline label="Residency" value={parent.fatherResidency} />}
 
                       <div className="pt-4 border-t border-primary/5">
                         <h4 className="text-[10px] font-bold text-primary mb-3 opacity-60 uppercase tracking-widest">Alternative Contact</h4>
@@ -346,16 +346,18 @@ export default function ApplicationDetailsView({ app, onBack, onUpdate, showResu
                 </div>
               </div>
 
-              {/* Residency Display */}
-              <div className="mt-8 pt-6 border-t border-primary/5">
-                <div className="space-y-4 relative">
-                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-secondary/30 rounded-full" />
-                  <div className="pl-4">
-                    <h4 className="text-sm font-bold text-primary mb-3 opacity-80 uppercase tracking-widest">Family Residency</h4>
-                    <DetailItem inline={false} label="Physical Address / Estate" value={parent.residency} />
+              {/* Residency Display (Legacy Applications) */}
+              {parent.residency && (
+                <div className="mt-8 pt-6 border-t border-primary/5">
+                  <div className="space-y-4 relative">
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-secondary/30 rounded-full" />
+                    <div className="pl-4">
+                      <h4 className="text-sm font-bold text-primary mb-3 opacity-80 uppercase tracking-widest">Family Residency</h4>
+                      <DetailItem inline={false} label="Physical Address / Estate" value={parent.residency} />
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Application & Medical Context */}

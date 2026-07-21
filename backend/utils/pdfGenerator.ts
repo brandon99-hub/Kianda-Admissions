@@ -237,8 +237,6 @@ export async function generateApplicationPDFBuffer(app: any): Promise<Buffer> {
   drawField(doc, 'MEDICAL HISTORY', candidate.medicalInfo || 'No conditions recorded.', s1RightX, rightY + 5, COL_W);
 
   y = Math.max(leftY, rightY + 16) + 4;
-  drawRule(doc, y);
-  y += 8;
 
   // ── PART II: PARENTAL & GUARDIANSHIP DETAILS ────────────────────────────
   y = checkPage(doc, y, 80);
@@ -278,7 +276,13 @@ export async function generateApplicationPDFBuffer(app: any): Promise<Buffer> {
 
   drawText(doc, 'WORK', leftX, mY, { size: 7, bold: true, color: MUTED });
   drawText(doc, parent.fatherWork || 'N/A', leftX + labelW, mY, { size: 9, color: PRIMARY, bold: true, maxWidth: COL_W - labelW - 4 });
-  mY += 10;
+  mY += 8;
+
+  if (!parent.residency) {
+    drawText(doc, 'RESIDENCY', leftX, mY, { size: 7, bold: true, color: MUTED });
+    drawText(doc, parent.fatherResidency || 'N/A', leftX + labelW, mY, { size: 9, color: PRIMARY, bold: true, maxWidth: COL_W - labelW - 4 });
+    mY += 8;
+  }
 
   drawText(doc, 'ALTERNATIVE CONTACT', leftX, mY, { size: 7, bold: true, color: MUTED });
   mY += 6;
@@ -312,7 +316,13 @@ export async function generateApplicationPDFBuffer(app: any): Promise<Buffer> {
 
   drawText(doc, 'WORK', rightX, fY, { size: 7, bold: true, color: MUTED });
   drawText(doc, parent.motherWork || 'N/A', rightX + labelW, fY, { size: 9, color: PRIMARY, bold: true, maxWidth: COL_W - labelW - 4 });
-  fY += 10;
+  fY += 8;
+
+  if (!parent.residency) {
+    drawText(doc, 'RESIDENCY', rightX, fY, { size: 7, bold: true, color: MUTED });
+    drawText(doc, parent.motherResidency || 'N/A', rightX + labelW, fY, { size: 9, color: PRIMARY, bold: true, maxWidth: COL_W - labelW - 4 });
+    fY += 8;
+  }
 
   drawText(doc, 'ALTERNATIVE CONTACT', rightX, fY, { size: 7, bold: true, color: MUTED });
   fY += 6;
@@ -325,20 +335,19 @@ export async function generateApplicationPDFBuffer(app: any): Promise<Buffer> {
   drawText(doc, 'RELATION', rightX, fY, { size: 7, bold: true, color: MUTED });
   drawText(doc, parent.motherAltContactRelation || 'N/A', rightX + labelW, fY, { size: 9, color: PRIMARY, bold: true });
 
-  y = Math.max(mY, fY) + 16;
+  y = Math.max(mY, fY) + 12;
 
-  drawText(doc, 'FAMILY RESIDENCY', leftX, y, { size: 7, bold: true, color: MUTED });
-  drawText(doc, parent.residency || 'Not provided', leftX + 45, y, { size: 9, bold: true, color: PRIMARY });
-
-  y += 12;
-  drawRule(doc, y);
-  y += 8;
+  if (parent.residency) {
+    drawText(doc, 'FAMILY RESIDENCY', leftX, y, { size: 7, bold: true, color: MUTED });
+    drawText(doc, parent.residency, leftX + 45, y, { size: 9, bold: true, color: PRIMARY });
+    y += 12;
+  }
 
   // ── Section III: Background & Health Disclosures ────────────────────────
-  y = checkPage(doc, y, 50);
+  y = checkPage(doc, y, 30);
   y = drawSectionHeader(doc, 'Section III: Background & Health Disclosures', y);
 
-  y = checkPage(doc, y, 40);
+  y = checkPage(doc, y, 15);
   drawText(doc, 'SIBLINGS INFORMATION:', MARGIN, y, { size: 8, bold: true, color: MUTED });
   y += 6;
   
@@ -405,7 +414,7 @@ export async function generateApplicationPDFBuffer(app: any): Promise<Buffer> {
   const sourceMap: any = {
     'Parent': 'Parent',
     'School': "Through daughter's school",
-    'Friend': 'Relative / Friend',
+    'Friend': additional.sourceOther ? `Relative / Friend (${additional.sourceOther})` : 'Relative / Friend',
     'Website': 'Kianda Website',
     'SocialMedia': additional.socialPlatform ? `Social Media (${additional.socialPlatform})` : 'Social Media',
     'Other': additional.sourceOther || 'Other'
