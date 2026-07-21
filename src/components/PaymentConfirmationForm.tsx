@@ -29,10 +29,13 @@ export default function PaymentConfirmationForm({ data, updateData, onSubmit, on
     onSubmit();
   };
 
+  const shortcode = process.env.MPESA_SHORTCODE || '174379';
+  const amount = process.env.MPESA_ENVIRONMENT === 'sandbox' ? '1' : '2,000';
+
   const instructionItems = [
-    { label: 'Paybill Number', value: '174379', icon: Hash },
+    { label: 'Paybill Number', value: shortcode, icon: Hash },
     { label: 'Account Name', value: accountName, icon: User },
-    { label: 'Amount Due', value: 'KES 2,000', icon: CircleDollarSign },
+    { label: 'Amount Due', value: `KES ${amount}`, icon: CircleDollarSign },
   ];
 
   const toggleMethod = () => {

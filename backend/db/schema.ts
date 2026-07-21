@@ -11,6 +11,7 @@ export const applications = pgTable('applications', {
   paymentVerified: boolean('payment_verified').default(false),
   mpesaCode: varchar('mpesa_code', { length: 20 }),
   checkoutRequestId: varchar('checkout_request_id', { length: 100 }),
+  stkPushFailed: boolean('stk_push_failed').default(false),
   applicationFeePaidAt: timestamp('application_fee_paid_at'),
   acceptanceFeePaidAt: timestamp('acceptance_fee_paid_at'),
   academicYear: integer('academic_year'),

@@ -463,6 +463,9 @@ app.post('/api/mpesa/callback', async (req, res) => {
         }
       } else {
         console.log(`Payment failed for request ${checkoutRequestId}: ${callbackData.ResultDesc}`);
+        await db.update(schema.applications)
+          .set({ stkPushFailed: true })
+          .where(eq(schema.applications.checkoutRequestId, checkoutRequestId));
       }
     }
     
@@ -484,8 +487,96 @@ app.get('/api/applications/:id/payment-status', async (req, res) => {
       return res.status(404).json({ error: 'Application not found' });
     }
     
-    res.json({ paymentVerified: appRecord.paymentVerified, mpesaCode: appRecord.mpesaCode });
+    res.json({ paymentVerified: appRecord.paymentVerified, mpesaCode: appRecord.mpesaCode, stkPushFailed: appRecord.stkPushFailed });
   } catch (error) {
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+app.post('/api/applications/:id/submit-mpesa-code', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { mpesaCode } = req.body;
+    
+    if (!mpesaCode) {
+      return res.status(400).json({ error: 'M-PESA Code is required' });
+    }
+
+    const appId = parseInt(id);
+    
+    await db.update(schema.applications)
+      .set({ mpesaCode: mpesaCode.toUpperCase().trim(), stkPushFailed: false })
+      .where(eq(schema.applications.id, appId));
+
+    // Fetch app details to send the success email and PDF
+    const appRecord = await db.query.applications.findFirst({
+      where: eq(schema.applications.id, appId),
+      with: {
+        candidate: true,
+        parentDetails: true,
+        additionalInfo: true,
+        siblings: true,
+        schoolsAttended: true,
+        documents: true
+      }
+    });
+
+    if (appRecord && appRecord.candidate && appRecord.parentDetails) {
+      const gradeDetails = await db.query.gradeManagement.findFirst({
+        where: eq(schema.gradeManagement.gradeName, appRecord.candidate.grade)
+      });
+
+      const emailContent = getSuccessEmail(appRecord.candidate.fullName, appRecord.candidate.grade, appRecord.academicYear || new Date().getFullYear(), gradeDetails?.assessmentDate?.toISOString(), gradeDetails?.location);
+      const parentEmails = [appRecord.parentDetails.fatherEmail, appRecord.parentDetails.motherEmail].filter(Boolean).join(', ');
+
+      let pdfBuffer: Buffer | null = null;
+      try {
+        const appRecordForPDF = {
+          id: appRecord.id,
+          academicYear: appRecord.academicYear || new Date().getFullYear(),
+          admissionType: appRecord.admissionType || 'New',
+          candidate: appRecord.candidate,
+          parentDetails: appRecord.parentDetails,
+          additionalInfo: appRecord.additionalInfo,
+          schoolsAttended: appRecord.schoolsAttended || [],
+          siblings: appRecord.siblings || [],
+          documents: appRecord.documents || []
+        };
+        pdfBuffer = await generateApplicationPDFBuffer(appRecordForPDF);
+      } catch (e) {
+        console.error('Failed to generate PDF for manual code submit', e);
+      }
+
+      if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+        const attachments: any[] = [
+          { filename: 'kianda-school-logo-removebg-preview.png', path: path.resolve(__dirname, '../public/kianda-school-logo-removebg-preview.png'), cid: 'kiandalogo' }
+        ];
+        if (pdfBuffer) {
+          attachments.push({
+            filename: `Kianda_Application_${appRecord.id}.pdf`,
+            content: pdfBuffer
+          });
+        }
+
+        transporter.sendMail({
+          from: `"Kianda Admissions" <${process.env.EMAIL_USER}>`,
+          to: parentEmails,
+          subject: emailContent.subject,
+          html: emailContent.body,
+          attachments
+        }).then(() => {
+          console.log(`[EMAIL SENT] Success email sent after manual code entry to ${parentEmails}`);
+        }).catch((e) => {
+          console.error('[EMAIL ERROR] Failed to send email via nodemailer:', e);
+        });
+      } else {
+        console.log(`[MOCK EMAIL] To: ${parentEmails}\nSubject: ${emailContent.subject}`);
+      }
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Submit MPESA Code Error:', error);
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
