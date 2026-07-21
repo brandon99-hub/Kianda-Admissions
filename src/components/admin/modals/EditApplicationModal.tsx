@@ -147,7 +147,7 @@ export default function EditApplicationModal({ app, onClose, onUpdate }: EditApp
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-[10px] font-black uppercase tracking-widest text-primary/60 mb-2">Full Name</label>
-                <input name="fullName" value={candidate.fullName || ''} onChange={handleCandidateChange} className="w-full px-4 py-3 rounded-xl border border-outline-variant/20 focus:ring-2 focus:ring-secondary/50 text-sm font-bold text-primary" />
+                <input name="fullName" value={candidate.fullName || ''} onChange={handleCandidateChange} className="w-full px-4 py-3 rounded-xl border-2 border-outline-variant/40 shadow-sm focus:ring-2 focus:ring-secondary/50 text-sm font-bold text-primary" />
               </div>
               
               <div className="relative">
@@ -155,7 +155,7 @@ export default function EditApplicationModal({ app, onClose, onUpdate }: EditApp
                 <button
                   type="button"
                   onClick={() => setActiveDropdown(activeDropdown === 'grade' ? null : 'grade')}
-                  className="w-full flex items-center justify-between bg-white px-4 py-3 rounded-xl border border-outline-variant/20 focus:ring-2 focus:ring-secondary/50 text-sm font-bold"
+                  className="w-full flex items-center justify-between bg-white px-4 py-3 rounded-xl border-2 border-outline-variant/40 shadow-sm focus:ring-2 focus:ring-secondary/50 text-sm font-bold"
                 >
                   <span className={candidate.grade ? 'text-primary' : 'text-primary/30'}>
                     {candidate.grade || 'Select Grade'}
@@ -186,8 +186,13 @@ export default function EditApplicationModal({ app, onClose, onUpdate }: EditApp
               </div>
 
               <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-primary/60 mb-2">Assessment No</label>
+                <input name="assessmentNo" value={candidate.assessmentNo || ''} onChange={handleCandidateChange} className="w-full px-4 py-3 rounded-xl border-2 border-outline-variant/40 shadow-sm focus:ring-2 focus:ring-secondary/50 text-sm font-bold text-primary" />
+              </div>
+
+              <div>
                 <label className="block text-[10px] font-black uppercase tracking-widest text-primary/60 mb-2">Date of Birth</label>
-                <input type="date" name="dob" value={candidate.dob ? new Date(candidate.dob).toISOString().split('T')[0] : ''} onChange={handleCandidateChange} className="w-full px-4 py-3 rounded-xl border border-outline-variant/20 focus:ring-2 focus:ring-secondary/50 text-sm font-bold text-primary" />
+                <input type="date" name="dob" value={candidate.dob ? new Date(candidate.dob).toISOString().split('T')[0] : ''} onChange={handleCandidateChange} className="w-full px-4 py-3 rounded-xl border-2 border-outline-variant/40 shadow-sm focus:ring-2 focus:ring-secondary/50 text-sm font-bold text-primary" />
               </div>
 
               <div className="relative">
@@ -195,7 +200,7 @@ export default function EditApplicationModal({ app, onClose, onUpdate }: EditApp
                 <button
                   type="button"
                   onClick={() => setActiveDropdown(activeDropdown === 'birthOrder' ? null : 'birthOrder')}
-                  className="w-full flex items-center justify-between bg-white px-4 py-3 rounded-xl border border-outline-variant/20 focus:ring-2 focus:ring-secondary/50 text-sm font-bold"
+                  className="w-full flex items-center justify-between bg-white px-4 py-3 rounded-xl border-2 border-outline-variant/40 shadow-sm focus:ring-2 focus:ring-secondary/50 text-sm font-bold"
                 >
                   <span className={candidate.birthOrder ? 'text-primary' : 'text-primary/30'}>
                     {birthOrderOptions.find(o => o.value === candidate.birthOrder)?.label || candidate.birthOrder || 'Select Position'}
@@ -230,7 +235,7 @@ export default function EditApplicationModal({ app, onClose, onUpdate }: EditApp
                 <button
                   type="button"
                   onClick={() => setActiveDropdown(activeDropdown === 'religion' ? null : 'religion')}
-                  className="w-full flex items-center justify-between bg-white px-4 py-3 rounded-xl border border-outline-variant/20 focus:ring-2 focus:ring-secondary/50 text-sm font-bold"
+                  className="w-full flex items-center justify-between bg-white px-4 py-3 rounded-xl border-2 border-outline-variant/40 shadow-sm focus:ring-2 focus:ring-secondary/50 text-sm font-bold"
                 >
                   <span className={candidate.religion ? 'text-primary' : 'text-primary/30'}>
                     {candidate.religion || 'Select Religion'}
@@ -265,7 +270,7 @@ export default function EditApplicationModal({ app, onClose, onUpdate }: EditApp
                 <button
                   type="button"
                   onClick={() => setActiveDropdown(activeDropdown === 'denomination' ? null : 'denomination')}
-                  className="w-full flex items-center justify-between bg-white px-4 py-3 rounded-xl border border-outline-variant/20 focus:ring-2 focus:ring-secondary/50 text-sm font-bold"
+                  className="w-full flex items-center justify-between bg-white px-4 py-3 rounded-xl border-2 border-outline-variant/40 shadow-sm focus:ring-2 focus:ring-secondary/50 text-sm font-bold"
                 >
                   <span className={candidate.denomination ? 'text-primary' : 'text-primary/30'}>
                     {candidate.denomination || 'Select Denomination'}
@@ -297,7 +302,7 @@ export default function EditApplicationModal({ app, onClose, onUpdate }: EditApp
 
               <div className="md:col-span-2">
                 <label className="block text-[10px] font-black uppercase tracking-widest text-primary/60 mb-2">Medical Info</label>
-                <textarea name="medicalInfo" value={candidate.medicalInfo || ''} onChange={handleCandidateChange} rows={3} className="w-full px-4 py-3 rounded-xl border border-outline-variant/20 focus:ring-2 focus:ring-secondary/50 text-sm font-bold text-primary" />
+                <textarea name="medicalInfo" value={candidate.medicalInfo || ''} onChange={handleCandidateChange} rows={3} className="w-full px-4 py-3 rounded-xl border-2 border-outline-variant/40 shadow-sm focus:ring-2 focus:ring-secondary/50 text-sm font-bold text-primary" />
               </div>
             </div>
           </div>
@@ -313,35 +318,35 @@ export default function EditApplicationModal({ app, onClose, onUpdate }: EditApp
                 <div className="space-y-4">
                   <div>
                     <label className="block text-[10px] font-black uppercase tracking-widest text-primary/60 mb-2">Name</label>
-                    <input name="fatherName" value={parentDetails.fatherName || ''} onChange={handleParentChange} className="w-full px-4 py-3 rounded-xl border border-outline-variant/20 focus:ring-2 focus:ring-secondary/50 text-sm font-bold text-primary" />
+                    <input name="fatherName" value={parentDetails.fatherName || ''} onChange={handleParentChange} className="w-full px-4 py-3 rounded-xl border-2 border-outline-variant/40 shadow-sm focus:ring-2 focus:ring-secondary/50 text-sm font-bold text-primary" />
                   </div>
                   <div>
                     <label className="block text-[10px] font-black uppercase tracking-widest text-primary/60 mb-2">Phone</label>
-                    <input name="fatherPhone" value={parentDetails.fatherPhone || ''} onChange={handleParentChange} className="w-full px-4 py-3 rounded-xl border border-outline-variant/20 focus:ring-2 focus:ring-secondary/50 text-sm font-bold text-primary" />
+                    <input name="fatherPhone" value={parentDetails.fatherPhone || ''} onChange={handleParentChange} className="w-full px-4 py-3 rounded-xl border-2 border-outline-variant/40 shadow-sm focus:ring-2 focus:ring-secondary/50 text-sm font-bold text-primary" />
                   </div>
                   <div>
                     <label className="block text-[10px] font-black uppercase tracking-widest text-primary/60 mb-2">Email</label>
-                    <input name="fatherEmail" value={parentDetails.fatherEmail || ''} onChange={handleParentChange} className="w-full px-4 py-3 rounded-xl border border-outline-variant/20 focus:ring-2 focus:ring-secondary/50 text-sm font-bold text-primary" />
+                    <input name="fatherEmail" value={parentDetails.fatherEmail || ''} onChange={handleParentChange} className="w-full px-4 py-3 rounded-xl border-2 border-outline-variant/40 shadow-sm focus:ring-2 focus:ring-secondary/50 text-sm font-bold text-primary" />
                   </div>
                   <div>
                     <label className="block text-[10px] font-black uppercase tracking-widest text-primary/60 mb-2">Profession</label>
-                    <input name="fatherProfession" value={parentDetails.fatherProfession || ''} onChange={handleParentChange} className="w-full px-4 py-3 rounded-xl border border-outline-variant/20 focus:ring-2 focus:ring-secondary/50 text-sm font-bold text-primary" />
+                    <input name="fatherProfession" value={parentDetails.fatherProfession || ''} onChange={handleParentChange} className="w-full px-4 py-3 rounded-xl border-2 border-outline-variant/40 shadow-sm focus:ring-2 focus:ring-secondary/50 text-sm font-bold text-primary" />
                   </div>
                   <div>
                     <label className="block text-[10px] font-black uppercase tracking-widest text-primary/60 mb-2">Work</label>
-                    <input name="fatherWork" value={parentDetails.fatherWork || ''} onChange={handleParentChange} className="w-full px-4 py-3 rounded-xl border border-outline-variant/20 focus:ring-2 focus:ring-secondary/50 text-sm font-bold text-primary" />
+                    <input name="fatherWork" value={parentDetails.fatherWork || ''} onChange={handleParentChange} className="w-full px-4 py-3 rounded-xl border-2 border-outline-variant/40 shadow-sm focus:ring-2 focus:ring-secondary/50 text-sm font-bold text-primary" />
                   </div>
                   <div>
                     <label className="block text-[10px] font-black uppercase tracking-widest text-primary/60 mb-2">Residency / Address</label>
-                    <input name="fatherResidency" value={parentDetails.fatherResidency || ''} onChange={handleParentChange} className="w-full px-4 py-3 rounded-xl border border-outline-variant/20 focus:ring-2 focus:ring-secondary/50 text-sm font-bold text-primary" />
+                    <input name="fatherResidency" value={parentDetails.fatherResidency || ''} onChange={handleParentChange} className="w-full px-4 py-3 rounded-xl border-2 border-outline-variant/40 shadow-sm focus:ring-2 focus:ring-secondary/50 text-sm font-bold text-primary" />
                   </div>
                   
                   <div className="pt-2 border-t border-primary/5">
                     <h5 className="text-[10px] font-black uppercase tracking-widest text-primary/60 mb-2">Alt Contact (If Father not available)</h5>
                     <div className="space-y-2">
-                      <input name="fatherAltContactName" placeholder="Name" value={parentDetails.fatherAltContactName || ''} onChange={handleParentChange} className="w-full px-3 py-2 rounded-lg border border-outline-variant/20 focus:ring-2 focus:ring-secondary/50 text-xs font-bold text-primary" />
-                      <input name="fatherAltContactPhone" placeholder="Phone" value={parentDetails.fatherAltContactPhone || ''} onChange={handleParentChange} className="w-full px-3 py-2 rounded-lg border border-outline-variant/20 focus:ring-2 focus:ring-secondary/50 text-xs font-bold text-primary" />
-                      <input name="fatherAltContactRelation" placeholder="Relation" value={parentDetails.fatherAltContactRelation || ''} onChange={handleParentChange} className="w-full px-3 py-2 rounded-lg border border-outline-variant/20 focus:ring-2 focus:ring-secondary/50 text-xs font-bold text-primary" />
+                      <input name="fatherAltContactName" placeholder="Name" value={parentDetails.fatherAltContactName || ''} onChange={handleParentChange} className="w-full px-3 py-2 rounded-lg border-2 border-outline-variant/40 shadow-sm focus:ring-2 focus:ring-secondary/50 text-xs font-bold text-primary" />
+                      <input name="fatherAltContactPhone" placeholder="Phone" value={parentDetails.fatherAltContactPhone || ''} onChange={handleParentChange} className="w-full px-3 py-2 rounded-lg border-2 border-outline-variant/40 shadow-sm focus:ring-2 focus:ring-secondary/50 text-xs font-bold text-primary" />
+                      <input name="fatherAltContactRelation" placeholder="Relation" value={parentDetails.fatherAltContactRelation || ''} onChange={handleParentChange} className="w-full px-3 py-2 rounded-lg border-2 border-outline-variant/40 shadow-sm focus:ring-2 focus:ring-secondary/50 text-xs font-bold text-primary" />
                     </div>
                   </div>
                 </div>
@@ -353,35 +358,35 @@ export default function EditApplicationModal({ app, onClose, onUpdate }: EditApp
                 <div className="space-y-4">
                   <div>
                     <label className="block text-[10px] font-black uppercase tracking-widest text-primary/60 mb-2">Name</label>
-                    <input name="motherName" value={parentDetails.motherName || ''} onChange={handleParentChange} className="w-full px-4 py-3 rounded-xl border border-outline-variant/20 focus:ring-2 focus:ring-secondary/50 text-sm font-bold text-primary" />
+                    <input name="motherName" value={parentDetails.motherName || ''} onChange={handleParentChange} className="w-full px-4 py-3 rounded-xl border-2 border-outline-variant/40 shadow-sm focus:ring-2 focus:ring-secondary/50 text-sm font-bold text-primary" />
                   </div>
                   <div>
                     <label className="block text-[10px] font-black uppercase tracking-widest text-primary/60 mb-2">Phone</label>
-                    <input name="motherPhone" value={parentDetails.motherPhone || ''} onChange={handleParentChange} className="w-full px-4 py-3 rounded-xl border border-outline-variant/20 focus:ring-2 focus:ring-secondary/50 text-sm font-bold text-primary" />
+                    <input name="motherPhone" value={parentDetails.motherPhone || ''} onChange={handleParentChange} className="w-full px-4 py-3 rounded-xl border-2 border-outline-variant/40 shadow-sm focus:ring-2 focus:ring-secondary/50 text-sm font-bold text-primary" />
                   </div>
                   <div>
                     <label className="block text-[10px] font-black uppercase tracking-widest text-primary/60 mb-2">Email</label>
-                    <input name="motherEmail" value={parentDetails.motherEmail || ''} onChange={handleParentChange} className="w-full px-4 py-3 rounded-xl border border-outline-variant/20 focus:ring-2 focus:ring-secondary/50 text-sm font-bold text-primary" />
+                    <input name="motherEmail" value={parentDetails.motherEmail || ''} onChange={handleParentChange} className="w-full px-4 py-3 rounded-xl border-2 border-outline-variant/40 shadow-sm focus:ring-2 focus:ring-secondary/50 text-sm font-bold text-primary" />
                   </div>
                   <div>
                     <label className="block text-[10px] font-black uppercase tracking-widest text-primary/60 mb-2">Profession</label>
-                    <input name="motherProfession" value={parentDetails.motherProfession || ''} onChange={handleParentChange} className="w-full px-4 py-3 rounded-xl border border-outline-variant/20 focus:ring-2 focus:ring-secondary/50 text-sm font-bold text-primary" />
+                    <input name="motherProfession" value={parentDetails.motherProfession || ''} onChange={handleParentChange} className="w-full px-4 py-3 rounded-xl border-2 border-outline-variant/40 shadow-sm focus:ring-2 focus:ring-secondary/50 text-sm font-bold text-primary" />
                   </div>
                   <div>
                     <label className="block text-[10px] font-black uppercase tracking-widest text-primary/60 mb-2">Work</label>
-                    <input name="motherWork" value={parentDetails.motherWork || ''} onChange={handleParentChange} className="w-full px-4 py-3 rounded-xl border border-outline-variant/20 focus:ring-2 focus:ring-secondary/50 text-sm font-bold text-primary" />
+                    <input name="motherWork" value={parentDetails.motherWork || ''} onChange={handleParentChange} className="w-full px-4 py-3 rounded-xl border-2 border-outline-variant/40 shadow-sm focus:ring-2 focus:ring-secondary/50 text-sm font-bold text-primary" />
                   </div>
                   <div>
                     <label className="block text-[10px] font-black uppercase tracking-widest text-primary/60 mb-2">Residency / Address</label>
-                    <input name="motherResidency" value={parentDetails.motherResidency || ''} onChange={handleParentChange} className="w-full px-4 py-3 rounded-xl border border-outline-variant/20 focus:ring-2 focus:ring-secondary/50 text-sm font-bold text-primary" />
+                    <input name="motherResidency" value={parentDetails.motherResidency || ''} onChange={handleParentChange} className="w-full px-4 py-3 rounded-xl border-2 border-outline-variant/40 shadow-sm focus:ring-2 focus:ring-secondary/50 text-sm font-bold text-primary" />
                   </div>
                   
                   <div className="pt-2 border-t border-primary/5">
                     <h5 className="text-[10px] font-black uppercase tracking-widest text-primary/60 mb-2">Alt Contact (If Mother not available)</h5>
                     <div className="space-y-2">
-                      <input name="motherAltContactName" placeholder="Name" value={parentDetails.motherAltContactName || ''} onChange={handleParentChange} className="w-full px-3 py-2 rounded-lg border border-outline-variant/20 focus:ring-2 focus:ring-secondary/50 text-xs font-bold text-primary" />
-                      <input name="motherAltContactPhone" placeholder="Phone" value={parentDetails.motherAltContactPhone || ''} onChange={handleParentChange} className="w-full px-3 py-2 rounded-lg border border-outline-variant/20 focus:ring-2 focus:ring-secondary/50 text-xs font-bold text-primary" />
-                      <input name="motherAltContactRelation" placeholder="Relation" value={parentDetails.motherAltContactRelation || ''} onChange={handleParentChange} className="w-full px-3 py-2 rounded-lg border border-outline-variant/20 focus:ring-2 focus:ring-secondary/50 text-xs font-bold text-primary" />
+                      <input name="motherAltContactName" placeholder="Name" value={parentDetails.motherAltContactName || ''} onChange={handleParentChange} className="w-full px-3 py-2 rounded-lg border-2 border-outline-variant/40 shadow-sm focus:ring-2 focus:ring-secondary/50 text-xs font-bold text-primary" />
+                      <input name="motherAltContactPhone" placeholder="Phone" value={parentDetails.motherAltContactPhone || ''} onChange={handleParentChange} className="w-full px-3 py-2 rounded-lg border-2 border-outline-variant/40 shadow-sm focus:ring-2 focus:ring-secondary/50 text-xs font-bold text-primary" />
+                      <input name="motherAltContactRelation" placeholder="Relation" value={parentDetails.motherAltContactRelation || ''} onChange={handleParentChange} className="w-full px-3 py-2 rounded-lg border-2 border-outline-variant/40 shadow-sm focus:ring-2 focus:ring-secondary/50 text-xs font-bold text-primary" />
                     </div>
                   </div>
                 </div>
@@ -391,7 +396,7 @@ export default function EditApplicationModal({ app, onClose, onUpdate }: EditApp
             {parentDetails.residency && (!parentDetails.fatherResidency && !parentDetails.motherResidency) && (
               <div>
                 <label className="block text-[10px] font-black uppercase tracking-widest text-primary/60 mb-2">Legacy Family Residency</label>
-                <input name="residency" value={parentDetails.residency || ''} onChange={handleParentChange} className="w-full px-4 py-3 rounded-xl border border-outline-variant/20 focus:ring-2 focus:ring-secondary/50 text-sm font-bold text-primary" />
+                <input name="residency" value={parentDetails.residency || ''} onChange={handleParentChange} className="w-full px-4 py-3 rounded-xl border-2 border-outline-variant/40 shadow-sm focus:ring-2 focus:ring-secondary/50 text-sm font-bold text-primary" />
               </div>
             )}
           </div>
@@ -402,7 +407,7 @@ export default function EditApplicationModal({ app, onClose, onUpdate }: EditApp
             
             <div>
               <label className="block text-[10px] font-black uppercase tracking-widest text-primary/60 mb-2">Motivation</label>
-              <textarea name="motivation" value={additionalInfo.motivation || ''} onChange={handleAdditionalChange} rows={4} className="w-full px-4 py-3 rounded-xl border border-outline-variant/20 focus:ring-2 focus:ring-secondary/50 text-sm font-bold text-primary" />
+              <textarea name="motivation" value={additionalInfo.motivation || ''} onChange={handleAdditionalChange} rows={4} className="w-full px-4 py-3 rounded-xl border-2 border-outline-variant/40 shadow-sm focus:ring-2 focus:ring-secondary/50 text-sm font-bold text-primary" />
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -411,7 +416,7 @@ export default function EditApplicationModal({ app, onClose, onUpdate }: EditApp
                 <button
                   type="button"
                   onClick={() => setActiveDropdown(activeDropdown === 'source' ? null : 'source')}
-                  className="w-full flex items-center justify-between bg-white px-4 py-3 rounded-xl border border-outline-variant/20 focus:ring-2 focus:ring-secondary/50 text-sm font-bold"
+                  className="w-full flex items-center justify-between bg-white px-4 py-3 rounded-xl border-2 border-outline-variant/40 shadow-sm focus:ring-2 focus:ring-secondary/50 text-sm font-bold"
                 >
                   <span className={additionalInfo.source ? 'text-primary' : 'text-primary/30'}>
                     {sourceOptions.find(o => o.value === additionalInfo.source)?.label || additionalInfo.source || 'Select Source'}
@@ -447,7 +452,7 @@ export default function EditApplicationModal({ app, onClose, onUpdate }: EditApp
                   animate={{ opacity: 1, x: 0 }}
                 >
                   <label className="block text-[10px] font-black uppercase tracking-widest text-primary/60 mb-2">{sourceOtherLabel}</label>
-                  <input name="sourceOther" value={additionalInfo.sourceOther || ''} onChange={handleAdditionalChange} className="w-full px-4 py-3 rounded-xl border border-outline-variant/20 focus:ring-2 focus:ring-secondary/50 text-sm font-bold text-primary" />
+                  <input name="sourceOther" value={additionalInfo.sourceOther || ''} onChange={handleAdditionalChange} className="w-full px-4 py-3 rounded-xl border-2 border-outline-variant/40 shadow-sm focus:ring-2 focus:ring-secondary/50 text-sm font-bold text-primary" />
                 </motion.div>
               )}
             </div>
@@ -458,7 +463,7 @@ export default function EditApplicationModal({ app, onClose, onUpdate }: EditApp
               {app.siblings && app.siblings.length > 0 ? (
                 <div className="space-y-3">
                   {app.siblings.map((sib: any, idx: number) => (
-                    <div key={idx} className="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/20 flex flex-wrap gap-x-6 gap-y-2 items-center">
+                    <div key={idx} className="bg-surface-container-lowest p-4 rounded-xl border-2 border-outline-variant/40 shadow-sm flex flex-wrap gap-x-6 gap-y-2 items-center">
                       <div><span className="text-[10px] text-primary/40 uppercase font-bold">Name:</span> <span className="text-xs font-bold text-primary">{sib.name}</span></div>
                       <div><span className="text-[10px] text-primary/40 uppercase font-bold">Grade:</span> <span className="text-xs font-bold text-primary">{sib.grade}</span></div>
                       <div><span className="text-[10px] text-primary/40 uppercase font-bold">Rel:</span> <span className="text-xs font-bold text-primary">{sib.relationship}</span></div>
