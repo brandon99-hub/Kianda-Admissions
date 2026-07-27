@@ -725,6 +725,35 @@ app.get('/api/admin/applications', authenticateAdmin, async (req, res) => {
   }
 });
 
+// Delete Application
+app.delete('/api/admin/applications/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const appId = parseInt(id);
+    
+    await db.transaction(async (tx) => {
+      // Detach payments
+      await tx.update(schema.payments).set({ mappedApplicationId: null }).where(eq(schema.payments.mappedApplicationId, appId));
+      // Delete child records
+      await tx.delete(schema.assessmentResults).where(eq(schema.assessmentResults.applicationId, appId));
+      await tx.delete(schema.interviewSlots).where(eq(schema.interviewSlots.applicationId, appId));
+      await tx.delete(schema.additionalInfo).where(eq(schema.additionalInfo.applicationId, appId));
+      await tx.delete(schema.siblings).where(eq(schema.siblings.applicationId, appId));
+      await tx.delete(schema.schoolsAttended).where(eq(schema.schoolsAttended.applicationId, appId));
+      await tx.delete(schema.documents).where(eq(schema.documents.applicationId, appId));
+      await tx.delete(schema.parentDetails).where(eq(schema.parentDetails.applicationId, appId));
+      await tx.delete(schema.candidates).where(eq(schema.candidates.applicationId, appId));
+      // Delete main record
+      await tx.delete(schema.applications).where(eq(schema.applications.id, appId));
+    });
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Failed to delete application:', error);
+    res.status(500).json({ error: 'Failed to delete application' });
+  }
+});
+
 app.post('/api/admin/applications/bulk-send-pdf', authenticateAdmin, async (req, res) => {
   try {
     const { applicationIds } = req.body;

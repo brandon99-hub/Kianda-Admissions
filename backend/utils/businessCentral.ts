@@ -12,6 +12,9 @@ export async function pushCandidateToProxy(appData: any, erpAdmissionNo?: string
   // Format the payload to match AdmissionsPayload in C# proxy
   const payload = {
     Admission_No: erpAdmissionNo || '',
+    ApplyingGrade: appData.candidate?.grade || '',
+    TransactionCode: appData.mpesaCode || '',
+    AdmissionCycleYear: appData.academicYear || 0,
     Candidate: {
       FullName: appData.candidate?.fullName || '',
       Dob: appData.candidate?.dob || '',
@@ -21,7 +24,7 @@ export async function pushCandidateToProxy(appData: any, erpAdmissionNo?: string
       MedicalInfo: appData.candidate?.medicalInfo || ''
     },
     ParentDetails: {
-      Residency: appData.parentDetails?.residency || '',
+      Residency: [appData.parentDetails?.motherResidency, appData.parentDetails?.fatherResidency].filter(Boolean).join(', '),
       FatherName: appData.parentDetails?.fatherName || '',
       FatherPhone: appData.parentDetails?.fatherPhone || '',
       FatherProfession: appData.parentDetails?.fatherProfession || '',
@@ -46,7 +49,8 @@ export async function pushCandidateToProxy(appData: any, erpAdmissionNo?: string
       Name: s.name || '',
       Relationship: s.relationship || '',
       SchoolName: s.schoolName || '',
-      Dob: s.dob || ''
+      Order: parseInt(s.kiandaOrder) || 0,
+      SiblingType: s.relationship || ''
     }))
   };
 

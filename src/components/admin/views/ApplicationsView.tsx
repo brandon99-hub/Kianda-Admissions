@@ -1,12 +1,12 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import toast from 'react-hot-toast';
-import { Users, Search, User, Mail, ChevronRight, Loader2, ChevronDown, Archive, CheckSquare, Square, X, Filter, FileDown, FileText, ArrowLeft, Send, Edit2 } from 'lucide-react';
+import { Users, Search, User, Mail, ChevronRight, Loader2, ChevronDown, Archive, CheckSquare, Square, X, Filter, FileDown, FileText, ArrowLeft, Send, Edit2, Trash2, AlertTriangle } from 'lucide-react';
 import AdminPageHeader from '../AdminPageHeader';
 import ApplicationDetailsView from './ApplicationDetailsView';
 import TablePagination from '../TablePagination';
 import SchoolSwitcher from '../SchoolSwitcher';
-import { useApplications, useUpdateApplicationStatus, useCycles } from '../../../hooks/useAdminData';
+import { useApplications, useUpdateApplicationStatus, useCycles, useDeleteApplication } from '../../../hooks/useAdminData';
 import { buildApplicationPDF } from '../../../utils/buildApplicationPDF';
 import JSZip from 'jszip';
 import * as XLSX from 'xlsx';
@@ -22,7 +22,8 @@ const ApplicationRow: React.FC<{
   onToggleSelect: (e: React.MouseEvent) => void;
   onSendPdf: (id: number) => void;
   onEdit: (app: any) => void;
-}> = ({ app, onViewDetails, isSelectMode, isSelected, onToggleSelect, onSendPdf, onEdit }) => {
+  onDelete: (id: number) => void;
+}> = ({ app, onViewDetails, isSelectMode, isSelected, onToggleSelect, onSendPdf, onEdit, onDelete }) => {
   const [parentToggle, setParentToggle] = useState<'mother' | 'father'>('mother');
 
   return (
@@ -169,6 +170,13 @@ const ApplicationRow: React.FC<{
                title="Edit Application"
             >
                <Edit2 size={14} />
+            </button>
+            <button
+               onClick={(e) => { e.stopPropagation(); onDelete(app.id); }}
+               className="w-8 h-8 inline-flex items-center justify-center bg-red-500/10 rounded-full text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-inner group-hover:-translate-x-1"
+               title="Delete Application"
+            >
+               <Trash2 size={14} />
             </button>
             <div className="w-8 h-8 inline-flex items-center justify-center bg-primary/5 rounded-full text-primary hover:bg-secondary hover:text-primary transition-all shadow-inner group-hover:-translate-x-1">
               <ChevronRight size={16} />
@@ -401,6 +409,9 @@ const BulkExportModal: React.FC<{
 export default function ApplicationsView() {
   const { data: apps = [], isLoading, refetch } = useApplications();
   const updateStatusMutation = useUpdateApplicationStatus();
+  const deleteMutation = useDeleteApplication();
+
+  const [deleteAppId, setDeleteAppId] = useState<number | null>(null);
 
   const { data: cycles = [] } = useCycles();
   const sortedCycles = React.useMemo(() => {
@@ -492,6 +503,16 @@ export default function ApplicationsView() {
       toast.error('Failed to send PDF', { id: toastId });
     } finally {
       setIsSendingPdf(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteAppId) return;
+    try {
+      await deleteMutation.mutateAsync(deleteAppId);
+      setDeleteAppId(null);
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -828,6 +849,7 @@ export default function ApplicationsView() {
                   onViewDetails={() => setSelectedApp(app)}
                   onSendPdf={(id) => setPdfEmailAppId(id)}
                   onEdit={(app) => setAppToEdit(app)}
+                  onDelete={(id) => setDeleteAppId(id)}
                 />
               ))}
               {!isLoading && filteredApps.length === 0 && (
@@ -881,6 +903,32 @@ export default function ApplicationsView() {
                    className="flex-[2] py-4 bg-primary text-secondary shadow-lg shadow-primary/20 text-[11px] font-black uppercase tracking-widest rounded-xl hover:opacity-90 disabled:opacity-50 disabled:shadow-none transition-all flex justify-center items-center gap-2"
                   >
                     {isSendingPdf ? <><Loader2 size={14} className="animate-spin" /> Sending</> : 'Confirm & Send'}
+                  </button>
+               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Confirm Modal */}
+      <AnimatePresence>
+        {deleteAppId !== null && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-primary/40 backdrop-blur-sm" onClick={() => !deleteMutation.isPending && setDeleteAppId(null)} />
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-white max-w-sm w-full rounded-[32px] p-8 relative z-10 shadow-2xl border border-outline-variant/10 text-center">
+               <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <AlertTriangle size={28} />
+               </div>
+               <h3 className="text-xl font-black text-primary font-headline mb-2">Delete Application</h3>
+               <p className="text-sm font-medium text-on-surface-variant/70 leading-relaxed mb-8">Are you sure you want to delete this application? This action cannot be undone.</p>
+               <div className="flex gap-4">
+                  <button disabled={deleteMutation.isPending} onClick={() => setDeleteAppId(null)} className="flex-1 py-4 text-[11px] font-black uppercase tracking-widest text-primary/60 hover:bg-primary/5 rounded-xl disabled:opacity-50 transition-colors">Cancel</button>
+                  <button 
+                   disabled={deleteMutation.isPending} 
+                   onClick={handleConfirmDelete} 
+                   className="flex-[2] py-4 bg-red-500 text-white shadow-lg shadow-red-500/20 text-[11px] font-black uppercase tracking-widest rounded-xl hover:opacity-90 disabled:opacity-50 disabled:shadow-none transition-all flex justify-center items-center gap-2"
+                  >
+                    {deleteMutation.isPending ? <><Loader2 size={14} className="animate-spin" /> Deleting</> : 'Delete'}
                   </button>
                </div>
             </motion.div>

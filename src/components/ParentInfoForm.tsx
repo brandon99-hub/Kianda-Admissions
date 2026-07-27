@@ -2,6 +2,7 @@ import { ParentDetails } from '../types';
 import { ArrowLeft, ArrowRight, Home, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import React, { useState } from 'react';
+import toast from 'react-hot-toast';
 
 interface Props {
   data: ParentDetails;
@@ -31,6 +32,15 @@ export default function ParentInfoForm({ data, updateData, onNext, onBack, onCan
       setShowValidationModal(true);
       return;
     }
+    
+    const phoneFields = [data.fatherPhone, data.motherPhone, data.fatherAltContactPhone, data.motherAltContactPhone];
+    for (const phone of phoneFields) {
+      if (phone && /[a-zA-Z]/.test(phone)) {
+        toast.error('Phone numbers cannot contain letters.');
+        return;
+      }
+    }
+
     onNext();
   };
 
@@ -60,14 +70,14 @@ export default function ParentInfoForm({ data, updateData, onNext, onBack, onCan
               {fields.map(f => (
                 <div key={`father${f.key}`} className="space-y-2">
                   <label className="block text-[11px] font-bold uppercase tracking-widest text-primary">
-                    {f.label} {isFatherFilled && f.key !== 'Email' && <span className="text-red-500">*</span>}
+                    {f.label} {isFatherFilled && <span className="text-red-500">*</span>}
                   </label>
                   <input
                     type={f.key === 'Email' ? 'email' : f.key === 'Phone' ? 'tel' : 'text'}
                     value={(data as any)[`father${f.key}`] || ''}
                     onChange={(e) => updateData({ [`father${f.key}`]: e.target.value })}
                     className="w-full bg-white border-2 border-outline-variant/40 rounded-xl p-4 focus:ring-2 focus:ring-primary focus:border-primary transition-all text-sm font-medium shadow-sm placeholder:opacity-40"
-                    required={isFatherFilled && f.key !== 'Email'}
+                    required={isFatherFilled}
                     {...(f.key === 'Phone' ? { pattern: "^\\+?[0-9\\s\\-()]{8,20}$", title: "Please enter a valid phone number" } : {})}
                   />
                 </div>
@@ -111,14 +121,14 @@ export default function ParentInfoForm({ data, updateData, onNext, onBack, onCan
               {fields.map(f => (
                 <div key={`mother${f.key}`} className="space-y-2">
                   <label className="block text-[11px] font-bold uppercase tracking-widest text-primary">
-                    {f.label} {isMotherFilled && f.key !== 'Email' && <span className="text-red-500">*</span>}
+                    {f.label} {isMotherFilled && <span className="text-red-500">*</span>}
                   </label>
                   <input
                     type={f.key === 'Email' ? 'email' : f.key === 'Phone' ? 'tel' : 'text'}
                     value={(data as any)[`mother${f.key}`] || ''}
                     onChange={(e) => updateData({ [`mother${f.key}`]: e.target.value })}
                     className="w-full bg-white border-2 border-outline-variant/40 rounded-xl p-4 focus:ring-2 focus:ring-primary focus:border-primary transition-all text-sm font-medium shadow-sm placeholder:opacity-40"
-                    required={isMotherFilled && f.key !== 'Email'}
+                    required={isMotherFilled}
                     {...(f.key === 'Phone' ? { pattern: "^\\+?[0-9\\s\\-()]{8,20}$", title: "Please enter a valid phone number" } : {})}
                   />
                 </div>

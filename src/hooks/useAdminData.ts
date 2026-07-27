@@ -99,6 +99,26 @@ export const useUpdateApplicationStatus = () => {
   });
 };
 
+export const useDeleteApplication = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (applicationId: number) => {
+      const res = await authFetch(`/api/admin/applications/${applicationId}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) throw new Error('Failed to delete application');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['applications'] });
+      toast.success('Application deleted successfully.');
+    },
+    onError: () => {
+      toast.error('Failed to delete application.');
+    }
+  });
+};
+
 export const useBulkSync = () => {
   const queryClient = useQueryClient();
   return useMutation({

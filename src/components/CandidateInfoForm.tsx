@@ -163,7 +163,7 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
           
           if (data.grade) {
              const gradeNum = parseInt(data.grade.replace(/\D/g, ''));
-             if (gradeNum >= 4 && gradeNum <= 9 && (!data.assessmentNo || data.assessmentNo.trim() === '')) {
+             if (gradeNum >= 4 && (!data.assessmentNo || data.assessmentNo.trim() === '')) {
                  return toast.error('Please enter the Assessment Number.');
              }
           }
