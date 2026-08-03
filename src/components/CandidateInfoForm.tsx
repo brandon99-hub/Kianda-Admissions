@@ -1,5 +1,6 @@
 import { CandidateInfo } from '../types';
 import { Plus, X, Trash2, ListChecks, Calendar, Users, GraduationCap, PlusCircle, Pencil, AlertTriangle, Loader2, ChevronDown, BookCopy, Church, ArrowRight, School, Baby } from 'lucide-react';
+import AuthenticatedImage from './admin/AuthenticatedImage';
 import { motion, AnimatePresence } from 'motion/react';
 import toast from 'react-hot-toast';
 import React, { useState, useRef, useEffect } from 'react';
@@ -23,7 +24,13 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
     queryFn: async () => {
       const res = await fetch('/api/grades/available');
       if (!res.ok) throw new Error('Failed to fetch grades');
-      return res.json();
+      const grades = await res.json();
+      return grades.sort((a: any, b: any) => {
+        const numA = parseInt(a.gradeName.replace(/\D/g, '')) || 0;
+        const numB = parseInt(b.gradeName.replace(/\D/g, '')) || 0;
+        if (numA !== numB) return numA - numB;
+        return a.gradeName.localeCompare(b.gradeName);
+      });
     }
   });
 
@@ -163,7 +170,7 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
           
           if (data.grade) {
              const gradeNum = parseInt(data.grade.replace(/\D/g, ''));
-             if (gradeNum >= 4 && (!data.assessmentNo || data.assessmentNo.trim() === '')) {
+             if (!isNaN(gradeNum) && gradeNum >= 4 && (!data.assessmentNo || data.assessmentNo.trim() === '')) {
                  return toast.error('Please enter the Assessment Number.');
              }
           }
@@ -440,9 +447,9 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
             </AnimatePresence>
           </div>
           
-          {/* Assessment No (Grades 4-9) & Passport Photo */}
+          {/* Assessment No (Grades 4+) & Passport Photo */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8 pt-6 border-t border-outline-variant/10">
-             {data.grade && parseInt(data.grade.replace(/\D/g, '')) >= 4 && parseInt(data.grade.replace(/\D/g, '')) <= 9 && (
+             {data.grade && !isNaN(parseInt(data.grade.replace(/\D/g, ''))) && parseInt(data.grade.replace(/\D/g, '')) >= 4 && (
                 <div className="space-y-2">
                   <label className="block text-[11px] font-bold uppercase tracking-widest text-primary">Assessment No. <span className="text-red-500">*</span></label>
                   <input
@@ -458,8 +465,10 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
              <div className="space-y-2">
                 <label className="block text-[11px] font-bold uppercase tracking-widest text-primary">Passport Photo <span className="text-[9px] font-semibold text-primary/40 normal-case tracking-normal ml-1">(not older than 1 year)</span> <span className="text-red-500">*</span></label>
                 <div className="flex items-center gap-4">
-                  {data.passportPhotoPreview || data.passportPhoto ? (
-                    <img src={data.passportPhotoPreview || data.passportPhoto} alt="Passport" className="w-16 h-16 rounded-lg object-cover border border-outline-variant/40" />
+                  {data.passportPhotoPreview ? (
+                    <img src={data.passportPhotoPreview} alt="Passport" className="w-16 h-16 rounded-lg object-cover border border-outline-variant/40" />
+                  ) : data.passportPhoto ? (
+                    <AuthenticatedImage src={data.passportPhoto} alt="Passport" className="w-16 h-16 rounded-lg object-cover border border-outline-variant/40" />
                   ) : (
                     <div className="w-16 h-16 rounded-lg bg-surface-container-low flex items-center justify-center border border-dashed border-outline-variant/40">
                       <Baby size={24} className="text-primary/20" />
@@ -576,13 +585,15 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
           </div>
 
           <div className="flex flex-col-reverse md:flex-row justify-between items-stretch md:items-center gap-6 md:gap-0 pt-8 w-full">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="w-full md:w-auto text-center px-8 py-4 text-on-surface-variant/30 font-black uppercase tracking-[0.3em] text-[10px] hover:text-primary transition-all md:hover:translate-x-[-4px]"
-            >
-              Cancel Application
-            </button>
+            {onCancel && (
+              <button
+                type="button"
+                onClick={onCancel}
+                className="w-full md:w-auto text-center px-8 py-4 text-on-surface-variant/30 font-black uppercase tracking-[0.3em] text-[10px] hover:text-primary transition-all md:hover:translate-x-[-4px]"
+              >
+                Cancel Application
+              </button>
+            )}
             <button
               type="submit"
               className="w-full md:w-auto justify-center px-10 py-5 bg-secondary text-primary rounded-[28px] font-black shadow-[0_20px_40px_rgba(255,196,37,0.25)] hover:shadow-[0_25px_50px_rgba(255,196,37,0.35)] hover:-translate-y-1 active:scale-95 transition-all flex items-center gap-4 group border border-white/20 relative overflow-hidden"

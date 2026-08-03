@@ -5,9 +5,10 @@ interface Props {
   currentStep: Step;
   highestStepIdx: number;
   onStepClick: (step: Step) => void;
+  excludePayment?: boolean;
 }
 
-export default function Stepper({ currentStep, highestStepIdx, onStepClick }: Props) {
+export default function Stepper({ currentStep, highestStepIdx, onStepClick, excludePayment }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -25,9 +26,12 @@ export default function Stepper({ currentStep, highestStepIdx, onStepClick }: Pr
     { id: 'additional', label: 'Additional Info', stepNum: 'Step 03' },
     { id: 'documents', label: 'Documents', stepNum: 'Step 04' },
     { id: 'payment', label: 'Payment', stepNum: 'Step 05' },
-  ];
+  ] as { id: Step; label: string; stepNum: string }[];
 
-  const currentIdx = steps.findIndex(s => s.id === currentStep);
+  const filteredSteps = steps.filter(step => !(excludePayment && step.id === 'payment'));
+
+  const currentIdx = filteredSteps.findIndex(s => s.id === currentStep);
+  const gridCols = excludePayment ? 'md:grid-cols-4' : 'md:grid-cols-5';
 
   return (
     <div className="mb-12">
@@ -40,9 +44,9 @@ export default function Stepper({ currentStep, highestStepIdx, onStepClick }: Pr
 
       <div 
         ref={containerRef}
-        className="flex overflow-x-auto snap-x snap-mandatory gap-6 md:grid md:grid-cols-5 md:gap-4 md:overflow-visible pb-4 md:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className={`flex overflow-x-auto snap-x snap-mandatory gap-6 md:grid ${gridCols} md:gap-4 md:overflow-visible pb-4 md:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}
       >
-        {steps.map((step, idx) => {
+        {filteredSteps.map((step, idx) => {
           const isActive = step.id === currentStep;
           const isCompleted = idx < currentIdx;
           const isClickable = idx <= highestStepIdx;

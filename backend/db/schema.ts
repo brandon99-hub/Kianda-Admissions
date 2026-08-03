@@ -9,7 +9,15 @@ export const erpSyncStatusEnum = pgEnum('erp_sync_status', [
   'pending', 'synced', 'failed', 'failed_partially'
 ]);
 
+export const applicantUsers = pgTable('applicant_users', {
+  id: serial('id').primaryKey(),
+  email: varchar('email', { length: 255 }).notNull().unique(),
+  passwordHash: text('password_hash').notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
 export const applications = pgTable('applications', {
+
   id: serial('id').primaryKey(),
   status: applicationStatusEnum('status').default('pending'),
   paymentVerified: boolean('payment_verified').default(false),
@@ -24,6 +32,7 @@ export const applications = pgTable('applications', {
   admissionType: varchar('admission_type', { length: 50 }),
   erpSyncStatus: erpSyncStatusEnum('erp_sync_status').default('pending'),
   erpAdmissionNo: varchar('erp_admission_no', { length: 50 }),
+  applicantUserId: integer('applicant_user_id').references(() => applicantUsers.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
@@ -199,6 +208,10 @@ export const applicationsRelations = relations(applications, ({ one, many }) => 
   interviews: many(interviewSlots),
   assessmentResults: many(assessmentResults),
   payments: many(payments),
+  applicantUser: one(applicantUsers, {
+    fields: [applications.applicantUserId],
+    references: [applicantUsers.id],
+  }),
 }));
 
 export const paymentsRelations = relations(payments, ({ one }) => ({
@@ -278,4 +291,8 @@ export const additionalInfoRelations = relations(additionalInfo, ({ one }) => ({
     fields: [additionalInfo.applicationId],
     references: [applications.id],
   }),
+}));
+
+export const applicantUsersRelations = relations(applicantUsers, ({ many }) => ({
+  applications: many(applications),
 }));

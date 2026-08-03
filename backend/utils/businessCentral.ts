@@ -10,9 +10,19 @@ export async function pushCandidateToProxy(appData: any, erpAdmissionNo?: string
   }
 
   // Format the payload to match AdmissionsPayload in C# proxy
+  const getProgramme = (grade: string | undefined): string => {
+    if (!grade) return 'PRIMARY';
+    const upperGrade = grade.toUpperCase();
+    if (upperGrade.includes('FORM') || upperGrade.includes('HIGH')) {
+      return 'HIGHSCHOOL';
+    }
+    return 'PRIMARY';
+  };
+
   const payload = {
     Admission_No: erpAdmissionNo || '',
-    ApplyingGrade: appData.candidate?.grade || '',
+    Programme: getProgramme(appData.candidate?.grade),
+    ApplyingGrade: appData.candidate?.grade?.toUpperCase() || '',
     TransactionCode: appData.mpesaCode || '',
     AdmissionCycleYear: appData.academicYear || 0,
     Candidate: {
@@ -48,7 +58,7 @@ export async function pushCandidateToProxy(appData: any, erpAdmissionNo?: string
     Siblings: (appData.siblings || []).map((s: any) => ({
       Name: s.name || '',
       Relationship: s.relationship || '',
-      SchoolName: s.schoolName || '',
+      SchoolName: s.schoolType === 'Kianda School' ? 'Kianda School' : (s.schoolName || ''),
       Order: parseInt(s.kiandaOrder) || 0,
       SiblingType: s.relationship || ''
     }))

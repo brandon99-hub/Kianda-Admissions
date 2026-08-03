@@ -3,6 +3,7 @@ import { ApplicationState, Step } from '../types';
 import { motion } from 'motion/react';
 import { X, Edit2, CheckCircle2, User, Users, FileText, FileBadge, Download } from 'lucide-react';
 import { buildApplicationPDF } from '../utils/buildApplicationPDF';
+import AuthenticatedImage from './admin/AuthenticatedImage';
 
 interface Props {
   data: ApplicationState;
@@ -103,7 +104,7 @@ export default function ApplicationPreview({ data, onClose, onEdit }: Props) {
                 </div>
                 {(data.candidate.passportPhotoPreview || data.candidate.passportPhoto) && (
                   <div className="md:w-32 flex flex-col items-center gap-2">
-                    <img 
+                    <AuthenticatedImage 
                       src={data.candidate.passportPhotoPreview || data.candidate.passportPhoto} 
                       alt="Passport" 
                       className="w-32 h-32 rounded-3xl object-cover border-4 border-white shadow-lg bg-surface-variant/20"

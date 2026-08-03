@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getToken } from '../../utils/auth';
+import { getToken, getApplicantToken } from '../../utils/auth';
 
 /**
  * Displays a protected image from /uploads/... that requires an admin token.
@@ -17,11 +17,16 @@ export default function AuthenticatedImage({ src, alt, className }: Props) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [hasError, setHasError] = useState(false);
 
+  // If it's a base64 string, just render it directly
+  if (src && src.startsWith('data:')) {
+    return <img src={src} alt={alt} className={className} />;
+  }
+
   useEffect(() => {
     if (!src) return;
 
     let objectUrl: string | null = null;
-    const token = getToken();
+    const token = getToken() || getApplicantToken();
 
     let fetchUrl = src;
     if (fetchUrl.startsWith('/uploads/')) {

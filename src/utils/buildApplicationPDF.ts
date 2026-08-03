@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import { getToken } from './auth';
+import { getToken, getApplicantToken } from './auth';
 
 // ---------------------------------------------------------------------------
 // Helper utilities
@@ -29,7 +29,7 @@ async function getImageBase64(url: string): Promise<string> {
       fetchUrl = `/api${fetchUrl}`;
     }
 
-    const token = getToken();
+    const token = getToken() || getApplicantToken();
     const response = await fetch(fetchUrl, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });

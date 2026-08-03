@@ -8,6 +8,7 @@ import TablePagination from '../TablePagination';
 import { useApplications, useInterviews, useCreateInterview, useRecordInterviewOutcome, useResults, useAssessments, useGrades, useResyncErp } from '../../../hooks/useAdminData';
 import ApplicationDetailsView from './ApplicationDetailsView';
 import AssessmentMarksSwitcher from '../AssessmentMarksSwitcher';
+import { useAdminContext } from '../../../context/AdminContext';
 
 interface ScheduledInterviewRowProps {
   key?: React.Key;
@@ -480,9 +481,16 @@ export default function InterviewsView() {
     resyncMutation.mutate(applicationId);
   };
 
-  const [activeTab, setActiveTab] = useState<'scheduled' | 'awaiting' | 'outcomes'>('scheduled');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
+  // Shared AdminContext state — persists across tab navigation
+  const { state: adminState, setInterviewsState } = useAdminContext();
+  const activeTab = adminState.interviews.activeTab;
+  const searchQuery = adminState.interviews.search;
+  const currentPage = adminState.interviews.page;
+
+  const setActiveTab = (t: 'scheduled' | 'awaiting' | 'outcomes') => setInterviewsState({ activeTab: t, page: 1 });
+  const setSearchQuery = (v: string) => setInterviewsState({ search: v, page: 1 });
+  const setCurrentPage = (v: number) => setInterviewsState({ page: v });
+
   const itemsPerPage = 10;
   const [selectedApp, setSelectedApp] = useState<any | null>(null);
   const [showAcceptProgress, setShowAcceptProgress] = useState(false);
@@ -672,12 +680,14 @@ export default function InterviewsView() {
               placeholder="Search candidates..." 
             />
           </div>
-          <button 
-            onClick={() => setShowScheduleModal(true)}
-            className="flex items-center gap-2 px-6 py-3 bg-primary text-secondary rounded-xl font-black uppercase tracking-widest text-[10px] hover:scale-105 active:scale-95 transition-all shadow-xl shadow-primary/10"
-          >
-            <Plus size={14} /> Schedule Interview
-          </button>
+          {activeTab !== 'outcomes' && (
+            <button 
+              onClick={() => setShowScheduleModal(true)}
+              className="flex items-center gap-2 px-6 py-3 bg-primary text-secondary rounded-xl font-black uppercase tracking-widest text-[10px] hover:scale-105 active:scale-95 transition-all shadow-xl shadow-primary/10"
+            >
+              <Plus size={14} /> Schedule Interview
+            </button>
+          )}
         </div>
       </AdminPageHeader>
 

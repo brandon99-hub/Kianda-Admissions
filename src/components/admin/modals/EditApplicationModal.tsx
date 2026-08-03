@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Save, Loader2, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { authFetch } from '../../../utils/auth';
 
 interface EditApplicationModalProps {
   app: any;
@@ -54,19 +55,15 @@ export default function EditApplicationModal({ app, onClose, onUpdate }: EditApp
     setIsSaving(true);
     const toastId = toast.loading('Saving application details...');
     try {
-      const token = localStorage.getItem('kianda_admin_token');
       const payload = {
         candidate,
         parentDetails,
         additionalInfo,
       };
 
-      const res = await fetch(`/api/admin/applications/${app.id}`, {
+      const res = await authFetch(`/api/admin/applications/${app.id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 

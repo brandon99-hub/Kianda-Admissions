@@ -4,6 +4,32 @@
  */
 
 const TOKEN_KEY = 'kianda_admin_token';
+const APPLICANT_TOKEN_KEY = 'kianda_applicant_token';
+
+// --- Applicant Token Management ---
+
+export function saveApplicantToken(token: string): void {
+  localStorage.setItem(APPLICANT_TOKEN_KEY, token);
+}
+
+export function getApplicantToken(): string | null {
+  return localStorage.getItem(APPLICANT_TOKEN_KEY);
+}
+
+export function removeApplicantToken(): void {
+  localStorage.removeItem(APPLICANT_TOKEN_KEY);
+}
+
+export function isApplicantTokenValid(): boolean {
+  const token = getApplicantToken();
+  if (!token) return false;
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.exp * 1000 > Date.now();
+  } catch {
+    return false;
+  }
+}
 
 // --- Token Management ---
 

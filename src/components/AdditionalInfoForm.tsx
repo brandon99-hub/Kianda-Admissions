@@ -9,7 +9,7 @@ interface Props {
   updateData: (data: Partial<AdditionalInfo>) => void;
   onNext: () => void;
   onBack: () => void;
-  onCancel: () => void;
+  onCancel?: () => void;
 }
 
 export default function AdditionalInfoForm({ data, updateData, onNext, onBack, onCancel }: Props) {
@@ -231,6 +231,7 @@ export default function AdditionalInfoForm({ data, updateData, onNext, onBack, o
                           value={sibling.schoolName || ''} 
                           onChange={(e) => updateSibling(index, 'schoolName', e.target.value)} 
                           className="w-full bg-white border-2 border-outline-variant/40 rounded-xl p-3.5 text-xs font-bold focus:ring-2 focus:ring-primary/20 placeholder:text-primary/30" 
+                          required
                         />
                      )}
                      
@@ -491,6 +492,7 @@ export default function AdditionalInfoForm({ data, updateData, onNext, onBack, o
                 <ArrowLeft className="w-4 h-4" />
                 Back
               </button>
+            {onCancel && (
               <button
                 type="button"
                 onClick={onCancel}
@@ -498,6 +500,7 @@ export default function AdditionalInfoForm({ data, updateData, onNext, onBack, o
               >
                 Cancel
               </button>
+            )}
             </div>
             <button
               type="submit"

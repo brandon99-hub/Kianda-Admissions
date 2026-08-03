@@ -5,6 +5,7 @@ import { LayoutDashboard, Calendar, Bell, ChevronLeft, ChevronRight, CheckCircle
 import { useApplications, useInterviews, useAssessments, useGrades, useCycles, useCreateCycle, useDeleteCycle } from '../../../hooks/useAdminData';
 import { authFetch } from '../../../utils/auth';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart, Area, Line, Cell, Legend } from 'recharts';
+import { useAdminContext } from '../../../context/AdminContext';
 
 export default function DashboardView() {
   const { data: applications = [] } = useApplications();
@@ -32,13 +33,15 @@ export default function DashboardView() {
     });
   }, [cycles]);
 
-  const [selectedYear, setSelectedYear] = useState(2026);
+  // selectedYear comes from shared AdminContext (persists across tab navigation)
+  const { state: adminState, setSelectedYear } = useAdminContext();
+  const selectedYear = adminState.selectedYear;
 
   useEffect(() => {
     if (sortedCycles.length > 0 && !sortedCycles.some((c: any) => c.academicYear === selectedYear)) {
       setSelectedYear(sortedCycles[0].academicYear);
     }
-  }, [sortedCycles, selectedYear]);
+  }, [sortedCycles, selectedYear, setSelectedYear]);
 
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewDate, setViewDate] = useState(new Date());

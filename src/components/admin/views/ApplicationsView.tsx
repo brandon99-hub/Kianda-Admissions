@@ -11,6 +11,8 @@ import { buildApplicationPDF } from '../../../utils/buildApplicationPDF';
 import JSZip from 'jszip';
 import * as XLSX from 'xlsx';
 import EditApplicationModal from '../modals/EditApplicationModal';
+import { useAdminContext } from '../../../context/AdminContext';
+import { authFetch, getToken } from '../../../utils/auth';
 
 // ── Application Row ───────────────────────────────────────────────────────────
 
@@ -425,18 +427,27 @@ export default function ApplicationsView() {
     });
   }, [cycles]);
 
-  const [selectedApp, setSelectedApp] = useState<any | null>(null);
-  const [selectedYear, setSelectedYear] = useState<number>(2026);
+  // Shared AdminContext state — persists across tab navigation
+  const { state: adminState, setSelectedYear, setApplicationsState } = useAdminContext();
+  const selectedYear = adminState.selectedYear;
+  const statusFilter = adminState.applications.statusFilter;
+  const searchQuery = adminState.applications.search;
+  const currentPage = adminState.applications.page;
+  const tableGradeFilter = adminState.applications.gradeFilter;
+
+  // Convenience setters that update context
+  const setStatusFilter = (v: string) => setApplicationsState({ statusFilter: v, page: 1 });
+  const setSearchQuery = (v: string) => setApplicationsState({ search: v, page: 1 });
+  const setCurrentPage = (v: number) => setApplicationsState({ page: v });
+  const setTableGradeFilter = (v: string) => setApplicationsState({ gradeFilter: v, page: 1 });
 
   React.useEffect(() => {
     if (sortedCycles.length > 0 && !sortedCycles.some((c: any) => c.academicYear === selectedYear)) {
       setSelectedYear(sortedCycles[0].academicYear);
     }
-  }, [sortedCycles, selectedYear]);
+  }, [sortedCycles, selectedYear, setSelectedYear]);
 
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
+  const [selectedApp, setSelectedApp] = useState<any | null>(null);
   const itemsPerPage = 10;
 
   // Bulk select state
@@ -447,15 +458,9 @@ export default function ApplicationsView() {
 
   const [pdfEmailAppId, setPdfEmailAppId] = useState<number | null>(null);
   const [isSendingPdf, setIsSendingPdf] = useState(false);
-  
-  const [tableGradeFilter, setTableGradeFilter] = useState('all');
+
   const [isGradeFilterOpen, setIsGradeFilterOpen] = useState(false);
   const [appToEdit, setAppToEdit] = useState<any | null>(null);
-
-  // Reset pagination on filter changes
-  React.useEffect(() => {
-    setCurrentPage(1);
-  }, [selectedYear, statusFilter, searchQuery]);
 
   if (selectedApp) {
     return <ApplicationDetailsView app={selectedApp} onBack={() => { setSelectedApp(null); refetch(); }} onUpdate={refetch} />;
@@ -486,13 +491,9 @@ export default function ApplicationsView() {
     setIsSendingPdf(true);
     const toastId = toast.loading('Sending PDF to parent...');
     try {
-      const token = localStorage.getItem('kianda_admin_token');
-      const res = await fetch('/api/admin/applications/bulk-send-pdf', {
+      const res = await authFetch('/api/admin/applications/bulk-send-pdf', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ applicationIds: [pdfEmailAppId] })
       });
       if (!res.ok) throw new Error('Failed to send PDF');
@@ -576,9 +577,8 @@ export default function ApplicationsView() {
               if (fetchUrl.startsWith('/uploads/')) {
                 fetchUrl = `/api${fetchUrl}`;
               }
-              const token = localStorage.getItem('kianda_admin_token');
               const res = await fetch(fetchUrl, {
-                headers: token ? { Authorization: `Bearer ${token}` } : {}
+                headers: getToken() ? { Authorization: `Bearer ${getToken()}` } : {}
               });
               
               const contentType = res.headers.get('content-type') || '';

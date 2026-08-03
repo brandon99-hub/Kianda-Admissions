@@ -195,6 +195,17 @@ app.post('/api/applications', async (req, res) => {
       }
     }
 
+    let applicantUserId: number | undefined = undefined;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const decoded = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
+        applicantUserId = (decoded as any).id;
+      } catch (e) {
+        // ignore if token invalid during submission
+      }
+    }
+
     await db.transaction(async (tx) => {
       if (newAppId) {
         await tx.update(schema.applications).set({
@@ -202,7 +213,8 @@ app.post('/api/applications', async (req, res) => {
           status: initialStatus,
           academicYear: gradeDetails?.academicYear || new Date().getFullYear(),
           admissionType: admissionType,
-          paymentVerified
+          paymentVerified,
+          applicantUserId: applicantUserId || undefined
         }).where(eq(schema.applications.id, newAppId));
 
         await tx.delete(schema.candidates).where(eq(schema.candidates.applicationId, newAppId));
@@ -217,7 +229,8 @@ app.post('/api/applications', async (req, res) => {
           status: initialStatus,
           academicYear: gradeDetails?.academicYear || new Date().getFullYear(),
           admissionType: admissionType,
-          paymentVerified
+          paymentVerified,
+          applicantUserId: applicantUserId || undefined
         }).returning();
         newAppId = newApp.id;
       }
@@ -730,7 +743,7 @@ app.delete('/api/admin/applications/:id', authenticateAdmin, async (req, res) =>
   try {
     const { id } = req.params;
     const appId = parseInt(id);
-    
+
     await db.transaction(async (tx) => {
       // Detach payments
       await tx.update(schema.payments).set({ mappedApplicationId: null }).where(eq(schema.payments.mappedApplicationId, appId));
@@ -746,7 +759,7 @@ app.delete('/api/admin/applications/:id', authenticateAdmin, async (req, res) =>
       // Delete main record
       await tx.delete(schema.applications).where(eq(schema.applications.id, appId));
     });
-    
+
     res.json({ success: true });
   } catch (error) {
     console.error('Failed to delete application:', error);
@@ -964,9 +977,9 @@ app.post('/api/admin/applications/status', authenticateAdmin, async (req, res) =
 
           // @ts-ignore - Ignoring type error if schema isn't fully updated in TS types yet
           await db.update(schema.applications)
-            .set({ 
-              erpSyncStatus: syncStatus, 
-              erpAdmissionNo: admissionNo 
+            .set({
+              erpSyncStatus: syncStatus,
+              erpAdmissionNo: admissionNo
             } as any)
             .where(eq(schema.applications.id, applicationId));
         } else {
@@ -1037,9 +1050,9 @@ app.post('/api/admin/applications/:id/resync', authenticateAdmin, async (req, re
     }
 
     await db.update(schema.applications)
-      .set({ 
-        erpSyncStatus: syncStatus, 
-        erpAdmissionNo: admissionNo 
+      .set({
+        erpSyncStatus: syncStatus,
+        erpAdmissionNo: admissionNo
       } as any)
       .where(eq(schema.applications.id, applicationId));
 
@@ -1549,9 +1562,9 @@ app.post('/api/admin/interviews/outcome', authenticateAdmin, async (req, res) =>
 
           // @ts-ignore
           await db.update(schema.applications)
-            .set({ 
-              erpSyncStatus: syncStatus, 
-              erpAdmissionNo: admissionNo 
+            .set({
+              erpSyncStatus: syncStatus,
+              erpAdmissionNo: admissionNo
             } as any)
             .where(eq(schema.applications.id, applicationId));
 
@@ -1604,6 +1617,201 @@ app.post('/api/admin/interviews/outcome', authenticateAdmin, async (req, res) =>
 // Serve compiled React frontend
 app.use(express.static(path.join(__dirname, '../dist')));
 
+
+// --- Applicant (Parent) Routes ---
+
+// Auth middleware for applicants
+const authenticateApplicant = (req: any, res: any, next: any) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Unauthorized: No token provided' });
+  }
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    (req as any).applicant = decoded;
+    next();
+  } catch {
+    return res.status(401).json({ error: 'Unauthorized: Invalid or expired token' });
+  }
+};
+
+// Register: Create an account and link it to an existing application
+app.post('/api/applicants/register', async (req, res) => {
+  try {
+    const { email, password, applicationId } = req.body;
+    if (!email || !password) return res.status(400).json({ error: 'Email and password are required' });
+    const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
+    if (!strongPasswordRegex.test(password)) {
+      return res.status(400).json({ error: 'Password does not meet all security requirements.' });
+    }
+
+    // Check if user already exists
+    const existing = await db.query.applicantUsers.findFirst({
+      where: eq(schema.applicantUsers.email, email.toLowerCase().trim())
+    });
+    if (existing) return res.status(409).json({ error: 'An account with this email already exists. Please log in.' });
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    const [newUser] = await db.insert(schema.applicantUsers).values({
+      email: email.toLowerCase().trim(),
+      passwordHash,
+    }).returning();
+
+    // Link the application to this user if applicationId is provided
+    console.log(`[REGISTER] applicationId received: ${applicationId} (type: ${typeof applicationId})`);
+    if (applicationId && Number(applicationId) > 0) {
+      const appExists = await db.query.applications.findFirst({
+        where: eq(schema.applications.id, Number(applicationId))
+      });
+      if (!appExists) {
+        console.warn(`[REGISTER] applicationId ${applicationId} not found in DB — linkage skipped`);
+      } else {
+        await db.update(schema.applications)
+          .set({ applicantUserId: newUser.id })
+          .where(eq(schema.applications.id, Number(applicationId)));
+        console.log(`[REGISTER] Linked application ${applicationId} → user ${newUser.id} (${newUser.email})`);
+      }
+    } else {
+      console.warn(`[REGISTER] No valid applicationId provided — account created without application link`);
+    }
+
+    const token = jwt.sign({ id: newUser.id, email: newUser.email, role: 'applicant' }, JWT_SECRET, { expiresIn: '24h' });
+    res.status(201).json({ token, email: newUser.email });
+  } catch (error) {
+    console.error('Applicant Register Error:', error);
+    res.status(500).json({ error: 'Failed to create account' });
+  }
+});
+
+// Login
+app.post('/api/applicants/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const user = await db.query.applicantUsers.findFirst({
+      where: eq(schema.applicantUsers.email, email.toLowerCase().trim())
+    });
+
+    if (user && await bcrypt.compare(password, user.passwordHash)) {
+      const token = jwt.sign({ id: user.id, email: user.email, role: 'applicant' }, JWT_SECRET, { expiresIn: '24h' });
+      res.json({ token, email: user.email });
+    } else {
+      res.status(401).json({ error: 'Invalid email or password' });
+    }
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Get my applications
+app.get('/api/applicants/my-applications', authenticateApplicant, async (req, res) => {
+  try {
+    const applicantId = (req as any).applicant.id;
+    const apps = await db.query.applications.findMany({
+      where: eq(schema.applications.applicantUserId, applicantId),
+      with: {
+        candidate: true,
+        parentDetails: true,
+        additionalInfo: true,
+        documents: true,
+        siblings: true,
+        schoolsAttended: true,
+      },
+      orderBy: (apps, { desc }) => [desc(apps.createdAt)],
+    });
+    res.json(apps);
+  } catch (error) {
+    console.error('Fetch My Applications Error:', error);
+    res.status(500).json({ error: 'Failed to fetch applications' });
+  }
+});
+
+// Edit application (only allowed when status = 'pending')
+app.put('/api/applicants/applications/:id', authenticateApplicant, async (req, res) => {
+  try {
+    const applicantId = (req as any).applicant.id;
+    const appId = parseInt(req.params.id);
+    if (isNaN(appId)) return res.status(400).json({ error: 'Invalid application ID' });
+
+    // Verify this application belongs to this applicant
+    const existingApp = await db.query.applications.findFirst({
+      where: and(eq(schema.applications.id, appId), eq(schema.applications.applicantUserId, applicantId)),
+    });
+
+    if (!existingApp) return res.status(404).json({ error: 'Application not found' });
+    if (existingApp.status !== 'pending') {
+      return res.status(403).json({ error: 'This application can no longer be edited. Only pending applications can be modified.' });
+    }
+
+    const { candidate, parent, additional, documents } = req.body;
+
+    await db.transaction(async (tx) => {
+      if (candidate) {
+        const { schools, passportPhoto, passportPhotoPreview, ...candidateData } = candidate;
+        await tx.update(schema.candidates).set({
+          ...candidateData,
+          passportPhotoUrl: passportPhoto || candidateData.passportPhotoUrl,
+        }).where(eq(schema.candidates.applicationId, appId));
+
+        if (schools && Array.isArray(schools)) {
+          await tx.delete(schema.schoolsAttended).where(eq(schema.schoolsAttended.applicationId, appId));
+          const schoolsToInsert = schools
+            .filter((s: any) => s.name)
+            .map((s: any) => ({ applicationId: appId, schoolType: s.type || 'Unknown', schoolName: s.name, yearsRange: s.years }));
+          if (schoolsToInsert.length > 0) {
+            await tx.insert(schema.schoolsAttended).values(schoolsToInsert);
+          }
+        }
+      }
+
+      if (parent) {
+        await tx.update(schema.parentDetails).set(parent).where(eq(schema.parentDetails.applicationId, appId));
+      }
+
+      if (additional) {
+        const { siblings, ...additionalData } = additional;
+        await tx.update(schema.additionalInfo).set(additionalData).where(eq(schema.additionalInfo.applicationId, appId));
+        if (siblings && Array.isArray(siblings)) {
+          await tx.delete(schema.siblings).where(eq(schema.siblings.applicationId, appId));
+          if (siblings.length > 0) {
+            await tx.insert(schema.siblings).values(siblings.map((s: any) => ({ applicationId: appId, ...s })));
+          }
+        }
+      }
+
+      if (documents) {
+        await tx.delete(schema.documents).where(eq(schema.documents.applicationId, appId));
+        const docsToInsert = [];
+        if (documents.letter) docsToInsert.push({ applicationId: appId, documentType: 'Application Letter', fileUrl: documents.letter });
+        if (documents.birthCert) docsToInsert.push({ applicationId: appId, documentType: "Candidate's Birth Certificate", fileUrl: documents.birthCert });
+        if (documents.report) docsToInsert.push({ applicationId: appId, documentType: 'Latest School Report', fileUrl: documents.report });
+        if (docsToInsert.length > 0) await tx.insert(schema.documents).values(docsToInsert);
+      }
+
+      await tx.update(schema.applications)
+        .set({ updatedAt: new Date() })
+        .where(eq(schema.applications.id, appId));
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Edit Application Error:', error);
+    res.status(500).json({ error: 'Failed to update application' });
+  }
+});
+
+// --- Automated Google Drive Backup (Daily Cron at 2:00 AM) ---
+import cron from 'node-cron';
+import { runBackup } from './scripts/backupToDrive.js';
+
+// Run every day at 2:00 AM server time
+cron.schedule('0 2 * * *', async () => {
+  console.log('[CRON] Starting scheduled Google Drive backup...');
+  await runBackup();
+});
+
+console.log('[CRON] Daily backup scheduled for 2:00 AM.');
+
 // React Router catch-all — must be AFTER all API routes
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../dist/index.html'));
@@ -1612,4 +1820,3 @@ app.get('*', (req, res) => {
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
 });
-

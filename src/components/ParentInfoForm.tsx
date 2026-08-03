@@ -9,7 +9,7 @@ interface Props {
   updateData: (data: Partial<ParentDetails>) => void;
   onNext: () => void;
   onBack: () => void;
-  onCancel: () => void;
+  onCancel?: () => void;
 }
 
 export default function ParentInfoForm({ data, updateData, onNext, onBack, onCancel }: Props) {
@@ -175,6 +175,7 @@ export default function ParentInfoForm({ data, updateData, onNext, onBack, onCan
                 <ArrowLeft className="w-4 h-4" />
                 Back
               </button>
+            {onCancel && (
               <button
                 type="button"
                 onClick={onCancel}
@@ -182,6 +183,7 @@ export default function ParentInfoForm({ data, updateData, onNext, onBack, onCan
               >
                 Cancel
               </button>
+            )}
             </div>
             <button
               type="submit"

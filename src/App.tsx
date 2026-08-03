@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useMutation } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
@@ -13,9 +13,11 @@ import DocumentUploadForm from './components/DocumentUploadForm';
 import PaymentConfirmationForm from './components/PaymentConfirmationForm';
 import PaymentPolling from './components/PaymentPolling';
 import { ApplicationState, Step } from './types';
-import { LayoutDashboard, Users, GraduationCap, Calendar, LogOut, Search, Filter, ArrowUpRight, Clock, MapPin, ChevronLeft, ChevronRight, ListChecks, FileText, CreditCard } from 'lucide-react';
-import { AdminContentView } from './components/AdminViews';
-import { saveToken, removeToken, isTokenValid } from './utils/auth';
+import { LayoutDashboard, Users, GraduationCap, Calendar, LogOut, Search, Filter, ArrowUpRight, Clock, MapPin, ListChecks, FileText, CreditCard } from 'lucide-react';
+import { AdminDashboard } from './components/AdminViews';
+import { saveToken, removeToken, isTokenValid, isApplicantTokenValid, removeApplicantToken, getApplicantToken } from './utils/auth';
+import ApplicantLogin from './components/ApplicantLogin';
+import ApplicantDashboard from './components/ApplicantDashboard';
 
 const EXPIRY_DURATION_MS = 2 * 60 * 60 * 1000; // 2 Hours
 
@@ -51,7 +53,7 @@ const INITIAL_STATE: ApplicationState = {
 };
 
 export default function App() {
-  const [view, setView] = useState<'portal' | 'login' | 'admin'>('portal');
+  const [view, setView] = useState<'portal' | 'login' | 'admin' | 'applicant-login' | 'applicant-dashboard'>('portal');
   const [state, setState] = useState<ApplicationState>(() => {
     const saved = localStorage.getItem('kianda_admission_state');
     if (saved) {
@@ -73,9 +75,8 @@ export default function App() {
     return INITIAL_STATE;
   });
 
-  const [activeAdminTab, setActiveAdminTab] = useState<'dashboard' | 'applications' | 'grades' | 'interviews' | 'assessments' | 'documents'>('dashboard');
-  const [preSelectedGradeId, setPreSelectedGradeId] = useState<number | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const pendingAppIdRef = useRef<number | null>(null); // Synchronous ref — survives React batch state updates
 
   useEffect(() => {
     const stateToSave = { ...state, lastUpdated: new Date().toISOString() };
@@ -86,6 +87,8 @@ export default function App() {
   useEffect(() => {
     if (isTokenValid()) {
       setView('admin');
+    } else if (isApplicantTokenValid()) {
+      setView('applicant-dashboard');
     }
   }, []);
 
@@ -94,6 +97,7 @@ export default function App() {
   };
 
   const confirmResetApplication = () => {
+    pendingAppIdRef.current = null; // Clear the ref on reset
     setState(INITIAL_STATE);
     localStorage.removeItem('kianda_admission_state');
     setShowCancelModal(false);
@@ -149,9 +153,13 @@ export default function App() {
           passportPhotoPreview: undefined,
         },
       };
+      const token = getApplicantToken();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const response = await fetch('/api/applications', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(cleanPayload),
       });
       if (!response.ok) {
@@ -165,13 +173,18 @@ export default function App() {
       return response.json();
     },
     onSuccess: (data) => {
+      // Store applicationId synchronously in a ref BEFORE any state updates.
+      // React batches all setState calls in this block — so state.payment.applicationId
+      // won't be visible until the NEXT render. The ref is always current.
+      pendingAppIdRef.current = data.applicationId;
+
       if (data.checkoutRequestId) {
         updateState('payment', { ...state.payment, checkoutRequestId: data.checkoutRequestId, applicationId: data.applicationId });
         jumpToStep('payment_polling');
       } else {
-        toast.success('Application submitted successfully! Please check your email for the next steps.');
-        setState(INITIAL_STATE);
-        localStorage.removeItem('kianda_admission_state');
+        // Manual payment path — already verified server-side, go straight to success screen
+        updateState('payment', { ...state.payment, applicationId: data.applicationId });
+        jumpToStep('payment_polling');
       }
     },
     onError: (error) => {
@@ -207,7 +220,7 @@ export default function App() {
   };
 
   const [showPassword, setShowPassword] = useState(false);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
 
   if (view === 'login') return (
     <div className="min-h-screen flex items-center justify-center p-8 relative overflow-hidden" style={{ background: 'linear-gradient(150deg, #FFFFFF 0%, #F5D97A 100%)' }}>
@@ -293,109 +306,37 @@ export default function App() {
 
 
 
+  if (view === 'applicant-login') return (
+    <ApplicantLogin
+      onLoginSuccess={() => setView('applicant-dashboard')}
+      onBack={() => setView('portal')}
+    />
+  );
+
+  if (view === 'applicant-dashboard') return (
+    <ApplicantDashboard
+      onLogout={() => setView('portal')}
+      onNewApplication={() => { confirmResetApplication(); setView('portal'); }}
+    />
+  );
+
   if (view === 'admin') return (
-    <div className="min-h-screen bg-surface flex">
-      {/* Redesigned Sidebar - White BG, Collapsible */}
-      <motion.div 
-        animate={{ width: isSidebarCollapsed ? 80 : 300 }}
-        className="sticky top-0 h-screen bg-white flex flex-col py-8 shadow-[10px_0_40px_rgba(0,0,0,0.02)] relative z-20 border-r border-outline-variant/5"
-      >
-        <div className={`flex items-center justify-between mb-12 px-6 ${isSidebarCollapsed ? 'flex-col gap-4' : ''}`}>
-           <div className="flex items-center gap-3">
-              <img 
-                src="/kianda-school-logo-removebg-preview.png" 
-                alt="Logo" 
-                className={`transition-all duration-300 ${isSidebarCollapsed ? 'w-8 h-8' : 'w-10 h-10'}`} 
-              />
-              {!isSidebarCollapsed && (
-                <div className="font-headline font-black text-lg text-primary tracking-tight">Admissions Portal</div>
-              )}
-           </div>
-           
-           <button 
-              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-              className="p-2 hover:bg-secondary-container rounded-lg text-primary transition-colors"
-           >
-              {isSidebarCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
-           </button>
-        </div>
-        
-        <nav className="flex-grow px-3 space-y-1">
-           {[
-             { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-             { id: 'applications', label: 'Applications', icon: Users },
-             { id: 'grades', label: 'Grade Management', icon: GraduationCap },
-             { id: 'assessments', label: 'Assessments', icon: ListChecks },
-             { id: 'interviews', label: 'Interviews', icon: Calendar },
-             { id: 'payments', label: 'Payments', icon: CreditCard },
-             { id: 'documents', label: 'Process Documents', icon: FileText },
-           ].map(item => (
-             <div key={item.id} className="relative group/tooltip">
-               <button
-                 onClick={() => setActiveAdminTab(item.id as any)}
-                 className={`w-full flex items-center gap-4 px-5 py-4 rounded-xl transition-all duration-300 font-bold group ${
-                   activeAdminTab === item.id 
-                   ? 'bg-secondary text-primary shadow-lg shadow-secondary/20' 
-                   : 'text-on-surface-variant/40 hover:bg-secondary-container/30 hover:text-primary'
-                 }`}
-               >
-                  <div className="flex-shrink-0">
-                    <item.icon size={20} className={activeAdminTab === item.id ? 'opacity-100' : 'opacity-40 group-hover:opacity-100'} />
-                  </div>
-                  {!isSidebarCollapsed && (
-                    <span className="text-[13px] tracking-wide whitespace-nowrap">{item.label}</span>
-                  )}
-               </button>
-               
-               {isSidebarCollapsed && (
-                 <div className="absolute left-[calc(100%+12px)] top-1/2 -translate-y-1/2 px-3 py-2 bg-white text-primary text-[10px] font-black uppercase tracking-widest rounded-xl opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-all duration-200 whitespace-nowrap z-50 shadow-xl border border-outline-variant/10 group-hover/tooltip:translate-x-1">
-                    {item.label}
-                 </div>
-               )}
-             </div>
-           ))}
-        </nav>
-
-        <div className="px-3 pt-6 border-t border-outline-variant/10">
-           <div className="relative group/tooltip">
-             <button 
-               onClick={() => {
-                 removeToken();
-                 setView('portal');
-               }} 
-               className="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-on-surface-variant/30 hover:text-red-600 hover:bg-red-50 transition-all font-bold group"
-             >
-                <LogOut size={20} className="group-hover:rotate-12 transition-transform" />
-                {!isSidebarCollapsed && (
-                  <span className="text-[13px] tracking-wide">Sign Out</span>
-                )}
-             </button>
-
-             {isSidebarCollapsed && (
-               <div className="absolute left-[calc(100%+12px)] top-1/2 -translate-y-1/2 px-3 py-2 bg-white text-red-600 text-[10px] font-black uppercase tracking-widest rounded-xl opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-all duration-200 whitespace-nowrap z-50 shadow-xl border border-red-100 group-hover/tooltip:translate-x-1">
-                  Sign Out
-               </div>
-             )}
-           </div>
-        </div>
-      </motion.div>
-
-      {/* Content Area */}
-      <div className="flex-grow p-12 overflow-y-auto bg-surface-container-lowest/30">
-        <AdminContentView 
-          activeTab={activeAdminTab} 
-          setView={setView} 
-          setActiveTab={setActiveAdminTab} 
-          preSelectedGradeId={preSelectedGradeId}
-          setPreSelectedGradeId={setPreSelectedGradeId}
-        />
-      </div>
-    </div>
+    <AdminDashboard onLogout={() => setView('portal')} />
   );
 
   return (
     <div className="min-h-screen flex flex-col bg-surface">
-      <Header onAdminClick={() => setView('login')} />
+      <Header 
+        onAdminClick={() => setView('login')} 
+        onApplicantLoginClick={() => {
+          if (isApplicantTokenValid()) {
+            setView('applicant-dashboard');
+          } else {
+            setView('applicant-login');
+          }
+        }} 
+        isApplicantLoggedIn={isApplicantTokenValid()}
+      />
       
       <main className="flex-grow max-w-5xl mx-auto px-4 md:px-8 mt-16 w-full pb-20">
         <motion.div
@@ -487,12 +428,15 @@ export default function App() {
             {state.currentStep === 'payment_polling' && (
               <motion.div key="polling" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                 <PaymentPolling 
-                  applicationId={state.payment.applicationId!}
+                  applicationId={(pendingAppIdRef.current || state.payment.applicationId)!}
                   phoneNumber={state.payment.phoneNumber}
+                  parentEmail={state.parent.fatherEmail || state.parent.motherEmail}
+                  alreadyVerified={!state.payment.checkoutRequestId} // manual payment = already verified
                   onSuccess={() => {
                     toast.success('Application submitted successfully! Please check your email for the next steps.');
                     setState(INITIAL_STATE);
                     localStorage.removeItem('kianda_admission_state');
+                    if (isApplicantTokenValid()) setView('applicant-dashboard');
                   }}
                   onBack={() => jumpToStep('payment')}
                   onCancel={resetApplication}

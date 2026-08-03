@@ -6,15 +6,16 @@ import toast from 'react-hot-toast';
 interface Props {
   onNext: () => void;
   onBack: () => void;
-  onCancel: () => void;
+  onCancel?: () => void;
   consentGiven: boolean;
   onConsentChange: (val: boolean) => void;
   uploads: Record<string, string>;
   onUploadChange: (uploads: Record<string, string>) => void;
   candidateName: string;
+  isEditing?: boolean;
 }
 
-export default function DocumentUploadForm({ onNext, onBack, onCancel, consentGiven, onConsentChange, uploads, onUploadChange, candidateName }: Props) {
+export default function DocumentUploadForm({ onNext, onBack, onCancel, consentGiven, onConsentChange, uploads, onUploadChange, candidateName, isEditing }: Props) {
   const [uploadingState, setUploadingState] = useState<Record<string, boolean>>({});
 
   const documents = [
@@ -151,10 +152,10 @@ export default function DocumentUploadForm({ onNext, onBack, onCancel, consentGi
         </div>
 
         {/* Custom Data Consent Section */}
-        <div className="mt-12 p-8 bg-surface-container-low rounded-[32px] border border-outline-variant/10 relative overflow-hidden group/consent">
+        <div className={`mt-12 p-8 bg-surface-container-low rounded-[32px] border border-outline-variant/10 relative overflow-hidden group/consent ${isEditing ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
            <div className="flex items-start gap-6 relative z-10">
               <div 
-                onClick={() => onConsentChange(!consentGiven)}
+                onClick={() => { if (!isEditing) onConsentChange(!consentGiven); }}
                 className={`mt-1 cursor-pointer w-7 h-7 rounded-lg border-2 flex items-center justify-center transition-all duration-300 ${consentGiven ? 'bg-primary border-primary shadow-lg shadow-primary/20 scale-110' : 'border-primary/20 bg-white hover:border-primary/40'}`}
               >
                   {consentGiven && <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}><ShieldCheck size={16} className="text-white" /></motion.div>}
@@ -188,6 +189,7 @@ export default function DocumentUploadForm({ onNext, onBack, onCancel, consentGi
                 <ArrowLeft className="w-4 h-4" />
                 Back
               </button>
+            {onCancel && (
               <button
                 type="button"
                 onClick={onCancel}
@@ -195,12 +197,13 @@ export default function DocumentUploadForm({ onNext, onBack, onCancel, consentGi
               >
                 Cancel
               </button>
+            )}
             </div>
           <button
             type="button"
             onClick={onNext}
-            disabled={!canProceed}
-            className={`w-full md:w-auto justify-center px-10 py-5 rounded-[28px] font-black transition-all flex items-center gap-4 group border border-white/20 relative overflow-hidden ${canProceed ? 'bg-secondary text-primary shadow-[0_20px_40px_rgba(255,196,37,0.25)] hover:shadow-[0_25px_50px_rgba(255,196,37,0.35)] hover:-translate-y-1 active:scale-95' : 'bg-surface-variant text-on-surface-variant opacity-50 cursor-not-allowed'}`}
+            disabled={!canProceed || isEditing}
+            className={`w-full md:w-auto justify-center px-10 py-5 rounded-[28px] font-black transition-all flex items-center gap-4 group border border-white/20 relative overflow-hidden ${(!canProceed || isEditing) ? 'bg-surface-variant text-on-surface-variant opacity-50 cursor-not-allowed' : 'bg-secondary text-primary shadow-[0_20px_40px_rgba(255,196,37,0.25)] hover:shadow-[0_25px_50px_rgba(255,196,37,0.35)] hover:-translate-y-1 active:scale-95'}`}
           >
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
             <span className="tracking-[0.25em] uppercase text-[11px] relative z-10">Continue to Payment</span>
