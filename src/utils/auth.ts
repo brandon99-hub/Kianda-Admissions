@@ -1,91 +1,58 @@
 /**
  * Central authentication utility for the Kianda Admissions Portal.
- * All API calls that require admin authorization MUST use these helpers.
+ *
+ * Tokens are now managed as HttpOnly cookies set by the server.
+ * JavaScript has NO access to the token value — this eliminates the XSS
+ * token-theft attack surface entirely.
+ *
+ * The browser sends cookies automatically on every same-origin request.
+ * All fetch() calls must include `credentials: 'include'` to ensure cookies
+ * are sent on cross-origin requests (e.g. during local dev via Vite proxy).
  */
 
-const TOKEN_KEY = 'kianda_admin_token';
-const APPLICANT_TOKEN_KEY = 'kianda_applicant_token';
+// ── Session Check ─────────────────────────────────────────────────────────────
 
-// --- Applicant Token Management ---
-
-export function saveApplicantToken(token: string): void {
-  localStorage.setItem(APPLICANT_TOKEN_KEY, token);
-}
-
-export function getApplicantToken(): string | null {
-  return localStorage.getItem(APPLICANT_TOKEN_KEY);
-}
-
-export function removeApplicantToken(): void {
-  localStorage.removeItem(APPLICANT_TOKEN_KEY);
-}
-
-export function isApplicantTokenValid(): boolean {
-  const token = getApplicantToken();
-  if (!token) return false;
+/**
+ * Calls /api/auth/me to determine if the browser has a valid active session.
+ * Returns 'admin', 'applicant', or null.
+ * Use this on app mount to restore the correct view.
+ */
+export async function checkSession(): Promise<'admin' | 'applicant' | null> {
   try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    return payload.exp * 1000 > Date.now();
+    const res = await fetch('/api/auth/me', { credentials: 'include' });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.role || null;
   } catch {
-    return false;
+    return null;
   }
 }
 
-// --- Token Management ---
+// ── Logout ────────────────────────────────────────────────────────────────────
 
-export function saveToken(token: string): void {
-  localStorage.setItem(TOKEN_KEY, token);
+/** Clears the admin HttpOnly cookie via a server call. */
+export async function adminLogout(): Promise<void> {
+  await fetch('/api/admin/logout', { method: 'POST', credentials: 'include' });
 }
 
-export function getToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY);
+/** Clears the applicant HttpOnly cookie via a server call. */
+export async function applicantLogout(): Promise<void> {
+  await fetch('/api/applicants/logout', { method: 'POST', credentials: 'include' });
 }
 
-export function removeToken(): void {
-  localStorage.removeItem(TOKEN_KEY);
-}
+// ── Authenticated Fetch Wrapper ───────────────────────────────────────────────
 
 /**
- * Returns true if a token exists AND is not expired.
- * Decodes the JWT payload client-side (no crypto — just check exp).
- */
-export function isTokenValid(): boolean {
-  const token = getToken();
-  if (!token) return false;
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    // exp is in seconds, Date.now() is in ms
-    return payload.exp * 1000 > Date.now();
-  } catch {
-    return false;
-  }
-}
-
-// --- Authenticated Fetch Wrapper ---
-
-/**
- * Wraps the native fetch() and automatically injects the Authorization header.
- * If a 401 is returned, it clears the token and fires the onUnauthorized callback.
+ * Wraps the native fetch() and ensures credentials (HttpOnly cookies) are
+ * always sent. If a 401 is returned, the optional onUnauthorized callback fires.
  */
 export function authFetch(
   url: string,
   options: RequestInit = {},
   onUnauthorized?: () => void
 ): Promise<Response> {
-  const token = getToken();
-  const headers: HeadersInit = {
-    ...(options.headers || {}),
-  };
-
-  if (token) {
-    (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
-  }
-
-  return fetch(url, { ...options, headers }).then((res) => {
-    if (res.status === 401) {
-      removeToken();
-      if (onUnauthorized) onUnauthorized();
-    }
+  return fetch(url, { ...options, credentials: 'include' }).then((res) => {
+    if (res.status === 401 && onUnauthorized) onUnauthorized();
     return res;
   });
 }

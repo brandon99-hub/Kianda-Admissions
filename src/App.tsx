@@ -15,7 +15,7 @@ import PaymentPolling from './components/PaymentPolling';
 import { ApplicationState, Step } from './types';
 import { LayoutDashboard, Users, GraduationCap, Calendar, LogOut, Search, Filter, ArrowUpRight, Clock, MapPin, ListChecks, FileText, CreditCard } from 'lucide-react';
 import { AdminDashboard } from './components/AdminViews';
-import { saveToken, removeToken, isTokenValid, isApplicantTokenValid, removeApplicantToken, getApplicantToken } from './utils/auth';
+import { checkSession, adminLogout, applicantLogout } from './utils/auth';
 import ApplicantLogin from './components/ApplicantLogin';
 import ApplicantDashboard from './components/ApplicantDashboard';
 
@@ -83,13 +83,12 @@ export default function App() {
     localStorage.setItem('kianda_admission_state', JSON.stringify(stateToSave));
   }, [state]);
 
-  // Session persistence check
+  // Session persistence check — ask the server if a valid cookie session exists
   useEffect(() => {
-    if (isTokenValid()) {
-      setView('admin');
-    } else if (isApplicantTokenValid()) {
-      setView('applicant-dashboard');
-    }
+    checkSession().then(role => {
+      if (role === 'admin') setView('admin');
+      else if (role === 'applicant') setView('applicant-dashboard');
+    });
   }, []);
 
   const resetApplication = () => {
@@ -153,13 +152,10 @@ export default function App() {
           passportPhotoPreview: undefined,
         },
       };
-      const token = getApplicantToken();
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-
       const response = await fetch('/api/applications', {
         method: 'POST',
-        headers,
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(cleanPayload),
       });
       if (!response.ok) {
@@ -206,7 +202,7 @@ export default function App() {
       });
       const data = await response.json();
       if (response.ok) {
-        saveToken(data.token);
+        // Server sets the HttpOnly cookie — no client-side token storage needed
         toast.success(`Welcome back!`, { icon: '👋' });
         setView('admin');
       } else {
@@ -315,13 +311,13 @@ export default function App() {
 
   if (view === 'applicant-dashboard') return (
     <ApplicantDashboard
-      onLogout={() => setView('portal')}
+      onLogout={async () => { await applicantLogout(); setView('portal'); }}
       onNewApplication={() => { confirmResetApplication(); setView('portal'); }}
     />
   );
 
   if (view === 'admin') return (
-    <AdminDashboard onLogout={() => setView('portal')} />
+    <AdminDashboard onLogout={async () => { await adminLogout(); setView('portal'); }} />
   );
 
   return (
@@ -329,13 +325,12 @@ export default function App() {
       <Header 
         onAdminClick={() => setView('login')} 
         onApplicantLoginClick={() => {
-          if (isApplicantTokenValid()) {
-            setView('applicant-dashboard');
-          } else {
-            setView('applicant-login');
-          }
-        }} 
-        isApplicantLoggedIn={isApplicantTokenValid()}
+          checkSession().then(role => {
+            if (role === 'applicant') setView('applicant-dashboard');
+            else setView('applicant-login');
+          });
+        }}
+        isApplicantLoggedIn={false}
       />
       
       <main className="flex-grow max-w-5xl mx-auto px-4 md:px-8 mt-16 w-full pb-20">
@@ -436,7 +431,9 @@ export default function App() {
                     toast.success('Application submitted successfully! Please check your email for the next steps.');
                     setState(INITIAL_STATE);
                     localStorage.removeItem('kianda_admission_state');
-                    if (isApplicantTokenValid()) setView('applicant-dashboard');
+                    checkSession().then(role => {
+                      if (role === 'applicant') setView('applicant-dashboard');
+                    });
                   }}
                   onBack={() => jumpToStep('payment')}
                   onCancel={resetApplication}

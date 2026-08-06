@@ -1,5 +1,8 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import { db } from './db';
 import * as schema from './db/schema';
@@ -34,45 +37,94 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 8095;
 
+// ── Security Middleware ─────────────────────────────────────────────────────
+// helmet: sets X-Content-Type-Options, X-Frame-Options, HSTS, CSP, Referrer-Policy etc.
+app.use(helmet({
+  crossOriginEmbedderPolicy: false, // Allow blob URLs for passport photos and PDF rendering
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc:  ["'self'", "'unsafe-inline'"],  // React JSX requires unsafe-inline
+      styleSrc:   ["'self'", "'unsafe-inline'"],
+      imgSrc:     ["'self'", "data:", "blob:"],    // Passport photos loaded as blobs
+      connectSrc: ["'self'"],
+      fontSrc:    ["'self'"],
+    }
+  }
+}));
+
+// Cookie parser — required for HttpOnly JWT session cookies
+app.use(cookieParser());
+
+// ── Rate Limiters ───────────────────────────────────────────────────────────
+// 10 failed attempts per 15 minutes per IP on login routes
+const authRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many login attempts. Please try again in 15 minutes.' },
+  skipSuccessfulRequests: true, // Only counts failed attempts
+});
+
+// 5 registrations per hour per IP
+const registerRateLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many registration attempts. Please try again in 1 hour.' },
+});
+
+// ── CORS ────────────────────────────────────────────────────────────────────
 const allowedOrigins = [
   'http://localhost:3001',
   'http://127.0.0.1:3001',
   'http://localhost:8090',
   'http://192.168.0.100:8090',
-  'https://kiandaadmissions.kiandaschool.ac.ke/',
+  'https://kiandaadmissions.kiandaschool.ac.ke', // No trailing slash
 ];
 if (process.env.FRONTEND_URL) {
   allowedOrigins.push(process.env.FRONTEND_URL);
 }
 
+// Use a Set for O(1) exact-match lookups — prevents substring bypass (e.g. evil.com:3001)
+const allowedOriginsSet = new Set(allowedOrigins);
+
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin) || origin.includes(':3001') || origin.includes(':8095')) {
+    if (!origin || allowedOriginsSet.has(origin)) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true
+  credentials: true,
 }));
 app.use(express.json({ limit: '10mb' }));
 
 
-// --- Security Middleware ---
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-for-dev-only';
+// ── JWT ─────────────────────────────────────────────────────────────────────
+// Fatal startup guard — never allow a missing or fallback JWT secret
+if (!process.env.JWT_SECRET) {
+  console.error('[FATAL] JWT_SECRET environment variable is not set. Server cannot start.');
+  process.exit(1);
+}
+const JWT_SECRET = process.env.JWT_SECRET as string;
 
+// Pre-computed dummy bcrypt hash — used only for constant-time login responses
+// to prevent timing-based email enumeration. Always fails to match any real password.
+const DUMMY_HASH_PROMISE = bcrypt.hash('__dummy_never_matches_placeholder__', 10);
+
+// ── Auth Middleware ─────────────────────────────────────────────────────────
 const authenticateAdmin = (req: any, res: any, next: any) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Unauthorized: No token provided' });
-  }
-
-  const token = authHeader.split(' ')[1];
+  const token = req.cookies?.kianda_admin_token;
+  if (!token) return res.status(401).json({ error: 'Unauthorized: No token provided' });
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    (req as any).admin = decoded;
+    req.admin = decoded;
     next();
-  } catch (error) {
+  } catch {
     return res.status(401).json({ error: 'Unauthorized: Invalid or expired token' });
   }
 };
@@ -114,6 +166,7 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
 });
 
 // Nodemailer Config
+// Gmail on port 465 (SSL) presents a valid certificate — rejectUnauthorized not needed
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
   port: 465,
@@ -122,9 +175,6 @@ const transporter = nodemailer.createTransport({
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
-  tls: {
-    rejectUnauthorized: false
-  }
 });
 
 // Health Check
@@ -196,10 +246,10 @@ app.post('/api/applications', async (req, res) => {
     }
 
     let applicantUserId: number | undefined = undefined;
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
+    const applicantCookieToken = req.cookies?.kianda_applicant_token;
+    if (applicantCookieToken) {
       try {
-        const decoded = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
+        const decoded = jwt.verify(applicantCookieToken, JWT_SECRET);
         applicantUserId = (decoded as any).id;
       } catch (e) {
         // ignore if token invalid during submission
@@ -591,11 +641,30 @@ app.post('/api/applications/:id/submit-mpesa-code', async (req, res) => {
   }
 });
 
-app.post('/api/mpesa/c2b/validation', async (req, res) => {
+// Safaricom published production callback IP ranges
+const SAFARICOM_IPS = new Set([
+  '196.201.214.200', '196.201.214.206', '196.201.213.114',
+  '196.201.214.207', '196.201.214.208', '196.201.213.44',
+  '196.201.212.127', '196.201.212.128', '196.201.212.129',
+  '196.201.212.136', '196.201.212.74',  '196.201.212.69',
+]);
+
+// In sandbox/dev the IP check is skipped so local testing works without restriction.
+// In production, only requests from Safaricom's IP range are accepted.
+const requireSafaricomIP = (req: any, res: any, next: any) => {
+  if (process.env.MPESA_ENVIRONMENT !== 'production') return next();
+  const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim()
+    || req.socket.remoteAddress || '';
+  if (SAFARICOM_IPS.has(clientIp)) return next();
+  console.warn(`[MPESA] Rejected C2B callback from unauthorised IP: ${clientIp}`);
+  return res.status(403).json({ ResultCode: 1, ResultDesc: 'Forbidden' });
+};
+
+app.post('/api/mpesa/c2b/validation', requireSafaricomIP, async (req, res) => {
   res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
 });
 
-app.post('/api/mpesa/c2b/confirmation', async (req, res) => {
+app.post('/api/mpesa/c2b/confirmation', requireSafaricomIP, async (req, res) => {
   try {
     const { TransID, TransAmount, MSISDN, FirstName, MiddleName, LastName, BillRefNumber } = req.body;
 
@@ -617,8 +686,8 @@ app.post('/api/mpesa/c2b/confirmation', async (req, res) => {
 
 // --- Admin Routes ---
 
-// Real Admin Login with JWT
-app.post('/api/admin/login', async (req, res) => {
+// Admin Login — rate-limited + constant-time response + HttpOnly cookie session
+app.post('/api/admin/login', authRateLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -626,19 +695,36 @@ app.post('/api/admin/login', async (req, res) => {
       where: eq(schema.adminUsers.email, email),
     });
 
-    if (admin && await bcrypt.compare(password, admin.passwordHash)) {
+    // Always run bcrypt.compare regardless of whether the email exists.
+    // This prevents timing-based enumeration of valid admin email addresses.
+    const hashToCompare = admin?.passwordHash ?? (await DUMMY_HASH_PROMISE);
+    const isValid = await bcrypt.compare(password, hashToCompare);
+
+    if (admin && isValid) {
       const token = jwt.sign(
         { id: admin.id, email: admin.email },
         JWT_SECRET,
         { expiresIn: '8h' }
       );
-      res.json({ token, email: admin.email });
-    } else {
-      res.status(401).json({ error: 'Invalid credentials' });
+      res.cookie('kianda_admin_token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 8 * 60 * 60 * 1000, // 8 hours in ms
+      });
+      return res.json({ email: admin.email });
     }
+
+    res.status(401).json({ error: 'Invalid credentials' });
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
   }
+});
+
+// Admin Logout — clear the HttpOnly session cookie
+app.post('/api/admin/logout', (req, res) => {
+  res.clearCookie('kianda_admin_token');
+  res.json({ success: true });
 });
 
 // GET Payments
@@ -1618,23 +1704,45 @@ app.post('/api/admin/interviews/outcome', authenticateAdmin, async (req, res) =>
 app.use(express.static(path.join(__dirname, '../dist')));
 
 
+// ── /api/auth/me — lightweight session check (replaces client-side JWT decode) ──
+// The frontend calls this on mount to determine the active session role.
+// Returns 401 (unauthenticated) or { role, email } without exposing the token.
+app.get('/api/auth/me', (req: any, res) => {
+  const adminToken = req.cookies?.kianda_admin_token;
+  const applicantToken = req.cookies?.kianda_applicant_token;
+  try {
+    if (adminToken) {
+      const decoded = jwt.verify(adminToken, JWT_SECRET) as any;
+      return res.json({ role: 'admin', email: decoded.email });
+    }
+    if (applicantToken) {
+      const decoded = jwt.verify(applicantToken, JWT_SECRET) as any;
+      return res.json({ role: 'applicant', email: decoded.email });
+    }
+  } catch { /* token expired or invalid */ }
+  return res.status(401).json({ role: null });
+});
+
 // --- Applicant (Parent) Routes ---
 
-// Auth middleware for applicants
+// Auth middleware for applicants — reads from HttpOnly cookie (not Authorization header)
 const authenticateApplicant = (req: any, res: any, next: any) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Unauthorized: No token provided' });
-  }
-  const token = authHeader.split(' ')[1];
+  const token = req.cookies?.kianda_applicant_token;
+  if (!token) return res.status(401).json({ error: 'Unauthorized: No token provided' });
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    (req as any).applicant = decoded;
+    req.applicant = decoded;
     next();
   } catch {
     return res.status(401).json({ error: 'Unauthorized: Invalid or expired token' });
   }
 };
+
+// Applicant Logout — clear the HttpOnly session cookie
+app.post('/api/applicants/logout', (req, res) => {
+  res.clearCookie('kianda_applicant_token');
+  res.json({ success: true });
+});
 
 // Register: Create an account and link it to an existing application
 app.post('/api/applicants/register', async (req, res) => {
@@ -1677,27 +1785,43 @@ app.post('/api/applicants/register', async (req, res) => {
     }
 
     const token = jwt.sign({ id: newUser.id, email: newUser.email, role: 'applicant' }, JWT_SECRET, { expiresIn: '24h' });
-    res.status(201).json({ token, email: newUser.email });
+    res.cookie('kianda_applicant_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours in ms
+    });
+    res.status(201).json({ email: newUser.email });
   } catch (error) {
     console.error('Applicant Register Error:', error);
     res.status(500).json({ error: 'Failed to create account' });
   }
 });
 
-// Login
-app.post('/api/applicants/login', async (req, res) => {
+// Login — rate-limited + constant-time response + HttpOnly cookie session
+app.post('/api/applicants/login', authRateLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
     const user = await db.query.applicantUsers.findFirst({
       where: eq(schema.applicantUsers.email, email.toLowerCase().trim())
     });
 
-    if (user && await bcrypt.compare(password, user.passwordHash)) {
+    // Always run bcrypt.compare to prevent timing-based email enumeration
+    const hashToCompare = user?.passwordHash ?? (await DUMMY_HASH_PROMISE);
+    const isValid = await bcrypt.compare(password, hashToCompare);
+
+    if (user && isValid) {
       const token = jwt.sign({ id: user.id, email: user.email, role: 'applicant' }, JWT_SECRET, { expiresIn: '24h' });
-      res.json({ token, email: user.email });
-    } else {
-      res.status(401).json({ error: 'Invalid email or password' });
+      res.cookie('kianda_applicant_token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours in ms
+      });
+      return res.json({ email: user.email });
     }
+
+    res.status(401).json({ error: 'Invalid email or password' });
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
   }

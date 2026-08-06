@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Eye, EyeOff, LogIn, ArrowLeft, ShieldCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { saveApplicantToken } from '../utils/auth';
 
 interface Props {
   onLoginSuccess: () => void;
@@ -26,7 +25,7 @@ export default function ApplicantLogin({ onLoginSuccess, onBack }: Props) {
       });
       const data = await res.json();
       if (res.ok) {
-        saveApplicantToken(data.token);
+        // Server has set the HttpOnly cookie — no client-side token storage needed
         toast.success('Welcome back!', { icon: '👋' });
         onLoginSuccess();
       } else {

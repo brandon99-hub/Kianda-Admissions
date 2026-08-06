@@ -12,7 +12,7 @@ import JSZip from 'jszip';
 import * as XLSX from 'xlsx';
 import EditApplicationModal from '../modals/EditApplicationModal';
 import { useAdminContext } from '../../../context/AdminContext';
-import { authFetch, getToken } from '../../../utils/auth';
+import { authFetch } from '../../../utils/auth';
 
 // ── Application Row ───────────────────────────────────────────────────────────
 
@@ -578,7 +578,7 @@ export default function ApplicationsView() {
                 fetchUrl = `/api${fetchUrl}`;
               }
               const res = await fetch(fetchUrl, {
-                headers: getToken() ? { Authorization: `Bearer ${getToken()}` } : {}
+                credentials: 'include'
               });
               
               const contentType = res.headers.get('content-type') || '';

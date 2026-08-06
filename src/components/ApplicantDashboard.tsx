@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { FileText, LogOut, ChevronRight, Clock, CheckCircle, XCircle, AlertCircle, Edit3, Eye, RotateCcw, Save, ArrowLeft, GraduationCap, Download, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { getApplicantToken, removeApplicantToken } from '../utils/auth';
+import { applicantLogout } from '../utils/auth';
 import CandidateInfoForm from './CandidateInfoForm';
 import ParentInfoForm from './ParentInfoForm';
 import AdditionalInfoForm from './AdditionalInfoForm';
@@ -88,17 +88,12 @@ export default function ApplicantDashboard({ onLogout, onNewApplication }: Props
     queryKey: ['myApplications'],
     staleTime: 0, // Always fetch fresh data on mount
     queryFn: async () => {
-      const freshToken = getApplicantToken(); // Read inside queryFn — always current
-      if (!freshToken) {
-        onLogout();
-        throw new Error('Not authenticated');
-      }
       const res = await fetch(`/api/applicants/my-applications?t=${Date.now()}`, {
-        headers: { Authorization: `Bearer ${freshToken}` },
+        credentials: 'include',
         cache: 'no-store'
       });
       if (res.status === 401) {
-        removeApplicantToken();
+        await applicantLogout();
         onLogout();
         throw new Error('Session expired');
       }
@@ -114,7 +109,8 @@ export default function ApplicantDashboard({ onLogout, onNewApplication }: Props
     mutationFn: async ({ id, payload }: { id: number; payload: any }) => {
       const res = await fetch(`/api/applicants/applications/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getApplicantToken()}` },
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(payload),
       });
       if (!res.ok) {
@@ -167,8 +163,8 @@ export default function ApplicantDashboard({ onLogout, onNewApplication }: Props
     }));
   };
 
-  const handleLogout = () => {
-    removeApplicantToken();
+  const handleLogout = async () => {
+    await applicantLogout();
     queryClient.clear();
     onLogout();
   };

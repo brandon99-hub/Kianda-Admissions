@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { CheckCircle, AlertTriangle, Loader2, UserPlus, ArrowRight, Eye, EyeOff, ShieldCheck, LogIn } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { saveApplicantToken, isApplicantTokenValid } from '../utils/auth';
+import { checkSession } from '../utils/auth';
 
 interface Props {
   applicationId: number;
@@ -31,11 +31,16 @@ export default function PaymentPolling({ applicationId, onSuccess, onCancel, onB
   const [accountForm, setAccountForm] = useState({ email: parentEmail || '', password: '', confirmPassword: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [isCreatingAccount, setIsCreatingAccount] = useState(false);
+  // True if the user already had an active applicant session when this component mounted
+  const [hadExistingSession, setHadExistingSession] = useState(false);
 
   useEffect(() => {
-    if (isApplicantTokenValid()) {
-      setAccountStep('done');
-    }
+    checkSession().then(role => {
+      if (role === 'applicant') {
+        setHadExistingSession(true);
+        setAccountStep('done');
+      }
+    });
   }, []);
 
   useEffect(() => {
@@ -103,7 +108,7 @@ export default function PaymentPolling({ applicationId, onSuccess, onCancel, onB
       });
       const data = await res.json();
       if (res.ok) {
-        saveApplicantToken(data.token);
+        // Server sets the HttpOnly cookie — no client-side token storage needed
         setAccountStep('done');
         toast.success('Account created! You can now track and edit your application.');
       } else {
@@ -342,10 +347,10 @@ export default function PaymentPolling({ applicationId, onSuccess, onCancel, onB
                   <LogIn size={36} />
                 </div>
                 <h3 className="text-xl font-black text-primary mb-2">
-                  {isApplicantTokenValid() ? 'Application Submitted!' : 'Account Created!'}
+                  {hadExistingSession ? 'Application Submitted!' : 'Account Created!'}
                 </h3>
                 <p className="text-[12px] text-on-surface-variant/70 font-medium mb-6 leading-relaxed">
-                  {isApplicantTokenValid() 
+                  {hadExistingSession 
                     ? 'Your application has been successfully linked to your existing account.'
                     : <>You can now log in anytime using <strong>{accountForm.email}</strong> to view and edit your application.</>}
                 </p>

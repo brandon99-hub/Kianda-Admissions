@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import AdminPageHeader from '../AdminPageHeader';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { getToken } from '../../../utils/auth';
 
 export default function ProcessDocumentsView() {
   const queryClient = useQueryClient();
@@ -17,7 +16,7 @@ export default function ProcessDocumentsView() {
     queryKey: ['adminProcessDocuments'],
     queryFn: async () => {
       const res = await fetch('/api/admin/process-documents', {
-        headers: { 'Authorization': `Bearer ${getToken()}` }
+        credentials: 'include'
       });
       if (!res.ok) throw new Error('Failed to fetch documents');
       return res.json();
@@ -28,7 +27,8 @@ export default function ProcessDocumentsView() {
     mutationFn: async (docData: any) => {
       const res = await fetch('/api/admin/process-documents', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` },
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(docData)
       });
       if (!res.ok) throw new Error('Failed to create');
@@ -47,7 +47,7 @@ export default function ProcessDocumentsView() {
     mutationFn: async (id: number) => {
       const res = await fetch(`/api/admin/process-documents/${id}`, {
         method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${getToken()}` }
+        credentials: 'include'
       });
       if (!res.ok) throw new Error('Failed to delete');
       return res.json();
@@ -67,9 +67,8 @@ export default function ProcessDocumentsView() {
       if (fetchUrl.startsWith('/uploads/')) {
         fetchUrl = `/api${fetchUrl}`;
       }
-      const token = getToken();
       const res = await fetch(fetchUrl, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
+        credentials: 'include'
       });
       if (!res.ok) throw new Error('Failed to load document');
       

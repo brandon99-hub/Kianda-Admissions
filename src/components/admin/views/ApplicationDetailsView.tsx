@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ArrowLeft, User, MapPin, Phone, Mail, Hash, BookOpen, Clock, HeartPulse, GraduationCap, Download, FileText, CheckCircle, XCircle, Users, X, Loader2, Edit2 } from 'lucide-react';
-import { authFetch, getToken } from '../../../utils/auth';
+import { authFetch } from '../../../utils/auth';
 import { motion, AnimatePresence } from 'motion/react';
 
 import toast from 'react-hot-toast';
@@ -85,9 +85,8 @@ export default function ApplicationDetailsView({ app, onBack, onUpdate, showResu
         fetchUrl = `/api${fetchUrl}`;
       }
 
-      const token = getToken();
       const res = await fetch(fetchUrl, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
+        credentials: 'include'
       });
 
       if (!res.ok) throw new Error('Download failed');

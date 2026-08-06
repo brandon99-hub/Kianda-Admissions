@@ -9,7 +9,7 @@ import AssessmentBookView from './admin/views/AssessmentBookView';
 import ProcessDocumentsView from './admin/views/ProcessDocumentsView';
 import PaymentsView from './admin/views/PaymentsView';
 import { AdminProvider, useAdminContext, AdminTab } from '../context/AdminContext';
-import { removeToken } from '../utils/auth';
+import { adminLogout } from '../utils/auth';
 
 // ── Sidebar nav items ─────────────────────────────────────────────────────────
 
@@ -29,8 +29,8 @@ function AdminLayout({ onLogout }: { onLogout: () => void }) {
   const { state, setActiveTab, toggleSidebar, setPreSelectedGradeId } = useAdminContext();
   const { activeTab, isSidebarCollapsed } = state;
 
-  const handleLogout = () => {
-    removeToken();
+  const handleLogout = async () => {
+    await adminLogout();
     onLogout();
   };
 

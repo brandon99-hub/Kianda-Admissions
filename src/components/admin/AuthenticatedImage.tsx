@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { getToken, getApplicantToken } from '../../utils/auth';
 
 /**
  * Displays a protected image from /uploads/... that requires an admin token.
@@ -26,7 +25,6 @@ export default function AuthenticatedImage({ src, alt, className }: Props) {
     if (!src) return;
 
     let objectUrl: string | null = null;
-    const token = getToken() || getApplicantToken();
 
     let fetchUrl = src;
     if (fetchUrl.startsWith('/uploads/')) {
@@ -34,7 +32,7 @@ export default function AuthenticatedImage({ src, alt, className }: Props) {
     }
 
     fetch(fetchUrl, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      credentials: 'include',
     })
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
