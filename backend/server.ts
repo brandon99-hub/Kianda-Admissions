@@ -41,14 +41,15 @@ const port = process.env.PORT || 8095;
 // helmet: sets X-Content-Type-Options, X-Frame-Options, HSTS, CSP, Referrer-Policy etc.
 app.use(helmet({
   crossOriginEmbedderPolicy: false, // Allow blob URLs for passport photos and PDF rendering
+  hsts: false, // EXPLICITLY disable HSTS to allow internal HTTP IP connections
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc:  ["'self'", "'unsafe-inline'"],  // React JSX requires unsafe-inline
-      styleSrc:   ["'self'", "'unsafe-inline'"],
-      imgSrc:     ["'self'", "data:", "blob:"],    // Passport photos loaded as blobs
+      scriptSrc: ["'self'", "'unsafe-inline'"],  // React JSX requires unsafe-inline
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "blob:"],    // Passport photos loaded as blobs
       connectSrc: ["'self'"],
-      fontSrc:    ["'self'"],
+      fontSrc: ["'self'"],
     }
   }
 }));
@@ -646,7 +647,7 @@ const SAFARICOM_IPS = new Set([
   '196.201.214.200', '196.201.214.206', '196.201.213.114',
   '196.201.214.207', '196.201.214.208', '196.201.213.44',
   '196.201.212.127', '196.201.212.128', '196.201.212.129',
-  '196.201.212.136', '196.201.212.74',  '196.201.212.69',
+  '196.201.212.136', '196.201.212.74', '196.201.212.69',
 ]);
 
 // In sandbox/dev the IP check is skipped so local testing works without restriction.
