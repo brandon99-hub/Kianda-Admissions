@@ -91,7 +91,7 @@ export default function EditApplicationModal({ app, onClose, onUpdate }: EditApp
   ];
 
   const religionOptions = ['Christian', 'Hindu', 'Muslim', 'Other'];
-  const denominationOptions = ['Catholic', 'Anglican', 'PCEA', 'SDA', 'Other'];
+  const denominationOptions = ['Catholic', 'Anglican', 'PCEA', 'SDA'];
   
   const sourceOptions = [
     { label: "Through daughter's school", value: 'School' },
