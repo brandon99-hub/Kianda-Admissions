@@ -50,6 +50,7 @@ app.use(helmet({
       imgSrc: ["'self'", "data:", "blob:"],    // Passport photos loaded as blobs
       connectSrc: ["'self'"],
       fontSrc: ["'self'"],
+      upgradeInsecureRequests: null, // Disable forced HTTPS upgrades for local network IPs
     }
   }
 }));
