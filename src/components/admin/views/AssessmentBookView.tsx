@@ -1,10 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Download, Upload, CheckCircle2, XCircle, AlertCircle, ChevronDown, Table as TableIcon, Mail, Loader2 } from 'lucide-react';
-import { authFetch } from '../../../utils/auth';
 import * as XLSX from 'xlsx';
 import toast from 'react-hot-toast';
-import { getRejectionEmail, getAssessmentPassEmail } from '../../../utils/emailTemplates';
 import AdminPageHeader from '../AdminPageHeader';
 import { useGrades, useAssessments, useApplications, useResults, useBulkSync } from '../../../hooks/useAdminData';
 
@@ -144,53 +142,10 @@ export default function AssessmentBookView({ initialGradeId }: Props) {
       onSuccess: () => {
         // Close modal immediately
         setSyncStatus(null);
-        
-        // Handle Automated Emails in the background/sequential
-        const sendEmails = async () => {
-          const rejectedApps = gradeApps.filter(app => {
-            const syncRes = pending.find((p: any) => p.applicationId === app.id);
-            return syncRes && !syncRes.passed && ['pending', 'assessment_scheduled'].includes(app.status);
-          });
-
-          for (const app of rejectedApps) {
-            const emailData = getRejectionEmail(app.candidate?.fullName, app.academicYear || new Date().getFullYear());
-            await authFetch('/api/admin/send-status-email', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                email: app.parentDetails?.fatherEmail || app.parentDetails?.motherEmail,
-                candidateName: app.candidate?.fullName,
-                subject: emailData.subject,
-                content: emailData.body
-              })
-            });
-          }
-
-          const passedApps = gradeApps.filter(app => {
-            const syncRes = pending.find((p: any) => p.applicationId === app.id);
-            return syncRes && syncRes.passed && ['pending', 'assessment_scheduled'].includes(app.status);
-          });
-
-          for (const app of passedApps) {
-            const emailData = getAssessmentPassEmail(app.candidate?.fullName);
-            await authFetch('/api/admin/send-status-email', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                email: app.parentDetails?.fatherEmail || app.parentDetails?.motherEmail,
-                candidateName: app.candidate?.fullName,
-                subject: emailData.subject,
-                content: emailData.body
-              })
-            });
-          }
-        };
-
-        toast.promise(sendEmails(), {
-          loading: 'Sending outcome emails...',
-          success: 'Outcome emails sent successfully!',
-          error: 'Failed to send some outcome emails.'
-        });
+        toast.success('Assessment results synced successfully!');
+      },
+      onError: () => {
+        toast.error('Failed to sync assessment results.');
       }
     });
   };
@@ -346,14 +301,6 @@ export default function AssessmentBookView({ initialGradeId }: Props) {
                   </div>
                </div>
 
-               <div className="p-3 bg-primary/5 rounded-xl mb-6 flex items-start gap-2.5">
-                  <Mail size={14} className="text-primary mt-0.5 shrink-0" />
-                  <p className="text-[9px] font-bold text-primary leading-tight">
-                    <span className="opacity-60 italic font-black uppercase block mb-0.5">Automation Active</span>
-                    Confirming this sync will automatically dispatch results notification emails to all {syncStatus.qualified + syncStatus.rejected} candidates.
-                  </p>
-               </div>
-
                <div className="flex gap-3">
                   <button 
                     onClick={() => setSyncStatus(null)}
@@ -367,9 +314,9 @@ export default function AssessmentBookView({ initialGradeId }: Props) {
                     disabled={bulkSyncMutation.isPending}
                     className="flex-[2] py-3.5 bg-primary text-secondary rounded-xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all relative overflow-hidden"
                   >
-                    {bulkSyncMutation.isPending ? <><Loader2 size={14} className="animate-spin inline mr-2" /> Syncing...</> : 'Finalize & Send Emails'}
+                    {bulkSyncMutation.isPending ? <><Loader2 size={14} className="animate-spin inline mr-2" /> Syncing...</> : 'Finalize Sync'}
                   </button>
-               </div>
+                </div>
             </motion.div>
           </div>
         )}

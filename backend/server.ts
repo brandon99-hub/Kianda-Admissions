@@ -1080,6 +1080,7 @@ app.post('/api/admin/applications/status', authenticateAdmin, async (req, res) =
         }
       }
 
+      /*
       if (emailContent) {
         if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
           try {
@@ -1097,6 +1098,7 @@ app.post('/api/admin/applications/status', authenticateAdmin, async (req, res) =
           console.log(`[MOCK STATUS EMAIL] To: ${parentEmails}\nSubject: ${emailContent.subject}\nBody:\n${emailContent.body}`);
         }
       }
+      */
     }
 
     let responseData: any = { success: true, status };
@@ -1667,6 +1669,7 @@ app.post('/api/admin/interviews/outcome', authenticateAdmin, async (req, res) =>
         emailContent = getRejectionEmail(appData.candidate.fullName, appData.academicYear || new Date().getFullYear());
       }
 
+      /*
       if (emailContent) {
         if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
           try {
@@ -1684,6 +1687,7 @@ app.post('/api/admin/interviews/outcome', authenticateAdmin, async (req, res) =>
           console.log(`[MOCK OUTCOME EMAIL] To: ${parentEmails}\nSubject: ${emailContent.subject}\nBody:\n${emailContent.body}`);
         }
       }
+      */
     }
 
     let responseData: any = { success: true };
