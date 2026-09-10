@@ -141,7 +141,7 @@ app.use('/uploads', authenticateAdmin, express.static(path.join(process.cwd(), '
 // Multer Config
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const candidateName = req.query.candidateName ? String(req.query.candidateName).replace(/[^a-z0-9 ]/gi, '_') : 'Unknown';
+    const candidateName = req.query.candidateName ? String(req.query.candidateName).trim().replace(/[^a-z0-9 ]/gi, '_') : 'Unknown';
     const dir = path.join(process.cwd(), 'uploads', candidateName);
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
@@ -190,7 +190,7 @@ app.post('/api/upload', (req, res) => {
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    const candidateName = req.query.candidateName ? String(req.query.candidateName).replace(/[^a-z0-9 ]/gi, '_') : 'Unknown';
+    const candidateName = req.query.candidateName ? String(req.query.candidateName).trim().replace(/[^a-z0-9 ]/gi, '_') : 'Unknown';
     // Return the URL path
     const fileUrl = `/api/uploads/${candidateName}/${req.file.filename}`;
     res.json({ fileUrl });

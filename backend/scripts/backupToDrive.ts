@@ -18,12 +18,40 @@ import { promisify } from 'util';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import JSZip from 'jszip';
 
 const execAsync = promisify(exec);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const ROOT = path.resolve(__dirname, '../../');
+
+async function zipDirectory(sourceDir: string, outPath: string): Promise<void> {
+  const zip = new JSZip();
+
+  function addFiles(currentDir: string, rootDir: string) {
+    const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path.join(currentDir, entry.name);
+      const relativePath = path.relative(rootDir, fullPath).replace(/\\/g, '/');
+      if (entry.isDirectory()) {
+        addFiles(fullPath, rootDir);
+      } else if (entry.isFile()) {
+        zip.file(relativePath, fs.createReadStream(fullPath));
+      }
+    }
+  }
+
+  addFiles(sourceDir, sourceDir);
+
+  return new Promise<void>((resolve, reject) => {
+    zip
+      .generateNodeStream({ type: 'nodebuffer', streamFiles: true, compression: 'DEFLATE', compressionOptions: { level: 6 } })
+      .pipe(fs.createWriteStream(outPath))
+      .on('finish', () => resolve())
+      .on('error', (err) => reject(err));
+  });
+}
 
 function getAuth() {
   const customPath = process.env.GOOGLE_SERVICE_ACCOUNT_PATH || process.env.GOOGLE_APPLICATION_CREDENTIALS;
@@ -98,8 +126,8 @@ export async function runBackup(): Promise<{ success: boolean; message: string; 
     // 2. Zip the uploads directory
     const uploadsDir = path.join(ROOT, 'uploads');
     if (fs.existsSync(uploadsDir)) {
-      console.log('[BACKUP] Zipping uploads directory...');
-      await execAsync(`powershell -Command "Compress-Archive -Path '${uploadsDir}\\*' -DestinationPath '${uploadsDumpPath}' -Force"`);
+      console.log('[BACKUP] Zipping uploads directory with JSZip...');
+      await zipDirectory(uploadsDir, uploadsDumpPath);
       console.log(`[BACKUP] Uploads zipped to ${uploadsDumpPath}`);
     } else {
       console.log('[BACKUP] No uploads directory found, skipping uploads zip.');
