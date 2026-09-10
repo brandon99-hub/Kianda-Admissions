@@ -105,9 +105,11 @@ export default function App() {
   const updateState = (key: keyof Omit<ApplicationState, 'currentStep'>, data: any) => {
     setState(prev => ({
       ...prev,
-      [key]: typeof data === 'object' && data !== null && !Array.isArray(data)
-        ? { ...(prev[key] as object), ...data }
-        : data,
+      [key]: key === 'documents'
+        ? data
+        : typeof data === 'object' && data !== null && !Array.isArray(data)
+          ? { ...(prev[key] as object), ...data }
+          : data,
       lastUpdated: new Date().toISOString()
     }));
   };

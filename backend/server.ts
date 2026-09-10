@@ -152,19 +152,49 @@ const storage = multer.diskStorage({
     cb(null, `${Date.now()}-${file.originalname}`);
   }
 });
-const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
+const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.pdf', '.doc', '.docx'];
+
+const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+  const ext = path.extname(file.originalname).toLowerCase();
+  if (allowedExtensions.includes(ext)) {
+    cb(null, true);
+  } else {
+    cb(new Error('INVALID_FILE_TYPE'));
+  }
+};
+
+const upload = multer({ 
+  storage, 
+  limits: { fileSize: 15 * 1024 * 1024 },
+  fileFilter 
+});
 
 
 // Document Upload Route
-app.post('/api/upload', upload.single('file'), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: 'No file uploaded' });
-  }
-  const candidateName = req.query.candidateName ? String(req.query.candidateName).replace(/[^a-z0-9 ]/gi, '_') : 'Unknown';
-  // Return the URL path
-  const fileUrl = `/api/uploads/${candidateName}/${req.file.filename}`;
-  res.json({ fileUrl });
+app.post('/api/upload', (req, res) => {
+  upload.single('file')(req, res, (err: any) => {
+    if (err) {
+      if (err instanceof multer.MulterError) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(413).json({ error: 'File size exceeds the 15MB limit. Please compress or select a smaller file.' });
+        }
+        return res.status(400).json({ error: `Upload error: ${err.message}` });
+      }
+      if (err.message === 'INVALID_FILE_TYPE') {
+        return res.status(415).json({ error: 'Unsupported file format. Accepted formats: PDF, JPG, PNG, WebP, DOC, DOCX.' });
+      }
+      return res.status(500).json({ error: err.message || 'File upload failed on the server.' });
+    }
 
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const candidateName = req.query.candidateName ? String(req.query.candidateName).replace(/[^a-z0-9 ]/gi, '_') : 'Unknown';
+    // Return the URL path
+    const fileUrl = `/api/uploads/${candidateName}/${req.file.filename}`;
+    res.json({ fileUrl });
+  });
 });
 
 // Nodemailer Config

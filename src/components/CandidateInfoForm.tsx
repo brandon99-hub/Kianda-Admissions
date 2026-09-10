@@ -75,6 +75,8 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
   const showSpecifyBirthOrder = data.birthOrder === 'Other' || (!isPredefinedBirthOrder && data.birthOrder !== '');
 
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [photoUploadError, setPhotoUploadError] = useState<string | null>(null);
+
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -82,8 +84,35 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
       toast.error('Please enter the Candidate\'s Full Name first.');
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Photo size exceeds 5MB limit. Please upload a smaller image.');
+
+    // Reset previous error
+    setPhotoUploadError(null);
+
+    // Format & HEIC validation
+    const fileName = file.name.toLowerCase();
+    const isHeic = fileName.endsWith('.heic') || fileName.endsWith('.heif') || file.type === 'image/heic' || file.type === 'image/heif';
+    if (isHeic) {
+      const errMsg = 'Apple HEIC format is not supported by web browsers. Please choose a JPG or PNG photo.';
+      setPhotoUploadError(errMsg);
+      toast.error(errMsg);
+      return;
+    }
+
+    const validImageExtensions = ['.jpg', '.jpeg', '.png', '.webp'];
+    const hasValidExt = validImageExtensions.some(ext => fileName.endsWith(ext));
+    if (!hasValidExt && !file.type.startsWith('image/')) {
+      const errMsg = 'Please upload a valid image file (JPG, PNG, or WebP).';
+      setPhotoUploadError(errMsg);
+      toast.error(errMsg);
+      return;
+    }
+
+    // 10MB Limit Check
+    if (file.size > 10 * 1024 * 1024) {
+      const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+      const errMsg = `Photo size (${sizeMb}MB) exceeds the 10MB limit. Please upload a smaller image.`;
+      setPhotoUploadError(errMsg);
+      toast.error(errMsg);
       return;
     }
 
@@ -103,15 +132,35 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
         method: 'POST',
         body: formData,
       });
-      if (!response.ok) throw new Error();
+
+      if (!response.ok) {
+        let errMsg = 'Failed to upload photo.';
+        try {
+          const resData = await response.json();
+          if (resData.error) errMsg = resData.error;
+        } catch {
+          if (response.status === 413) {
+            errMsg = 'Photo file exceeds the 10MB limit.';
+          } else if (response.status === 415) {
+            errMsg = 'Unsupported photo format. Please upload JPG, PNG, or WebP.';
+          }
+        }
+        throw new Error(errMsg);
+      }
+
       const resData = await response.json();
       updateData({ passportPhoto: resData.fileUrl });
+      setPhotoUploadError(null);
       toast.success('Photo uploaded successfully!', { id: toastId });
-    } catch (error) {
-      console.error('Failed to upload photo');
-      toast.error('Failed to upload photo. It may be too large for the server.', { id: toastId });
+    } catch (error: any) {
+      console.error('Failed to upload photo:', error);
+      const errMsg = error?.message || 'Failed to upload photo. Please check your connection and try again.';
+      setPhotoUploadError(errMsg);
+      toast.error(errMsg, { id: toastId });
     } finally {
       setIsUploadingPhoto(false);
+      // Reset input value so re-selecting same file triggers onChange
+      e.target.value = '';
     }
   };
 
@@ -436,24 +485,46 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
                 </div>
              )}
              
-             <div className="space-y-2">
-                <label className="block text-[11px] font-bold uppercase tracking-widest text-primary">Passport Photo <span className="text-[9px] font-semibold text-primary/40 normal-case tracking-normal ml-1">(not older than 1 year)</span> <span className="text-red-500">*</span></label>
-                <div className="flex items-center gap-4">
+              <div className="space-y-2">
+                <label className="block text-[11px] font-bold uppercase tracking-widest text-primary">Passport Photo <span className="text-[9px] font-semibold text-primary/40 normal-case tracking-normal ml-1">(not older than 1 year • Max 10MB • JPG, PNG, WebP)</span> <span className="text-red-500">*</span></label>
+                <div className="flex items-center gap-4 flex-wrap">
                   {data.passportPhotoPreview ? (
-                    <img src={data.passportPhotoPreview} alt="Passport" className="w-16 h-16 rounded-lg object-cover border border-outline-variant/40" />
+                    <img src={data.passportPhotoPreview} alt="Passport" className="w-16 h-16 rounded-lg object-cover border border-outline-variant/40 shrink-0" />
                   ) : data.passportPhoto ? (
-                    <AuthenticatedImage src={data.passportPhoto} alt="Passport" className="w-16 h-16 rounded-lg object-cover border border-outline-variant/40" />
+                    <AuthenticatedImage src={data.passportPhoto} alt="Passport" className="w-16 h-16 rounded-lg object-cover border border-outline-variant/40 shrink-0" />
                   ) : (
-                    <div className="w-16 h-16 rounded-lg bg-surface-container-low flex items-center justify-center border border-dashed border-outline-variant/40">
+                    <div className="w-16 h-16 rounded-lg bg-surface-container-low flex items-center justify-center border border-dashed border-outline-variant/40 shrink-0">
                       <Baby size={24} className="text-primary/20" />
                     </div>
                   )}
-                  <label className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest cursor-pointer transition-all ${!data.fullName ? 'bg-surface-variant text-on-surface-variant/30' : 'bg-secondary text-primary hover:bg-secondary/90'}`}>
-                     {isUploadingPhoto ? 'Uploading...' : 'Upload Photo'}
-                     <input type="file" className="hidden" accept="image/*" onChange={handlePhotoUpload} disabled={isUploadingPhoto || !data.fullName} />
+                  <label className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest cursor-pointer transition-all ${!data.fullName ? 'bg-surface-variant text-on-surface-variant/30 cursor-not-allowed' : 'bg-secondary text-primary hover:bg-secondary/90'}`}>
+                     {isUploadingPhoto ? 'Uploading...' : data.passportPhoto ? 'Change Photo' : 'Upload Photo'}
+                     <input type="file" className="hidden" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" onChange={handlePhotoUpload} disabled={isUploadingPhoto || !data.fullName} />
                   </label>
+                  {(data.passportPhoto || data.passportPhotoPreview) && !isUploadingPhoto && (
+                    <button
+                      type="button"
+                      onClick={() => updateData({ passportPhoto: '', passportPhotoPreview: '' })}
+                      className="p-3 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors flex items-center gap-1.5 text-xs font-bold"
+                      title="Remove uploaded photo"
+                    >
+                      <Trash2 size={14} /> Remove
+                    </button>
+                  )}
                 </div>
-                {!data.fullName && <p className="text-[10px] text-red-400 mt-1">Please enter candidate full name first</p>}
+                {!data.fullName && (
+                  <p className="text-[10px] text-amber-600 font-semibold mt-1.5 flex items-center gap-1.5">
+                    <AlertTriangle size={13} className="shrink-0" /> Please enter Candidate's Full Name above before uploading photo.
+                  </p>
+                )}
+                {photoUploadError && (
+                  <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2 text-red-600 text-[11px] font-medium leading-tight">
+                    <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <span>{photoUploadError}</span>
+                    </div>
+                  </div>
+                )}
              </div>
           </div>
 

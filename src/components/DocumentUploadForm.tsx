@@ -1,6 +1,6 @@
-import { ArrowLeft, ArrowRight, FileText, Upload, CheckCircle2, RefreshCw, ShieldCheck, Loader2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, FileText, Upload, CheckCircle2, RefreshCw, ShieldCheck, Loader2, AlertTriangle, Trash2 } from 'lucide-react';
 import { motion } from 'motion/react';
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import toast from 'react-hot-toast';
 
 interface Props {
@@ -17,6 +17,22 @@ interface Props {
 
 export default function DocumentUploadForm({ onNext, onBack, onCancel, consentGiven, onConsentChange, uploads, onUploadChange, candidateName, isEditing }: Props) {
   const [uploadingState, setUploadingState] = useState<Record<string, boolean>>({});
+  const [uploadErrors, setUploadErrors] = useState<Record<string, string | null>>({});
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+  const handleRemove = (id: string, e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (fileInputRefs.current[id]) {
+      fileInputRefs.current[id]!.value = '';
+    }
+    const updated = { ...uploads };
+    delete updated[id];
+    onUploadChange(updated);
+    setUploadErrors(prev => ({ ...prev, [id]: null }));
+  };
 
   const documents = [
     { id: 'letter', label: 'Application Letter', description: 'Personal letter expressing interest' },
@@ -27,13 +43,40 @@ export default function DocumentUploadForm({ onNext, onBack, onCancel, consentGi
   const handleUpload = async (id: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
-    // Quick validation
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error('File size exceeds 10MB limit.');
+
+    // Reset prior error
+    setUploadErrors(prev => ({ ...prev, [id]: null }));
+
+    // File format & HEIC validation
+    const allowedDocExtensions = ['.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx'];
+    const fileName = file.name.toLowerCase();
+    const isHeic = fileName.endsWith('.heic') || fileName.endsWith('.heif') || file.type === 'image/heic' || file.type === 'image/heif';
+    if (isHeic) {
+      const errMsg = 'Apple HEIC files are not supported. Please upload a PDF, JPG, PNG, or DOCX document.';
+      setUploadErrors(prev => ({ ...prev, [id]: errMsg }));
+      toast.error(errMsg);
+      e.target.value = '';
       return;
     }
 
+    const hasValidExt = allowedDocExtensions.some(ext => fileName.endsWith(ext));
+    if (!hasValidExt) {
+      const errMsg = 'Unsupported format. Please upload PDF, JPG, PNG, DOC, or DOCX files.';
+      setUploadErrors(prev => ({ ...prev, [id]: errMsg }));
+      toast.error(errMsg);
+      e.target.value = '';
+      return;
+    }
+
+    // 15MB Limit Validation
+    if (file.size > 15 * 1024 * 1024) {
+      const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+      const errMsg = `File size (${sizeMb}MB) exceeds the 15MB limit. Please select a smaller file.`;
+      setUploadErrors(prev => ({ ...prev, [id]: errMsg }));
+      toast.error(errMsg);
+      e.target.value = '';
+      return;
+    }
 
     setUploadingState(prev => ({ ...prev, [id]: true }));
     const toastId = toast.loading(`Uploading ${file.name}...`);
@@ -47,15 +90,37 @@ export default function DocumentUploadForm({ onNext, onBack, onCancel, consentGi
         body: formData,
       });
 
-      if (!response.ok) throw new Error('Upload failed');
+      if (!response.ok) {
+        let errMsg = 'Upload failed';
+        try {
+          const resData = await response.json();
+          if (resData.error) errMsg = resData.error;
+        } catch {
+          if (response.status === 413) {
+            errMsg = 'File size exceeds the 15MB server limit.';
+          } else if (response.status === 415) {
+            errMsg = 'Unsupported file format. Please upload PDF, JPG, PNG, DOC, or DOCX.';
+          } else if (response.status >= 500) {
+            errMsg = 'Server encountered an issue saving the file. Please retry.';
+          }
+        }
+        throw new Error(errMsg);
+      }
       
       const data = await response.json();
       onUploadChange({ ...uploads, [id]: data.fileUrl });
-      toast.success('File uploaded safely!', { id: toastId });
-    } catch (err) {
-      toast.error('Network error during upload. Please try again.', { id: toastId });
+      setUploadErrors(prev => ({ ...prev, [id]: null }));
+      toast.success(`${file.name} uploaded safely!`, { id: toastId });
+    } catch (err: any) {
+      const isNetworkError = err?.name === 'TypeError' && err?.message?.includes('fetch');
+      const message = isNetworkError 
+        ? 'Connection lost during upload. Please check your internet and try again.'
+        : (err?.message || 'Failed to upload document. Please try again.');
+      setUploadErrors(prev => ({ ...prev, [id]: message }));
+      toast.error(message, { id: toastId });
     } finally {
       setUploadingState(prev => ({ ...prev, [id]: false }));
+      e.target.value = '';
     }
   };
 
@@ -93,52 +158,105 @@ export default function DocumentUploadForm({ onNext, onBack, onCancel, consentGi
               try { displayName = decodeURIComponent(displayName); } catch (e) {}
             }
 
+            const hasError = !!uploadErrors[doc.id];
+
             return (
-              <label 
-                key={doc.id} 
-                className={`relative block p-5 md:p-6 rounded-2xl flex flex-col md:flex-row md:items-center justify-between group cursor-pointer transition-all duration-300 border active:scale-[0.98] ${
-                  isUploaded 
-                    ? 'bg-green-50/50 border-green-500/20 hover:bg-green-50 hover:shadow-xl hover:-translate-y-1' 
-                    : 'bg-surface-container-low border-transparent hover:border-primary/10 hover:bg-white hover:shadow-xl hover:-translate-y-1'
-                }`}
-              >
-                <input type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" onChange={(e) => handleUpload(doc.id, e)} disabled={isUploading} />
-                
-                <div className="flex gap-4 items-center">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${isUploaded ? 'bg-green-100 text-green-600' : 'bg-primary/5 text-primary'}`}>
-                    {isUploaded ? <CheckCircle2 size={20} /> : <FileText size={20} />}
+              <div key={doc.id} className="space-y-1">
+                <div 
+                  onClick={() => {
+                    if (!isUploaded && !isUploading) {
+                      fileInputRefs.current[doc.id]?.click();
+                    }
+                  }}
+                  className={`relative block p-5 md:p-6 rounded-2xl flex flex-col md:flex-row md:items-center justify-between group transition-all duration-300 border ${
+                    !isUploaded ? 'cursor-pointer active:scale-[0.98]' : ''
+                  } ${
+                    hasError
+                      ? 'bg-red-50/40 border-red-300 hover:border-red-400'
+                      : isUploaded 
+                        ? 'bg-green-50/50 border-green-500/20 hover:bg-green-50 hover:shadow-xl hover:-translate-y-1' 
+                        : 'bg-surface-container-low border-transparent hover:border-primary/10 hover:bg-white hover:shadow-xl hover:-translate-y-1'
+                  }`}
+                >
+                  <input 
+                    ref={(el) => { fileInputRefs.current[doc.id] = el; }}
+                    type="file" 
+                    className="hidden" 
+                    accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" 
+                    onChange={(e) => handleUpload(doc.id, e)} 
+                    disabled={isUploading} 
+                  />
+                  
+                  <div className="flex gap-4 items-center">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
+                      hasError 
+                        ? 'bg-red-100 text-red-600'
+                        : isUploaded 
+                          ? 'bg-green-100 text-green-600' 
+                          : 'bg-primary/5 text-primary'
+                    }`}>
+                      {hasError ? <AlertTriangle size={20} /> : isUploaded ? <CheckCircle2 size={20} /> : <FileText size={20} />}
+                    </div>
+                    <div className="flex-1 pr-2 overflow-hidden">
+                      <h4 className="text-xs font-extrabold uppercase tracking-widest text-primary">{doc.label}</h4>
+                      <p className={`text-[10px] font-medium mt-0.5 ${hasError ? 'text-red-500' : isUploaded ? 'text-green-700/60' : 'text-on-surface-variant'}`}>
+                        {hasError ? 'Upload failed. Tap to retry.' : doc.description}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex-1 pr-2 overflow-hidden">
-                    <h4 className="text-xs font-extrabold uppercase tracking-widest text-primary">{doc.label}</h4>
-                    <p className={`text-[10px] font-medium mt-0.5 ${isUploaded ? 'text-green-700/60' : 'text-on-surface-variant'}`}>{doc.description}</p>
+
+                  <div className="mt-4 md:mt-0 flex items-center justify-end md:justify-center gap-4 w-full md:w-auto">
+                    {isUploading ? (
+                      <div className="flex items-center gap-2 px-4 py-3 md:py-2 bg-primary/5 rounded-full w-full justify-center md:w-auto border-t md:border-t-0 pt-4 md:pt-0 border-outline-variant/10 md:border-transparent mt-2 md:mt-0">
+                        <Loader2 size={14} className="animate-spin text-primary" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-primary">Uploading...</span>
+                      </div>
+                    ) : isUploaded ? (
+                      <div className="flex items-center gap-2 w-full justify-between md:justify-end md:max-w-[280px] lg:md:max-w-[340px] border-t md:border-t-0 pt-4 md:pt-0 border-green-500/10 md:border-transparent mt-2 md:mt-0">
+                        <span className="text-[10px] font-black tracking-[0.1em] text-green-600 bg-green-100 px-3 py-1.5 rounded-lg md:bg-transparent md:px-0 md:py-0 truncate flex-1 min-w-0 text-left md:text-right" title={displayName}>{displayName}</span>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              fileInputRefs.current[doc.id]?.click();
+                            }}
+                            className="p-2 hover:bg-green-100 rounded-full text-green-600/60 hover:text-green-700 transition-all hover:rotate-180" 
+                            title="Replace file"
+                          >
+                            <RefreshCw size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => handleRemove(doc.id, e)}
+                            className="p-2 hover:bg-red-50 text-red-400 hover:text-red-600 rounded-full transition-colors cursor-pointer"
+                            title="Remove uploaded file"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="hidden md:flex px-10 py-3 bg-white text-primary rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all border border-outline-variant/10 shadow-sm group-hover:bg-secondary group-hover:border-secondary group-hover:shadow-lg group-hover:shadow-secondary/20">
+                          <span className="group-hover:scale-110 block transition-transform">{hasError ? 'Retry' : 'Upload'}</span>
+                        </div>
+                        <div className="md:hidden w-full flex items-center justify-center gap-2 text-primary font-bold text-[10px] uppercase tracking-[0.2em] bg-primary/5 py-3.5 rounded-xl border-t border-outline-variant/10 mt-2">
+                          <Upload size={14} /> {hasError ? 'Tap to Retry' : 'Tap to Upload'}
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
 
-                <div className="mt-4 md:mt-0 flex items-center justify-end md:justify-center gap-4 w-full md:w-auto">
-                  {isUploading ? (
-                    <div className="flex items-center gap-2 px-4 py-3 md:py-2 bg-primary/5 rounded-full w-full justify-center md:w-auto border-t md:border-t-0 pt-4 md:pt-0 border-outline-variant/10 md:border-transparent mt-2 md:mt-0">
-                      <Loader2 size={14} className="animate-spin text-primary" />
-                      <span className="text-[10px] font-black uppercase tracking-widest text-primary">Uploading...</span>
-                    </div>
-                  ) : isUploaded ? (
-                    <div className="flex items-center gap-4 w-full justify-between md:justify-end md:max-w-[250px] lg:md:max-w-[300px] border-t md:border-t-0 pt-4 md:pt-0 border-green-500/10 md:border-transparent mt-2 md:mt-0">
-                      <span className="text-[10px] font-black tracking-[0.1em] text-green-600 bg-green-100 px-3 py-1.5 rounded-lg md:bg-transparent md:px-0 md:py-0 truncate flex-1 min-w-0 text-left md:text-right" title={displayName}>{displayName}</span>
-                      <div className="flex p-2 hover:bg-green-100 rounded-full text-green-600/40 hover:text-green-600 transition-all group-hover:rotate-180 flex-shrink-0">
-                        <RefreshCw size={14} />
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="hidden md:flex px-10 py-3 bg-white text-primary rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all border border-outline-variant/10 shadow-sm group-hover:bg-secondary group-hover:border-secondary group-hover:shadow-lg group-hover:shadow-secondary/20">
-                        <span className="group-hover:scale-110 block transition-transform">Upload</span>
-                      </div>
-                      <div className="md:hidden w-full flex items-center justify-center gap-2 text-primary font-bold text-[10px] uppercase tracking-[0.2em] bg-primary/5 py-3.5 rounded-xl border-t border-outline-variant/10 mt-2">
-                        <Upload size={14} /> Tap to Upload
-                      </div>
-                    </>
-                  )}
-                </div>
-              </label>
+                {hasError && (
+                  <div className="px-4 py-2 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-red-600 text-[11px] font-medium animate-in fade-in duration-300">
+                    <AlertTriangle size={13} className="shrink-0 text-red-500" />
+                    <span className="flex-1">{uploadErrors[doc.id]}</span>
+                  </div>
+                )}
+              </div>
             );
           })}
         </div>
@@ -146,8 +264,7 @@ export default function DocumentUploadForm({ onNext, onBack, onCancel, consentGi
         <div className="bg-primary/5 p-6 rounded-2xl mt-8 flex gap-4 items-start border border-primary/5">
           <div className="text-primary mt-1"><Upload size={18} /></div>
           <p className="text-[10px] text-on-surface-variant leading-relaxed font-medium uppercase tracking-tight">
-            Accepted formats: **PDF, JPG, PNG, DOC, DOCX**. Max file size: **10MB**. Please ensure all documents are legible and officially stamped where required.
-
+            Accepted formats: **PDF, JPG, PNG, DOC, DOCX**. Max file size: **15MB per document**. Please ensure all documents are legible and officially stamped where required.
           </p>
         </div>
 

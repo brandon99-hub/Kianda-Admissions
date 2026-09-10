@@ -11,6 +11,7 @@
  * - GOOGLE_SERVICE_ACCOUNT_PATH: (Optional) Custom path to service account JSON (defaults to ./service-account.json)
  */
 
+import 'dotenv/config';
 import { google } from 'googleapis';
 import { exec } from 'child_process';
 import { promisify } from 'util';
@@ -25,8 +26,9 @@ const __dirname = path.dirname(__filename);
 const ROOT = path.resolve(__dirname, '../../');
 
 function getAuth() {
-  const serviceAccountPath = process.env.GOOGLE_SERVICE_ACCOUNT_PATH
-    ? path.resolve(process.env.GOOGLE_SERVICE_ACCOUNT_PATH)
+  const customPath = process.env.GOOGLE_SERVICE_ACCOUNT_PATH || process.env.GOOGLE_APPLICATION_CREDENTIALS;
+  const serviceAccountPath = customPath
+    ? path.resolve(customPath)
     : path.join(ROOT, 'service-account.json');
 
   if (!fs.existsSync(serviceAccountPath)) {
@@ -137,4 +139,16 @@ export async function runBackup(): Promise<{ success: boolean; message: string; 
       console.warn('[BACKUP] Failed to clean up temp files:', cleanupError);
     }
   }
+}
+
+// Allow direct command-line execution: npx tsx backend/scripts/backupToDrive.ts
+if (process.argv[1] && (process.argv[1].endsWith('backupToDrive.ts') || process.argv[1].endsWith('backupToDrive.js'))) {
+  runBackup().then((res) => {
+    if (!res.success) {
+      process.exit(1);
+    }
+  }).catch((err) => {
+    console.error('[BACKUP] Execution error:', err);
+    process.exit(1);
+  });
 }
