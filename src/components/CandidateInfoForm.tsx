@@ -1,5 +1,5 @@
 import { CandidateInfo } from '../types';
-import { Plus, X, Trash2, ListChecks, Calendar, Users, GraduationCap, PlusCircle, Pencil, AlertTriangle, Loader2, ChevronDown, BookCopy, Church, ArrowRight, School, Baby } from 'lucide-react';
+import { Plus, X, Trash2, ListChecks, Calendar, Users, GraduationCap, PlusCircle, Pencil, AlertTriangle, Loader2, ChevronDown, BookCopy, Church, ArrowRight, School, Baby, CheckCircle2 } from 'lucide-react';
 import AuthenticatedImage from './admin/AuthenticatedImage';
 import { motion, AnimatePresence } from 'motion/react';
 import toast from 'react-hot-toast';
@@ -16,7 +16,7 @@ interface Props {
 }
 
 export default function CandidateInfoForm({ data, updateData, onNext, onCancel }: Props) {
-  const [activeDropdown, setActiveDropdown] = useState<'grade' | 'birthOrder' | 'religion' | 'denomination' | null>(null);
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const { data: availableGrades = [], isLoading: loadingGrades } = useQuery({
@@ -44,21 +44,41 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    if (!data.schools || data.schools.length === 0) {
+      updateData({ schools: [{ type: '', name: '', years: '', category: '' }] });
+    }
+  }, []);
+
+  const handleCategoryChange = (index: number, newCategory: 'Kianda School' | 'Other') => {
+    const schools = Array.isArray(data.schools) ? [...data.schools] : [];
+    const isKianda = newCategory === 'Kianda School';
+    schools[index] = {
+      ...schools[index],
+      category: newCategory,
+      name: isKianda ? 'Kianda School' : (schools[index]?.name === 'Kianda School' ? '' : (schools[index]?.name || ''))
+    };
+    const hasKianda = schools.some(s => s.name?.trim().toLowerCase() === 'kianda school' || s.category === 'Kianda School');
+    updateData({ schools, isCurrentKiandaStudent: hasKianda, currentSchoolType: hasKianda ? 'Kianda School' : 'Other' });
+  };
+
   const updateSchool = (index: number, field: keyof CandidateInfo['schools'][0], value: string) => {
-    const schools = Array.isArray(data.schools) ? data.schools : [];
-    const newSchools = [...schools];
-    newSchools[index] = { ...newSchools[index], [field]: value };
-    updateData({ schools: newSchools });
+    const schools = Array.isArray(data.schools) ? [...data.schools] : [];
+    schools[index] = { ...schools[index], [field]: value };
+    const hasKianda = schools.some(s => s.name?.trim().toLowerCase() === 'kianda school' || s.category === 'Kianda School');
+    updateData({ schools, isCurrentKiandaStudent: hasKianda, currentSchoolType: hasKianda ? 'Kianda School' : 'Other' });
   };
   
   const addSchool = () => {
     const schools = Array.isArray(data.schools) ? data.schools : [];
-    updateData({ schools: [...schools, { type: '', name: '', years: '' }] });
+    updateData({ schools: [...schools, { type: '', name: '', years: '', category: '' }] });
   };
   
   const removeSchool = (index: number) => {
     const schools = Array.isArray(data.schools) ? data.schools : [];
-    updateData({ schools: schools.filter((_, i) => i !== index) });
+    const updated = schools.filter((_, i) => i !== index);
+    const hasKianda = updated.some(s => s.name?.trim().toLowerCase() === 'kianda school' || s.category === 'Kianda School');
+    updateData({ schools: updated, isCurrentKiandaStudent: hasKianda, currentSchoolType: hasKianda ? 'Kianda School' : (updated.length > 0 ? 'Other' : '') });
   };
 
   const birthOrderOptions = [
@@ -225,6 +245,16 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
           if (data.religion === 'Other') return toast.error('Please specify your religion.');
           if (data.religion === 'Christian' && !data.denomination) return toast.error('Please select a Denomination.');
           
+          if (Array.isArray(data.schools) && data.schools.length > 0) {
+            for (let i = 0; i < data.schools.length; i++) {
+              const s = data.schools[i];
+              const cat = s.category || (s.name?.trim().toLowerCase() === 'kianda school' ? 'Kianda School' : s.name ? 'Other' : '');
+              if (cat === 'Other' && (!s.name || !s.name.trim())) {
+                return toast.error(`Please enter the School Name for ${i === 0 ? 'Current School' : `School ${i + 1}`}.`);
+              }
+            }
+          }
+
           if (!data.passportPhoto) return toast.error('Please upload a Passport Photo.');
           onNext(); 
         }}>
@@ -562,54 +592,198 @@ export default function CandidateInfoForm({ data, updateData, onNext, onCancel }
               const schools = Array.isArray(data.schools) ? data.schools : [];
 
               return (
-                <div className="space-y-3 bg-surface-container-low/30 p-5 rounded-3xl border border-primary/5">
-                  <div className="space-y-3">
-                    {schools.map((school, index) => (
+                <div className="space-y-4 bg-surface-container-low/30 p-4 sm:p-6 rounded-3xl border border-primary/5">
+                  <div className="space-y-4">
+                    {schools.map((school, index) => {
+                      const category = school.category || (school.name?.trim().toLowerCase() === 'kianda school' ? 'Kianda School' : school.name ? 'Other' : '');
+
+                      return (
                         <motion.div 
                           layout
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           key={index} 
-                          className="flex flex-col sm:flex-row items-center gap-3 p-2 bg-white rounded-[20px] border border-primary/5 shadow-sm group hover:border-primary/20 transition-all"
+                          className="p-5 sm:p-6 bg-white rounded-2xl border border-primary/10 shadow-sm hover:border-primary/20 transition-all space-y-4"
                         >
-                          <div className="flex-1 flex flex-col sm:flex-row w-full gap-3">
-                            <input
-                              type="text"
-                              placeholder="Name of School"
-                              value={school.name}
-                              onChange={(e) => updateSchool(index, 'name', e.target.value)}
-                              className="w-full sm:flex-[2] bg-white border-2 border-outline-variant/40 rounded-xl p-3.5 text-sm font-semibold focus:ring-2 focus:ring-primary/20 focus:bg-primary/5 transition-colors placeholder:text-primary/40 text-primary shadow-sm"
-                            />
-                            <select
-                              value={school.type || ''}
-                              onChange={(e) => updateSchool(index, 'type', e.target.value)}
-                              className="w-full sm:flex-[1.5] bg-white border-2 border-outline-variant/40 rounded-xl p-3.5 text-xs font-semibold focus:ring-2 focus:ring-primary/20 focus:bg-primary/5 transition-colors text-primary cursor-pointer shadow-sm"
+                          <div className="flex items-center justify-between pb-3 border-b border-primary/5">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-6 h-6 rounded-full bg-secondary/15 text-secondary flex items-center justify-center text-[10px] font-black">
+                                {index + 1}
+                              </div>
+                              <span className="text-xs font-black uppercase tracking-wider text-primary">
+                                {index === 0 ? 'Current / Most Recent School' : `Previous School ${index + 1}`}
+                              </span>
+                              {category === 'Kianda School' && (
+                                <span className="text-[9px] font-black uppercase tracking-widest text-secondary bg-secondary/15 px-2 py-0.5 rounded-md flex items-center gap-1">
+                                  <School size={12} /> Kianda School
+                                </span>
+                              )}
+                            </div>
+                            <button 
+                              type="button" 
+                              onClick={() => removeSchool(index)}
+                              className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-1 text-[11px] font-bold"
+                              title="Remove School"
                             >
-                              <option value="" disabled hidden>Stage(s) Attended</option>
-                              {stageOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                            </select>
-                            <input
-                              type="text"
-                              placeholder="Years (e.g. 2020-2022)"
-                              value={school.years}
-                              onChange={(e) => updateSchool(index, 'years', e.target.value)}
-                              className="w-full sm:flex-[1.5] bg-white border-2 border-outline-variant/40 rounded-xl p-3.5 text-sm font-semibold focus:ring-2 focus:ring-primary/20 focus:bg-primary/5 transition-colors placeholder:text-primary/40 text-primary shadow-sm"
-                            />
+                              <Trash2 size={15} />
+                              <span className="hidden sm:inline">Remove</span>
+                            </button>
                           </div>
-                          <button 
-                            type="button" 
-                            onClick={() => removeSchool(index)}
-                            className="w-full sm:w-12 h-12 flex items-center justify-center rounded-xl text-red-400 hover:bg-red-50 hover:text-red-500 transition-colors shrink-0"
-                            title="Remove School"
-                          >
-                            <Trash2 size={18} />
-                          </button>
+
+                          <div className={`grid grid-cols-1 ${category === 'Other' ? 'sm:grid-cols-2 lg:grid-cols-4' : 'sm:grid-cols-3'} gap-4 items-start`}>
+                            {/* Field 1: School Selector (Kianda School / Other) */}
+                            <div className="space-y-1.5 relative">
+                              <label className="block text-[10px] font-extrabold uppercase tracking-widest text-primary">
+                                School <span className="text-red-500">*</span>
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() => setActiveDropdown(activeDropdown === `school-${index}-cat` ? null : `school-${index}-cat`)}
+                                className={`w-full flex items-center justify-between bg-white p-3.5 rounded-xl border-2 transition-all group ${
+                                  activeDropdown === `school-${index}-cat` 
+                                    ? 'border-secondary shadow-lg shadow-secondary/10' 
+                                    : 'border-outline-variant/40 hover:border-secondary/40'
+                                }`}
+                              >
+                                <span className={`text-xs font-bold tracking-tight ${category ? 'text-primary' : 'text-primary/30'}`}>
+                                  {category || 'Select School'}
+                                </span>
+                                <ChevronDown 
+                                  size={14} 
+                                  className={`text-primary/20 transition-transform ${activeDropdown === `school-${index}-cat` ? 'rotate-180 text-secondary' : ''}`} 
+                                />
+                              </button>
+
+                              <AnimatePresence>
+                                {activeDropdown === `school-${index}-cat` && (
+                                  <motion.div
+                                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                    className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-[0_20px_40px_rgba(0,0,0,0.15)] border border-outline-variant/5 py-3 z-[100]"
+                                  >
+                                    {['Kianda School', 'Other'].map((opt) => (
+                                      <button
+                                        key={opt}
+                                        type="button"
+                                        onClick={() => {
+                                          handleCategoryChange(index, opt as 'Kianda School' | 'Other');
+                                          setActiveDropdown(null);
+                                        }}
+                                        className={`w-full px-5 py-2.5 text-left text-xs font-bold tracking-wider hover:bg-secondary/10 transition-colors flex items-center justify-between ${
+                                          category === opt ? 'bg-secondary/5 text-secondary' : 'text-primary'
+                                        }`}
+                                      >
+                                        {opt}
+                                        {category === opt && <div className="w-1.5 h-1.5 rounded-full bg-secondary" />}
+                                      </button>
+                                    ))}
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </div>
+
+                            {/* Field 2: School Name (Only if Other) */}
+                            {category === 'Other' && (
+                              <motion.div 
+                                initial={{ opacity: 0, scale: 0.98 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                className="space-y-1.5"
+                              >
+                                <label className="block text-[10px] font-extrabold uppercase tracking-widest text-primary">
+                                  School Name <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                  type="text"
+                                  placeholder="Enter School Name"
+                                  value={school.name === 'Kianda School' ? '' : (school.name || '')}
+                                  onChange={(e) => updateSchool(index, 'name', e.target.value)}
+                                  className="w-full bg-white border-2 border-outline-variant/40 rounded-xl p-3.5 text-xs font-bold focus:ring-2 focus:ring-secondary focus:border-secondary transition-all placeholder:text-primary/30 text-primary shadow-sm"
+                                  required
+                                />
+                              </motion.div>
+                            )}
+
+                            {/* Field 3: Stage(s) Attended */}
+                            <div className="space-y-1.5 relative">
+                              <label className="block text-[10px] font-extrabold uppercase tracking-widest text-primary">
+                                Stage(s) Attended
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() => setActiveDropdown(activeDropdown === `school-${index}-stage` ? null : `school-${index}-stage`)}
+                                className={`w-full flex items-center justify-between bg-white p-3.5 rounded-xl border-2 transition-all group ${
+                                  activeDropdown === `school-${index}-stage` 
+                                    ? 'border-secondary shadow-lg shadow-secondary/10' 
+                                    : 'border-outline-variant/40 hover:border-secondary/40'
+                                }`}
+                              >
+                                <span className={`text-xs font-bold tracking-tight ${school.type ? 'text-primary' : 'text-primary/30'}`}>
+                                  {school.type || 'Select Stage'}
+                                </span>
+                                <ChevronDown 
+                                  size={14} 
+                                  className={`text-primary/20 transition-transform ${activeDropdown === `school-${index}-stage` ? 'rotate-180 text-secondary' : ''}`} 
+                                />
+                              </button>
+
+                              <AnimatePresence>
+                                {activeDropdown === `school-${index}-stage` && (
+                                  <motion.div
+                                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                    className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-[0_20px_40px_rgba(0,0,0,0.15)] border border-outline-variant/5 py-3 z-[100] max-h-56 overflow-y-auto"
+                                  >
+                                    {stageOptions.map((opt) => (
+                                      <button
+                                        key={opt}
+                                        type="button"
+                                        onClick={() => {
+                                          updateSchool(index, 'type', opt);
+                                          setActiveDropdown(null);
+                                        }}
+                                        className={`w-full px-5 py-2.5 text-left text-xs font-bold tracking-wider hover:bg-secondary/10 transition-colors flex items-center justify-between ${
+                                          school.type === opt ? 'bg-secondary/5 text-secondary' : 'text-primary'
+                                        }`}
+                                      >
+                                        {opt}
+                                        {school.type === opt && <div className="w-1.5 h-1.5 rounded-full bg-secondary" />}
+                                      </button>
+                                    ))}
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </div>
+
+                            {/* Field 4: Years Attended */}
+                            <div className="space-y-1.5">
+                              <label className="block text-[10px] font-extrabold uppercase tracking-widest text-primary">
+                                Years Attended
+                              </label>
+                              <input
+                                type="text"
+                                placeholder="e.g. 2020-2022"
+                                value={school.years || ''}
+                                onChange={(e) => updateSchool(index, 'years', e.target.value)}
+                                className="w-full bg-white border-2 border-outline-variant/40 rounded-xl p-3.5 text-xs font-bold focus:ring-2 focus:ring-secondary focus:border-secondary transition-all placeholder:text-primary/30 text-primary shadow-sm"
+                              />
+                            </div>
+                          </div>
                         </motion.div>
-                    ))}
+                      );
+                    })}
                   </div>
                   {schools.length === 0 && (
-                    <div className="text-[11px] font-medium text-primary/40 italic py-3 bg-white/50 border border-primary/5 rounded-2xl px-5 text-center">
-                      No previous schools added.
+                    <div className="text-xs font-medium text-primary/50 italic py-6 bg-white/60 border-2 border-dashed border-outline-variant/30 rounded-2xl px-5 text-center flex flex-col items-center gap-2">
+                      <span>No previous schools added.</span>
+                      <button 
+                        type="button" 
+                        onClick={addSchool}
+                        className="text-xs font-bold text-secondary hover:underline"
+                      >
+                        + Add School
+                      </button>
                     </div>
                   )}
                 </div>

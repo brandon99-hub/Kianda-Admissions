@@ -4,6 +4,7 @@ export interface SchoolHistory {
   type?: string;
   name: string;
   years: string;
+  category?: 'Kianda School' | 'Other' | '';
 }
 
 export interface CandidateInfo {
@@ -17,6 +18,8 @@ export interface CandidateInfo {
   assessmentNo?: string;
   passportPhoto?: string;
   passportPhotoPreview?: string;
+  isCurrentKiandaStudent?: boolean;
+  currentSchoolType?: 'Kianda School' | 'Other' | '';
   schools: SchoolHistory[];
 }
 

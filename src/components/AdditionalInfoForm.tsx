@@ -72,6 +72,12 @@ export default function AdditionalInfoForm({ data, updateData, onNext, onBack, o
 
         <form className="space-y-12" onSubmit={(e) => { 
           e.preventDefault(); 
+          for (let i = 0; i < data.siblings.length; i++) {
+            const sib = data.siblings[i];
+            if (sib.schoolType === 'Kianda School' && !sib.kiandaOrder) {
+              return toast.error(`Please select the Order in Kianda for Sibling ${i + 1}.`);
+            }
+          }
           if (data.hasAppliedBefore && (!data.previousApplicationYears || data.previousApplicationYears.length === 0)) {
             return toast.error('Please select the year(s) you previously applied.');
           }
@@ -95,45 +101,61 @@ export default function AdditionalInfoForm({ data, updateData, onNext, onBack, o
             
             <div className="space-y-4">
               {data.siblings.length === 0 && (
-                <p className="text-xs text-on-surface-variant italic opacity-60">No connections listed.</p>
+                <p className="text-xs text-on-surface-variant italic opacity-60">No siblings listed.</p>
               )}
               {data.siblings.map((sibling, index) => (
                 <div key={index} className="space-y-4 p-6 bg-white rounded-3xl border-2 border-outline-variant/40 shadow-sm relative group">
                    <div className="flex justify-between items-center mb-2">
                      <h5 className="text-[11px] font-bold uppercase tracking-widest text-primary/60">
-                       {sibling.relationship === 'Brother' || sibling.relationship === 'Sister' ? 'Sibling' : 'Connection'} {index + 1}
+                       Sibling {index + 1}
                      </h5>
-                     <button type="button" onClick={() => removeSibling(index)} className="p-2 text-red-400 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100 bg-white rounded-full shadow-sm">
+                     <button type="button" onClick={() => removeSibling(index)} className="p-2 text-red-400 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100 bg-white rounded-full shadow-sm" title="Remove Sibling">
                        <Trash2 size={14} />
                      </button>
                    </div>
                    
                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                     <input 
-                       placeholder="Full Name" 
-                       value={sibling.name} 
-                       onChange={(e) => updateSibling(index, 'name', e.target.value)} 
-                       className="w-full bg-white border-2 border-outline-variant/40 rounded-xl p-3.5 text-xs font-bold focus:ring-2 focus:ring-primary/20 placeholder:text-primary/30" 
-                     />
+                     <div className="space-y-1.5">
+                       <label className="block text-[10px] font-extrabold uppercase tracking-widest text-primary">
+                         Full Name <span className="text-red-500">*</span>
+                       </label>
+                       <input 
+                         type="text"
+                         placeholder="Enter Full Name" 
+                         value={sibling.name} 
+                         onChange={(e) => updateSibling(index, 'name', e.target.value)} 
+                         className="w-full bg-white border-2 border-outline-variant/40 rounded-xl p-3.5 text-xs font-bold focus:ring-2 focus:ring-secondary focus:border-secondary transition-all placeholder:text-primary/30 text-primary shadow-sm" 
+                       />
+                     </div>
                      
-                     <div className="relative">
+                     <div className="space-y-1.5 relative">
+                        <label className="block text-[10px] font-extrabold uppercase tracking-widest text-primary">
+                          Relationship <span className="text-red-500">*</span>
+                        </label>
                         <button
                           type="button"
                           onClick={() => setActiveDropdown(activeDropdown === `sib-${index}-rel` ? null : `sib-${index}-rel`)}
-                          className="w-full bg-white border-2 border-outline-variant/40 rounded-xl p-3.5 text-xs font-bold flex justify-between items-center focus:ring-2 focus:ring-primary/20"
+                          className={`w-full flex items-center justify-between bg-white p-3.5 rounded-xl border-2 transition-all group ${
+                            activeDropdown === `sib-${index}-rel` 
+                              ? 'border-secondary shadow-lg shadow-secondary/10' 
+                              : 'border-outline-variant/40 hover:border-secondary/40'
+                          }`}
                         >
-                          <span className={sibling.relationship ? 'text-primary' : 'text-primary/30'}>
-                            {sibling.relationship || 'Relationship'}
+                          <span className={`text-xs font-bold tracking-tight ${sibling.relationship ? 'text-primary' : 'text-primary/30'}`}>
+                            {sibling.relationship || 'Select Relationship'}
                           </span>
-                          <ChevronDown size={16} className={`text-primary/50 transition-transform ${activeDropdown === `sib-${index}-rel` ? 'rotate-180' : ''}`} />
+                          <ChevronDown 
+                            size={14} 
+                            className={`text-primary/20 transition-transform ${activeDropdown === `sib-${index}-rel` ? 'rotate-180 text-secondary' : ''}`} 
+                          />
                         </button>
                         <AnimatePresence>
                           {activeDropdown === `sib-${index}-rel` && (
                             <motion.div
-                              initial={{ opacity: 0, y: -10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, y: -10 }}
-                              className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-primary/5 py-2 z-50 max-h-48 overflow-y-auto"
+                              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                              className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-[0_20px_40px_rgba(0,0,0,0.15)] border border-outline-variant/5 py-3 z-[100] max-h-56 overflow-y-auto"
                             >
                               {['Brother', 'Sister'].map(rel => (
                                 <button
@@ -145,9 +167,12 @@ export default function AdditionalInfoForm({ data, updateData, onNext, onBack, o
                                     updateData({ siblings: newSiblings });
                                     setActiveDropdown(null); 
                                   }}
-                                  className={`w-full text-left px-4 py-2 text-xs font-bold transition-colors ${sibling.relationship === rel ? 'bg-primary/5 text-primary' : 'text-on-surface hover:bg-surface-variant'}`}
+                                  className={`w-full px-5 py-2.5 text-left text-xs font-bold tracking-wider hover:bg-secondary/10 transition-colors flex items-center justify-between ${
+                                    sibling.relationship === rel ? 'bg-secondary/5 text-secondary' : 'text-primary'
+                                  }`}
                                 >
                                   {rel}
+                                  {sibling.relationship === rel && <div className="w-1.5 h-1.5 rounded-full bg-secondary" />}
                                 </button>
                               ))}
                             </motion.div>
@@ -156,34 +181,47 @@ export default function AdditionalInfoForm({ data, updateData, onNext, onBack, o
                      </div>
                    </div>
 
-                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                     <div className="relative">
+                   <div className={`grid grid-cols-1 ${sibling.schoolType === 'Other' || sibling.schoolType === 'Kianda School' ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4 items-start`}>
+                     <div className="space-y-1.5 relative">
+                        <label className="block text-[10px] font-extrabold uppercase tracking-widest text-primary">
+                          Class / Grade <span className="text-red-500">*</span>
+                        </label>
                         <button
                           type="button"
                           onClick={() => setActiveDropdown(activeDropdown === `sib-${index}-grade` ? null : `sib-${index}-grade`)}
-                          className="w-full bg-white border-2 border-outline-variant/40 rounded-xl p-3.5 text-xs font-bold flex justify-between items-center focus:ring-2 focus:ring-primary/20"
+                          className={`w-full flex items-center justify-between bg-white p-3.5 rounded-xl border-2 transition-all group ${
+                            activeDropdown === `sib-${index}-grade` 
+                              ? 'border-secondary shadow-lg shadow-secondary/10' 
+                              : 'border-outline-variant/40 hover:border-secondary/40'
+                          }`}
                         >
-                          <span className={sibling.grade ? 'text-primary' : 'text-primary/30'}>
-                            {sibling.grade || 'Class / Grade'}
+                          <span className={`text-xs font-bold tracking-tight ${sibling.grade ? 'text-primary' : 'text-primary/30'}`}>
+                            {sibling.grade || 'Select Class / Grade'}
                           </span>
-                          <ChevronDown size={16} className={`text-primary/50 transition-transform ${activeDropdown === `sib-${index}-grade` ? 'rotate-180' : ''}`} />
+                          <ChevronDown 
+                            size={14} 
+                            className={`text-primary/20 transition-transform ${activeDropdown === `sib-${index}-grade` ? 'rotate-180 text-secondary' : ''}`} 
+                          />
                         </button>
                         <AnimatePresence>
                           {activeDropdown === `sib-${index}-grade` && (
                             <motion.div
-                              initial={{ opacity: 0, y: -10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, y: -10 }}
-                              className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-primary/5 py-2 z-50 max-h-48 overflow-y-auto"
+                              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                              className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-[0_20px_40px_rgba(0,0,0,0.15)] border border-outline-variant/5 py-3 z-[100] max-h-56 overflow-y-auto"
                             >
-                              {['Playgroup', 'PP1', 'PP2', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11'].map(g => (
+                              {['Playgroup', 'PP1', 'PP2', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Form 3', 'Form 4'].map(g => (
                                 <button
                                   key={g}
                                   type="button"
                                   onClick={() => { updateSibling(index, 'grade', g); setActiveDropdown(null); }}
-                                  className={`w-full text-left px-4 py-2 text-xs font-bold transition-colors ${sibling.grade === g ? 'bg-primary/5 text-primary' : 'text-on-surface hover:bg-surface-variant'}`}
+                                  className={`w-full px-5 py-2.5 text-left text-xs font-bold tracking-wider hover:bg-secondary/10 transition-colors flex items-center justify-between ${
+                                    sibling.grade === g ? 'bg-secondary/5 text-secondary' : 'text-primary'
+                                  }`}
                                 >
                                   {g}
+                                  {sibling.grade === g && <div className="w-1.5 h-1.5 rounded-full bg-secondary" />}
                                 </button>
                               ))}
                             </motion.div>
@@ -191,78 +229,110 @@ export default function AdditionalInfoForm({ data, updateData, onNext, onBack, o
                         </AnimatePresence>
                      </div>
                      
-                     <div className="relative">
-                            <button
-                              type="button"
-                              onClick={() => setActiveDropdown(activeDropdown === `sib-${index}-sch` ? null : `sib-${index}-sch`)}
-                              className="w-full bg-white border-2 border-outline-variant/40 rounded-xl p-3.5 text-xs font-bold flex justify-between items-center focus:ring-2 focus:ring-primary/20"
+                     <div className="space-y-1.5 relative">
+                        <label className="block text-[10px] font-extrabold uppercase tracking-widest text-primary">
+                          School <span className="text-red-500">*</span>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setActiveDropdown(activeDropdown === `sib-${index}-sch` ? null : `sib-${index}-sch`)}
+                          className={`w-full flex items-center justify-between bg-white p-3.5 rounded-xl border-2 transition-all group ${
+                            activeDropdown === `sib-${index}-sch` 
+                              ? 'border-secondary shadow-lg shadow-secondary/10' 
+                              : 'border-outline-variant/40 hover:border-secondary/40'
+                          }`}
+                        >
+                          <span className={`text-xs font-bold tracking-tight ${sibling.schoolType ? 'text-primary' : 'text-primary/30'}`}>
+                            {sibling.schoolType || 'Select School'}
+                          </span>
+                          <ChevronDown 
+                            size={14} 
+                            className={`text-primary/20 transition-transform ${activeDropdown === `sib-${index}-sch` ? 'rotate-180 text-secondary' : ''}`} 
+                          />
+                        </button>
+                        <AnimatePresence>
+                          {activeDropdown === `sib-${index}-sch` && (
+                            <motion.div
+                              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                              className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-[0_20px_40px_rgba(0,0,0,0.15)] border border-outline-variant/5 py-3 z-[100] max-h-56 overflow-y-auto"
                             >
-                              <span className={sibling.schoolType ? 'text-primary' : 'text-primary/30'}>
-                                {sibling.schoolType || 'Select School'}
-                              </span>
-                              <ChevronDown size={16} className={`text-primary/50 transition-transform ${activeDropdown === `sib-${index}-sch` ? 'rotate-180' : ''}`} />
-                            </button>
-                            <AnimatePresence>
-                              {activeDropdown === `sib-${index}-sch` && (
-                                <motion.div
-                                  initial={{ opacity: 0, y: -10 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  exit={{ opacity: 0, y: -10 }}
-                                  className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-primary/5 py-2 z-50 max-h-48 overflow-y-auto"
+                              {['Kianda School', 'Other'].map(st => (
+                                <button
+                                  key={st}
+                                  type="button"
+                                  onClick={() => { updateSibling(index, 'schoolType', st); setActiveDropdown(null); }}
+                                  className={`w-full px-5 py-2.5 text-left text-xs font-bold tracking-wider hover:bg-secondary/10 transition-colors flex items-center justify-between ${
+                                    sibling.schoolType === st ? 'bg-secondary/5 text-secondary' : 'text-primary'
+                                  }`}
                                 >
-                                  {['Kianda School', 'Other'].map(st => (
-                                    <button
-                                      key={st}
-                                      type="button"
-                                      onClick={() => { updateSibling(index, 'schoolType', st); setActiveDropdown(null); }}
-                                      className={`w-full text-left px-4 py-2 text-xs font-bold transition-colors ${sibling.schoolType === st ? 'bg-primary/5 text-primary' : 'text-on-surface hover:bg-surface-variant'}`}
-                                    >
-                                      {st}
-                                    </button>
-                                  ))}
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
+                                  {st}
+                                  {sibling.schoolType === st && <div className="w-1.5 h-1.5 rounded-full bg-secondary" />}
+                                </button>
+                              ))}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                      </div>
                      
                      {sibling.schoolType === 'Other' && (
-                        <input 
-                          placeholder="School Name" 
-                          value={sibling.schoolName || ''} 
-                          onChange={(e) => updateSibling(index, 'schoolName', e.target.value)} 
-                          className="w-full bg-white border-2 border-outline-variant/40 rounded-xl p-3.5 text-xs font-bold focus:ring-2 focus:ring-primary/20 placeholder:text-primary/30" 
-                          required
-                        />
+                        <div className="space-y-1.5">
+                          <label className="block text-[10px] font-extrabold uppercase tracking-widest text-primary">
+                            School Name <span className="text-red-500">*</span>
+                          </label>
+                          <input 
+                            type="text"
+                            placeholder="Enter School Name" 
+                            value={sibling.schoolName || ''} 
+                            onChange={(e) => updateSibling(index, 'schoolName', e.target.value)} 
+                            className="w-full bg-white border-2 border-outline-variant/40 rounded-xl p-3.5 text-xs font-bold focus:ring-2 focus:ring-secondary focus:border-secondary transition-all placeholder:text-primary/30 text-primary shadow-sm" 
+                            required
+                          />
+                        </div>
                      )}
                      
                      {sibling.schoolType === 'Kianda School' && (
-                       <div className="relative">
+                       <div className="space-y-1.5 relative">
+                          <label className="block text-[10px] font-extrabold uppercase tracking-widest text-primary">
+                            Order in Kianda <span className="text-red-500">*</span>
+                          </label>
                           <button
                             type="button"
                             onClick={() => setActiveDropdown(activeDropdown === `sib-${index}-ord` ? null : `sib-${index}-ord`)}
-                            className="w-full bg-white border-2 border-outline-variant/40 rounded-xl p-3.5 text-xs font-bold flex justify-between items-center focus:ring-2 focus:ring-primary/20"
+                            className={`w-full flex items-center justify-between bg-white p-3.5 rounded-xl border-2 transition-all group ${
+                              activeDropdown === `sib-${index}-ord` 
+                                ? 'border-secondary shadow-lg shadow-secondary/10' 
+                                : 'border-outline-variant/40 hover:border-secondary/40'
+                            }`}
                           >
-                            <span className={sibling.kiandaOrder ? 'text-primary' : 'text-primary/30'}>
-                              {[{label: '1st Born', value: '1st'},{label: '2nd Born', value: '2nd'},{label: '3rd Born', value: '3rd'},{label: '4th Born', value: '4th'},{label: '5th Born', value: '5th'}].find(o => o.value === sibling.kiandaOrder)?.label || 'Order in Kianda'}
+                            <span className={`text-xs font-bold tracking-tight ${sibling.kiandaOrder ? 'text-primary' : 'text-primary/30'}`}>
+                              {[{label: '1st Born', value: '1st'},{label: '2nd Born', value: '2nd'},{label: '3rd Born', value: '3rd'},{label: '4th Born', value: '4th'},{label: '5th Born', value: '5th'}].find(o => o.value === sibling.kiandaOrder)?.label || 'Select Order'}
                             </span>
-                            <ChevronDown size={16} className={`text-primary/50 transition-transform ${activeDropdown === `sib-${index}-ord` ? 'rotate-180' : ''}`} />
+                            <ChevronDown 
+                              size={14} 
+                              className={`text-primary/20 transition-transform ${activeDropdown === `sib-${index}-ord` ? 'rotate-180 text-secondary' : ''}`} 
+                            />
                           </button>
                           <AnimatePresence>
                             {activeDropdown === `sib-${index}-ord` && (
                               <motion.div
-                                initial={{ opacity: 0, y: -10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -10 }}
-                                className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-primary/5 py-2 z-50 max-h-48 overflow-y-auto"
+                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-[0_20px_40px_rgba(0,0,0,0.15)] border border-outline-variant/5 py-3 z-[100] max-h-56 overflow-y-auto"
                               >
                                 {[{label: '1st Born', value: '1st'},{label: '2nd Born', value: '2nd'},{label: '3rd Born', value: '3rd'},{label: '4th Born', value: '4th'},{label: '5th Born', value: '5th'}].map(ko => (
                                   <button
                                     key={ko.value}
                                     type="button"
                                     onClick={() => { updateSibling(index, 'kiandaOrder', ko.value); setActiveDropdown(null); }}
-                                    className={`w-full text-left px-4 py-2 text-xs font-bold transition-colors ${sibling.kiandaOrder === ko.value ? 'bg-primary/5 text-primary' : 'text-on-surface hover:bg-surface-variant'}`}
+                                    className={`w-full px-5 py-2.5 text-left text-xs font-bold tracking-wider hover:bg-secondary/10 transition-colors flex items-center justify-between ${
+                                      sibling.kiandaOrder === ko.value ? 'bg-secondary/5 text-secondary' : 'text-primary'
+                                    }`}
                                   >
                                     {ko.label}
+                                    {sibling.kiandaOrder === ko.value && <div className="w-1.5 h-1.5 rounded-full bg-secondary" />}
                                   </button>
                                 ))}
                               </motion.div>

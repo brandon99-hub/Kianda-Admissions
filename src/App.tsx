@@ -25,6 +25,8 @@ const INITIAL_STATE: ApplicationState = {
   currentStep: 'candidate',
   candidate: {
     grade: '', fullName: '', dob: '', religion: '', denomination: '', birthOrder: '', medicalInfo: '', assessmentNo: '', passportPhoto: '',
+    isCurrentKiandaStudent: false,
+    currentSchoolType: '',
     schools: []
   },
   parent: {
@@ -404,6 +406,10 @@ export default function App() {
                   onConsentChange={(val) => updateState('consentGiven', val)}
                   uploads={state.documents}
                   onUploadChange={(val) => updateState('documents', val)}
+                  isCurrentKiandaStudent={Boolean(
+                    state.candidate.isCurrentKiandaStudent ||
+                    state.candidate.schools?.some(s => s.name?.toLowerCase().trim() === 'kianda school' || s.category === 'Kianda School')
+                  )}
                 />
               </motion.div>
             )}

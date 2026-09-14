@@ -13,9 +13,10 @@ interface Props {
   onUploadChange: (uploads: Record<string, string>) => void;
   candidateName: string;
   isEditing?: boolean;
+  isCurrentKiandaStudent?: boolean;
 }
 
-export default function DocumentUploadForm({ onNext, onBack, onCancel, consentGiven, onConsentChange, uploads, onUploadChange, candidateName, isEditing }: Props) {
+export default function DocumentUploadForm({ onNext, onBack, onCancel, consentGiven, onConsentChange, uploads, onUploadChange, candidateName, isEditing, isCurrentKiandaStudent }: Props) {
   const [uploadingState, setUploadingState] = useState<Record<string, boolean>>({});
   const [uploadErrors, setUploadErrors] = useState<Record<string, string | null>>({});
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
@@ -125,7 +126,7 @@ export default function DocumentUploadForm({ onNext, onBack, onCancel, consentGi
   };
 
   const allUploaded = Object.values(uploads).every(v => v !== '');
-  const canProceed = allUploaded && consentGiven;
+  const canProceed = isCurrentKiandaStudent ? consentGiven : (allUploaded && consentGiven);
 
   return (
     <motion.div
@@ -144,6 +145,20 @@ export default function DocumentUploadForm({ onNext, onBack, onCancel, consentGi
             <p className="text-[11px] md:text-sm text-on-surface-variant font-medium leading-snug">Please provide the required documentation for the application processing.</p>
           </div>
         </div>
+
+        {isCurrentKiandaStudent && (
+          <div className="mb-6 p-5 bg-secondary/10 border border-secondary/30 rounded-2xl flex items-start gap-3.5 text-primary">
+            <div className="w-8 h-8 rounded-full bg-secondary/20 text-secondary flex items-center justify-center shrink-0 mt-0.5">
+              <CheckCircle2 size={18} />
+            </div>
+            <div>
+              <h4 className="text-xs font-black uppercase tracking-wider text-primary">Document Uploads Waived</h4>
+              <p className="text-xs text-on-surface-variant font-medium mt-1 leading-relaxed">
+                As your student is already enrolled at <strong>Kianda School</strong>, uploading application letters, birth certificates, or report cards is <strong>not required</strong>. You may optionally attach files if you wish, or acknowledge data consent below to continue to payment.
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className="space-y-4">
           {documents.map((doc) => {
@@ -198,7 +213,9 @@ export default function DocumentUploadForm({ onNext, onBack, onCancel, consentGi
                       {hasError ? <AlertTriangle size={20} /> : isUploaded ? <CheckCircle2 size={20} /> : <FileText size={20} />}
                     </div>
                     <div className="flex-1 pr-2 overflow-hidden">
-                      <h4 className="text-xs font-extrabold uppercase tracking-widest text-primary">{doc.label}</h4>
+                      <h4 className="text-xs font-extrabold uppercase tracking-widest text-primary">
+                        {doc.label} {isCurrentKiandaStudent && <span className="text-[9px] font-bold text-secondary normal-case tracking-normal ml-1.5">(Optional)</span>}
+                      </h4>
                       <p className={`text-[10px] font-medium mt-0.5 ${hasError ? 'text-red-500' : isUploaded ? 'text-green-700/60' : 'text-on-surface-variant'}`}>
                         {hasError ? 'Upload failed. Tap to retry.' : doc.description}
                       </p>
@@ -264,7 +281,7 @@ export default function DocumentUploadForm({ onNext, onBack, onCancel, consentGi
         <div className="bg-primary/5 p-6 rounded-2xl mt-8 flex gap-4 items-start border border-primary/5">
           <div className="text-primary mt-1"><Upload size={18} /></div>
           <p className="text-[10px] text-on-surface-variant leading-relaxed font-medium uppercase tracking-tight">
-            Accepted formats: **PDF, JPG, PNG, DOC, DOCX**. Max file size: **15MB per document**. Please ensure all documents are legible and officially stamped where required.
+            {isCurrentKiandaStudent ? 'Document upload is optional for current Kianda School students. ' : ''}Accepted formats: **PDF, JPG, PNG, DOC, DOCX**. Max file size: **15MB per document**. Please ensure all documents are legible and officially stamped where required.
           </p>
         </div>
 

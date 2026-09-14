@@ -317,7 +317,7 @@ app.post('/api/applications', async (req, res) => {
         newAppId = newApp.id;
       }
 
-      const { schools, passportPhoto, passportPhotoPreview, ...candidateData } = candidate;
+      const { schools, passportPhoto, passportPhotoPreview, isCurrentKiandaStudent, currentSchoolType, ...candidateData } = candidate;
       await tx.insert(schema.candidates).values({
         applicationId: newAppId,
         passportPhotoUrl: passportPhoto,
@@ -1907,7 +1907,7 @@ app.put('/api/applicants/applications/:id', authenticateApplicant, async (req, r
 
     await db.transaction(async (tx) => {
       if (candidate) {
-        const { schools, passportPhoto, passportPhotoPreview, ...candidateData } = candidate;
+        const { schools, passportPhoto, passportPhotoPreview, isCurrentKiandaStudent, currentSchoolType, ...candidateData } = candidate;
         await tx.update(schema.candidates).set({
           ...candidateData,
           passportPhotoUrl: passportPhoto || candidateData.passportPhotoUrl,
