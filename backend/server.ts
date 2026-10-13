@@ -1287,29 +1287,32 @@ app.get('/api/admin/grades', authenticateAdmin, async (req, res) => {
 app.post('/api/admin/grades', authenticateAdmin, async (req, res) => {
   try {
     const { id, gradeName, vacantSpots, assessmentDate, paymentDeadlineDate, academicYear, location, isAcceptingApplications } = req.body;
-    const year = academicYear || new Date().getFullYear();
     const finalDate = assessmentDate ? new Date(assessmentDate) : null;
     const finalDeadlineDate = paymentDeadlineDate ? new Date(paymentDeadlineDate) : null;
 
-    const payload: any = {
-      vacantSpots,
-      assessmentDate: finalDate,
-      paymentDeadlineDate: finalDeadlineDate,
-      academicYear: year,
-      location
-    };
-    if (isAcceptingApplications !== undefined) {
-      payload.isAcceptingApplications = isAcceptingApplications;
-    }
-
     if (id) {
+      const updatePayload: any = {};
+      if (vacantSpots !== undefined) updatePayload.vacantSpots = vacantSpots;
+      if (assessmentDate !== undefined) updatePayload.assessmentDate = finalDate;
+      if (paymentDeadlineDate !== undefined) updatePayload.paymentDeadlineDate = finalDeadlineDate;
+      if (academicYear !== undefined) updatePayload.academicYear = academicYear;
+      if (location !== undefined) updatePayload.location = location;
+      if (isAcceptingApplications !== undefined) updatePayload.isAcceptingApplications = isAcceptingApplications;
+      if (gradeName !== undefined) updatePayload.gradeName = gradeName;
+
       await db.update(schema.gradeManagement)
-        .set(payload)
+        .set(updatePayload)
         .where(eq(schema.gradeManagement.id, id));
     } else {
+      const year = academicYear || new Date().getFullYear();
       await db.insert(schema.gradeManagement).values({
         gradeName,
-        ...payload
+        vacantSpots: vacantSpots ?? 0,
+        assessmentDate: finalDate,
+        paymentDeadlineDate: finalDeadlineDate,
+        academicYear: year,
+        location,
+        isAcceptingApplications: isAcceptingApplications !== undefined ? isAcceptingApplications : true
       });
     }
 

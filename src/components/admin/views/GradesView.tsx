@@ -13,6 +13,10 @@ interface Props {
 const AcceptApplicationsToggle = ({ grade, createGradeMutation }: any) => {
   const [val, setVal] = React.useState(grade.isAcceptingApplications ?? true);
 
+  React.useEffect(() => {
+    setVal(grade.isAcceptingApplications ?? true);
+  }, [grade.isAcceptingApplications]);
+
   return (
     <div className="group/field flex items-center justify-between p-6 md:p-8 bg-white border border-outline-variant/10 shadow-[0_10px_30px_-15px_rgba(0,0,0,0.03)] rounded-[32px] transition-all">
        <div>
@@ -24,7 +28,7 @@ const AcceptApplicationsToggle = ({ grade, createGradeMutation }: any) => {
          onClick={() => {
            const newVal = !val;
            setVal(newVal);
-           createGradeMutation.mutate({ id: grade.id, isAcceptingApplications: newVal });
+           createGradeMutation.mutate({ id: grade.id, isAcceptingApplications: newVal, academicYear: grade.academicYear });
          }}
          className={`w-14 h-7 rounded-full transition-colors relative flex items-center px-1 shadow-inner ${val ? 'bg-green-500' : 'bg-outline-variant/20'}`}
        >
@@ -393,8 +397,18 @@ export default function GradesView({ onGoToAssessments }: Props) {
                      <div>
                         <div className="flex items-center gap-3 mb-1">
                           <h4 className="text-3xl font-black text-primary italic tracking-tight">{grade.gradeName}</h4>
-                          <span className={`px-2.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest ${grade.vacantSpots > 0 ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                            {grade.vacantSpots > 0 ? 'Accepting' : 'Waitlist Only'}
+                          <span className={`px-2.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest ${
+                            !grade.isAcceptingApplications
+                              ? 'bg-red-100 text-red-700'
+                              : grade.vacantSpots > 0
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-amber-100 text-amber-700'
+                          }`}>
+                            {!grade.isAcceptingApplications
+                              ? 'Closed'
+                              : grade.vacantSpots > 0
+                              ? 'Accepting'
+                              : 'Waitlist Only'}
                           </span>
                         </div>
                          <div className="flex items-center gap-5 text-[9px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/40">
