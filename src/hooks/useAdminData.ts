@@ -142,6 +142,29 @@ export const useBulkSync = () => {
   });
 };
 
+export const useSaveStudentResults = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (results: any[]) => {
+      const res = await authFetch('/api/admin/results/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ results })
+      });
+      if (!res.ok) throw new Error('Failed to save assessment results');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['results'] });
+      queryClient.invalidateQueries({ queryKey: ['applications'] });
+      toast.success('Assessment grades updated successfully.');
+    },
+    onError: () => {
+      toast.error('Failed to update assessment grades.');
+    }
+  });
+};
+
 export const useCreateInterview = () => {
   const queryClient = useQueryClient();
   return useMutation({

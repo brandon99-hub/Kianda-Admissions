@@ -1289,6 +1289,7 @@ app.post('/api/admin/grades', authenticateAdmin, async (req, res) => {
     const { id, gradeName, vacantSpots, assessmentDate, paymentDeadlineDate, academicYear, location, isAcceptingApplications } = req.body;
     const finalDate = assessmentDate ? new Date(assessmentDate) : null;
     const finalDeadlineDate = paymentDeadlineDate ? new Date(paymentDeadlineDate) : null;
+    const year = academicYear || new Date().getFullYear();
 
     if (id) {
       const updatePayload: any = {};
@@ -1304,7 +1305,6 @@ app.post('/api/admin/grades', authenticateAdmin, async (req, res) => {
         .set(updatePayload)
         .where(eq(schema.gradeManagement.id, id));
     } else {
-      const year = academicYear || new Date().getFullYear();
       await db.insert(schema.gradeManagement).values({
         gradeName,
         vacantSpots: vacantSpots ?? 0,
@@ -1502,7 +1502,7 @@ app.post('/api/admin/results/bulk', authenticateAdmin, async (req, res) => {
 
       // Update Application status ONLY if it hasn't progressed yet
       const [currentApp] = await db.select().from(schema.applications).where(eq(schema.applications.id, item.applicationId));
-      if (currentApp && ['pending', 'assessment_scheduled'].includes(currentApp.status || '')) {
+      if (currentApp && ['pending', 'assessment_scheduled', 'passed_assessment', 'failed'].includes(currentApp.status || '')) {
         if (item.passed) {
           await db.update(schema.applications).set({ status: 'passed_assessment' }).where(eq(schema.applications.id, item.applicationId));
         } else {

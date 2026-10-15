@@ -1,10 +1,10 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Download, Upload, CheckCircle2, XCircle, AlertCircle, ChevronDown, Table as TableIcon, Mail, Loader2 } from 'lucide-react';
+import { Download, Upload, CheckCircle2, XCircle, AlertCircle, ChevronDown, Table as TableIcon, Mail, Loader2, Pencil, Check, X } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import toast from 'react-hot-toast';
 import AdminPageHeader from '../AdminPageHeader';
-import { useGrades, useAssessments, useApplications, useResults, useBulkSync } from '../../../hooks/useAdminData';
+import { useGrades, useAssessments, useApplications, useResults, useBulkSync, useSaveStudentResults } from '../../../hooks/useAdminData';
 
 interface Props {
   initialGradeId?: number | null;
@@ -16,9 +16,13 @@ export default function AssessmentBookView({ initialGradeId }: Props) {
   const { data: applications = [] } = useApplications();
   const { data: results = [] } = useResults();
   const bulkSyncMutation = useBulkSync();
+  const saveResultsMutation = useSaveStudentResults();
 
   const [activeGradeId, setActiveGradeId] = useState<number | null>(initialGradeId || null);
   const [syncStatus, setSyncStatus] = useState<{ qualified: number, rejected: number } | null>(null);
+  const [editingAppId, setEditingAppId] = useState<number | null>(null);
+  const [draftMarks, setDraftMarks] = useState<Record<number, string>>({});
+  const [draftPassed, setDraftPassed] = useState<boolean>(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Default to first grade when data arrives
@@ -28,11 +32,90 @@ export default function AssessmentBookView({ initialGradeId }: Props) {
     }
   }, [grades, activeGradeId]);
 
+  // Reset inline edit state when grade cohort changes
+  React.useEffect(() => {
+    setEditingAppId(null);
+    setDraftMarks({});
+  }, [activeGradeId]);
+
   const activeGrade = grades.find((g: any) => g.id === activeGradeId);
   const gradeAssessments = assessments.filter((a: any) => a.gradeId === activeGradeId);
   const gradeApps = applications
     .filter((app: any) => app.candidate?.grade === activeGrade?.gradeName)
     .sort((a: any, b: any) => (a.candidate?.fullName || '').localeCompare(b.candidate?.fullName || ''));
+
+  const startEditing = (app: any) => {
+    if (gradeAssessments.length === 0) {
+      toast.error('No assessments have been configured for this grade level.');
+      return;
+    }
+    const currentMarks: Record<number, string> = {};
+    gradeAssessments.forEach(ass => {
+      const res = results.find((r: any) => r.applicationId === app.id && r.assessmentId === ass.id);
+      currentMarks[ass.id] = res?.marksObtained !== undefined && res?.marksObtained !== null ? String(res.marksObtained) : '';
+    });
+
+    const hasAnyResult = gradeAssessments.some(ass => results.find((r: any) => r.applicationId === app.id && r.assessmentId === ass.id));
+    const isPassed = gradeAssessments.every(ass => results.find((r: any) => r.applicationId === app.id && r.assessmentId === ass.id)?.passed);
+
+    setDraftMarks(currentMarks);
+    setDraftPassed(hasAnyResult ? isPassed : true);
+    setEditingAppId(app.id);
+  };
+
+  const cancelEditing = () => {
+    setEditingAppId(null);
+    setDraftMarks({});
+  };
+
+  const handleDraftMarkChange = (assessmentId: number, val: string) => {
+    if (val !== '' && !/^\d+$/.test(val)) return;
+    setDraftMarks(prev => ({ ...prev, [assessmentId]: val }));
+  };
+
+  const saveEditing = async (appId: number) => {
+    if (gradeAssessments.length === 0) return;
+
+    // Validate marks against maxMarks
+    for (const ass of gradeAssessments) {
+      const raw = draftMarks[ass.id];
+      if (raw !== undefined && raw !== '') {
+        const score = Number(raw);
+        if (score < 0 || score > ass.maxMarks) {
+          toast.error(`Marks for "${ass.title}" must be between 0 and ${ass.maxMarks}.`);
+          return;
+        }
+      }
+    }
+
+    const payload = gradeAssessments.map(ass => {
+      const raw = draftMarks[ass.id];
+      const marksObtained = raw !== undefined && raw !== '' ? parseInt(raw, 10) : 0;
+      return {
+        applicationId: appId,
+        assessmentId: ass.id,
+        marksObtained,
+        passed: draftPassed
+      };
+    });
+
+    saveResultsMutation.mutate(payload, {
+      onSuccess: () => {
+        setEditingAppId(null);
+        setDraftMarks({});
+      }
+    });
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent, appId: number) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      saveEditing(appId);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      cancelEditing();
+    }
+  };
 
   const handleExport = () => {
     if (!activeGrade) return;
@@ -207,6 +290,7 @@ export default function AssessmentBookView({ initialGradeId }: Props) {
                  ))}
                  <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-primary/40">AVG</th>
                  <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-primary/40">Final Verdict</th>
+                 <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-primary/40 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/5">
@@ -214,10 +298,18 @@ export default function AssessmentBookView({ initialGradeId }: Props) {
                  const hasAnyResult = gradeAssessments.some(ass => results.find((r: any) => r.applicationId === app.id && r.assessmentId === ass.id));
                  const isPassed = gradeAssessments.every(ass => results.find((r: any) => r.applicationId === app.id && r.assessmentId === ass.id)?.passed);
                  const isPending = gradeAssessments.length === 0 || !hasAnyResult;
-
+                 const isEditingThisRow = editingAppId === app.id;
 
                  return (
-                   <tr key={app.id} className="hover:bg-primary/[0.02] transition-colors group">
+                   <tr 
+                     key={app.id} 
+                     onDoubleClick={() => !editingAppId && startEditing(app)}
+                     className={`transition-colors group ${
+                       isEditingThisRow 
+                         ? 'bg-secondary/[0.04] ring-1 ring-inset ring-secondary/20' 
+                         : 'hover:bg-primary/[0.02]'
+                     }`}
+                   >
                      <td className="px-8 py-6">
                         <div className="font-bold text-primary text-sm flex items-center gap-2">
                            {app.candidate?.fullName}
@@ -225,19 +317,49 @@ export default function AssessmentBookView({ initialGradeId }: Props) {
                         </div>
                         <div className="text-[10px] font-medium text-on-surface-variant/40 uppercase tracking-widest">APP-{app.id.toString().padStart(4, '0')}</div>
                      </td>
-                     {gradeAssessments.map(ass => {
+                     {gradeAssessments.map((ass, idx) => {
                         const res = results.find((r: any) => r.applicationId === app.id && r.assessmentId === ass.id);
                         return (
                           <td key={ass.id} className="px-8 py-6">
-                             <div className={`text-sm font-black ${res ? 'text-primary' : 'text-on-surface-variant/20'}`}>
-                                {res?.marksObtained ?? '—'}
-                             </div>
+                             {isEditingThisRow ? (
+                               <div className="flex items-center gap-1.5">
+                                 <input
+                                   type="number"
+                                   min={0}
+                                   max={ass.maxMarks}
+                                   value={draftMarks[ass.id] ?? ''}
+                                   onChange={(e) => handleDraftMarkChange(ass.id, e.target.value)}
+                                   onKeyDown={(e) => handleKeyDown(e, app.id)}
+                                   placeholder="0"
+                                   autoFocus={idx === 0}
+                                   className={`w-20 px-3 py-1.5 text-xs font-black rounded-xl border focus:outline-none focus:ring-2 transition-all ${
+                                     Number(draftMarks[ass.id]) > ass.maxMarks
+                                       ? 'border-red-400 bg-red-50 text-red-600 focus:ring-red-200'
+                                       : 'border-outline-variant/20 bg-white text-primary focus:border-secondary focus:ring-secondary/20 shadow-inner'
+                                   }`}
+                                 />
+                                 <span className="text-[10px] font-bold text-primary/30">/{ass.maxMarks}</span>
+                               </div>
+                             ) : (
+                               <div className={`text-sm font-black ${res ? 'text-primary' : 'text-on-surface-variant/20'}`}>
+                                  {res?.marksObtained ?? '—'}
+                               </div>
+                             )}
                           </td>
                         );
                      })}
                      <td className="px-8 py-6">
                         <div className="text-sm font-mono font-black text-secondary">
                           {(() => {
+                            if (isEditingThisRow) {
+                              if (gradeAssessments.length === 0) return '—';
+                              const values = gradeAssessments.map(ass => {
+                                const val = draftMarks[ass.id];
+                                return val !== undefined && val !== '' ? Number(val) : 0;
+                              });
+                              const sum = values.reduce((a, b) => a + b, 0);
+                              return (sum / gradeAssessments.length).toFixed(1);
+                            }
                             const appRes = gradeAssessments.map(ass => results.find((r: any) => r.applicationId === app.id && r.assessmentId === ass.id)?.marksObtained || 0);
                             const hasRes = gradeAssessments.some(ass => results.find((r: any) => r.applicationId === app.id && r.assessmentId === ass.id));
                             if (!hasRes) return '—';
@@ -247,23 +369,85 @@ export default function AssessmentBookView({ initialGradeId }: Props) {
                         </div>
                      </td>
                      <td className="px-8 py-6">
-                        <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${
-                          isPending ? 'bg-yellow-50 text-yellow-600 border-yellow-100' :
-                          isPassed
-                          ? 'bg-green-50 text-green-600 border-green-100' 
-                          : 'bg-red-50 text-red-500 border-red-100'
-                        }`}>
-                           {isPending ? <><AlertCircle size={12} /> Pending</> : 
-                            isPassed ? <><CheckCircle2 size={12} /> Passed</> : 
-                            <><XCircle size={12} /> Failed</>}
-                        </div>
+                        {isEditingThisRow ? (
+                          <div className="inline-flex items-center gap-1 p-1 bg-surface-container-low rounded-xl border border-outline-variant/15 shadow-sm">
+                            <button
+                              type="button"
+                              onClick={() => setDraftPassed(true)}
+                              className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all ${
+                                draftPassed
+                                  ? 'bg-green-600 text-white shadow-sm'
+                                  : 'text-primary/50 hover:text-primary hover:bg-white/60'
+                              }`}
+                            >
+                              <CheckCircle2 size={12} /> Pass
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setDraftPassed(false)}
+                              className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all ${
+                                !draftPassed
+                                  ? 'bg-red-500 text-white shadow-sm'
+                                  : 'text-primary/50 hover:text-primary hover:bg-white/60'
+                              }`}
+                            >
+                              <XCircle size={12} /> Fail
+                            </button>
+                          </div>
+                        ) : (
+                          <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${
+                            isPending ? 'bg-yellow-50 text-yellow-600 border-yellow-100' :
+                            isPassed
+                            ? 'bg-green-50 text-green-600 border-green-100' 
+                            : 'bg-red-50 text-red-500 border-red-100'
+                          }`}>
+                             {isPending ? <><AlertCircle size={12} /> Pending</> : 
+                              isPassed ? <><CheckCircle2 size={12} /> Passed</> : 
+                              <><XCircle size={12} /> Failed</>}
+                          </div>
+                        )}
+                     </td>
+                     <td className="px-8 py-6 text-right whitespace-nowrap">
+                        {isEditingThisRow ? (
+                          <div className="inline-flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => saveEditing(app.id)}
+                              disabled={saveResultsMutation.isPending}
+                              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary text-secondary rounded-xl text-[10px] font-black uppercase tracking-wider shadow-lg shadow-primary/15 hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+                              title="Save changes (Enter)"
+                            >
+                              {saveResultsMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                              <span>Save</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={cancelEditing}
+                              disabled={saveResultsMutation.isPending}
+                              className="inline-flex items-center justify-center w-8 h-8 rounded-xl text-primary/40 hover:text-primary hover:bg-primary/5 transition-all"
+                              title="Cancel (Esc)"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => startEditing(app)}
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider text-primary/70 bg-primary/5 hover:bg-primary hover:text-secondary hover:shadow-md transition-all group-hover:bg-primary/10"
+                            title="Edit grade entry inline"
+                          >
+                            <Pencil size={12} />
+                            <span>Edit</span>
+                          </button>
+                        )}
                      </td>
                    </tr>
                  );
               })}
               {gradeApps.length === 0 && (
                 <tr>
-                  <td colSpan={gradeAssessments.length + 3} className="px-8 py-24 text-center">
+                  <td colSpan={gradeAssessments.length + 4} className="px-8 py-24 text-center">
                      <div className="flex flex-col items-center gap-3 opacity-20">
                         <TableIcon size={48} />
                         <p className="font-bold text-primary italic">No active applications for this grade level.</p>

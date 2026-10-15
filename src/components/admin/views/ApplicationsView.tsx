@@ -109,22 +109,6 @@ const ApplicationRow: React.FC<{
           <SchoolSwitcher schools={app.schoolsAttended || []} />
       </td>
       <td className="px-6 py-6">
-          <div className="relative group/motivation cursor-help">
-            <div className="text-[10px] font-bold text-primary/60 line-clamp-2 max-w-[150px] leading-relaxed">
-              {app.additionalInfo?.motivation || 'No motivation provided.'}
-            </div>
-            {app.additionalInfo?.motivation && (
-              <div className="absolute bottom-full left-0 mb-4 opacity-0 group-hover/motivation:opacity-100 transition-all pointer-events-none w-64 z-[100]">
-                <div className="bg-white p-4 rounded-2xl shadow-2xl border border-secondary/20 shadow-primary/20">
-                  <div className="text-[9px] font-black uppercase tracking-widest text-secondary mb-2">Motivation Statement</div>
-                  <p className="text-[11px] leading-relaxed font-medium text-primary italic whitespace-normal break-words">"{app.additionalInfo.motivation}"</p>
-                </div>
-                <div className="w-3 h-3 bg-white rotate-45 border-r border-b border-secondary/20 -mt-1.5 ml-6 shadow-sm" />
-              </div>
-            )}
-          </div>
-      </td>
-      <td className="px-6 py-6">
         <div className={`text-xs font-mono font-black tracking-[0.2em] px-3 py-1 rounded-md border w-fit ${
           app.paymentVerified ? 'text-primary/80 bg-primary/5 border-primary/10' : 'text-red-500 bg-red-50 border-red-100'
         }`}>
@@ -831,7 +815,6 @@ export default function ApplicationsView() {
                 </th>
                 <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-primary/40">Parent Info</th>
                 <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-primary/40">Prev. Schools</th>
-                <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-primary/40">Motivation</th>
                 <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-primary/40">Code</th>
                 <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-primary/40">Status</th>
                 <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-primary/40">Date</th>
@@ -854,7 +837,7 @@ export default function ApplicationsView() {
               ))}
               {!isLoading && filteredApps.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-8 py-20 text-center text-sm font-bold text-primary opacity-20 italic">
+                  <td colSpan={isSelectMode ? 11 : 10} className="px-8 py-20 text-center text-sm font-bold text-primary opacity-20 italic">
                     No applications match the current filter.
                   </td>
                 </tr>
