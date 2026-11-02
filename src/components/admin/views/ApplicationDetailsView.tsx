@@ -568,7 +568,7 @@ export default function ApplicationDetailsView({ app, onBack, onUpdate, showResu
         {/* Acceptance Modal Overlay */}
         <AnimatePresence>
           {isAcceptModalOpen && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+            <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-primary/40 backdrop-blur-sm" onClick={() => !isProcessing && setIsAcceptModalOpen(false)} />
               <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-white max-w-lg w-full rounded-[32px] p-8 relative z-10 shadow-2xl border border-outline-variant/10">
                 <button disabled={isProcessing} onClick={() => setIsAcceptModalOpen(false)} className="absolute top-6 right-6 p-2 rounded-full hover:bg-primary/5 text-primary/40 hover:text-primary transition-colors disabled:opacity-50">
@@ -604,7 +604,7 @@ export default function ApplicationDetailsView({ app, onBack, onUpdate, showResu
         {/* Rejection Modal Overlay */}
         <AnimatePresence>
           {isRejectModalOpen && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+            <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-primary/40 backdrop-blur-sm" onClick={() => !isProcessing && setIsRejectModalOpen(false)} />
               <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-white max-w-lg w-full rounded-[32px] p-8 relative z-10 shadow-2xl border border-outline-variant/10">
                 <button disabled={isProcessing} onClick={() => setIsRejectModalOpen(false)} className="absolute top-6 right-6 p-2 rounded-full hover:bg-primary/5 text-primary/40 hover:text-primary transition-colors disabled:opacity-50">

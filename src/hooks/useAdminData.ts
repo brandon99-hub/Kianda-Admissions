@@ -122,11 +122,15 @@ export const useDeleteApplication = () => {
 export const useBulkSync = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (results: any[]) => {
+    mutationFn: async (payload: any[] | { results: any[], sendEmails?: boolean }) => {
+      const isArray = Array.isArray(payload);
+      const results = isArray ? payload : payload.results;
+      const sendEmails = isArray ? false : Boolean(payload.sendEmails);
+
       const res = await authFetch('/api/admin/results/bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ results })
+        body: JSON.stringify({ results, sendEmails, isSingleRow: false })
       });
       if (!res.ok) throw new Error('Sync failed');
       return res.json();
@@ -145,11 +149,15 @@ export const useBulkSync = () => {
 export const useSaveStudentResults = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (results: any[]) => {
+    mutationFn: async (payload: any[] | { results: any[], sendEmails?: boolean }) => {
+      const isArray = Array.isArray(payload);
+      const results = isArray ? payload : payload.results;
+      const sendEmails = isArray ? true : (payload.sendEmails !== undefined ? payload.sendEmails : true);
+
       const res = await authFetch('/api/admin/results/bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ results })
+        body: JSON.stringify({ results, sendEmails, isSingleRow: true })
       });
       if (!res.ok) throw new Error('Failed to save assessment results');
       return res.json();
@@ -157,7 +165,7 @@ export const useSaveStudentResults = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['results'] });
       queryClient.invalidateQueries({ queryKey: ['applications'] });
-      toast.success('Assessment grades updated successfully.');
+      toast.success('Assessment grades updated and outcome email dispatched.');
     },
     onError: () => {
       toast.error('Failed to update assessment grades.');

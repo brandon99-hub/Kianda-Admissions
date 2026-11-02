@@ -12,20 +12,35 @@
 
 // ── Session Check ─────────────────────────────────────────────────────────────
 
+export interface SessionUser {
+  role: 'admin' | 'applicant';
+  email?: string;
+}
+
+/**
+ * Calls /api/auth/me to retrieve active session role and email.
+ * Returns { role, email } or null.
+ */
+export async function getSessionUser(): Promise<SessionUser | null> {
+  try {
+    const res = await fetch('/api/auth/me', { credentials: 'include' });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data.role) return null;
+    return { role: data.role, email: data.email };
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Calls /api/auth/me to determine if the browser has a valid active session.
  * Returns 'admin', 'applicant', or null.
  * Use this on app mount to restore the correct view.
  */
 export async function checkSession(): Promise<'admin' | 'applicant' | null> {
-  try {
-    const res = await fetch('/api/auth/me', { credentials: 'include' });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data.role || null;
-  } catch {
-    return null;
-  }
+  const session = await getSessionUser();
+  return session?.role || null;
 }
 
 // ── Logout ────────────────────────────────────────────────────────────────────

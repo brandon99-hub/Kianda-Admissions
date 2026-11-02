@@ -33,6 +33,8 @@ export const applications = pgTable('applications', {
   erpSyncStatus: erpSyncStatusEnum('erp_sync_status').default('pending'),
   erpAdmissionNo: varchar('erp_admission_no', { length: 50 }),
   applicantUserId: integer('applicant_user_id').references(() => applicantUsers.id, { onDelete: 'set null' }),
+  assessmentEmailSent: boolean('assessment_email_sent').default(false),
+  assessmentEmailSentAt: timestamp('assessment_email_sent_at'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });

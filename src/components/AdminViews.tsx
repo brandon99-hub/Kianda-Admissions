@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { LayoutDashboard, Users, GraduationCap, Calendar, LogOut, ListChecks, FileText, CreditCard, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, Users, GraduationCap, Calendar, LogOut, ListChecks, FileText, CreditCard, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import DashboardView from './admin/views/DashboardView';
 import ApplicationsView from './admin/views/ApplicationsView';
 import GradesView from './admin/views/GradesView';
@@ -25,7 +25,7 @@ const NAV_ITEMS: { id: AdminTab; label: string; icon: React.ElementType }[] = [
 
 // ── Inner layout (must be inside AdminProvider) ───────────────────────────────
 
-function AdminLayout({ onLogout }: { onLogout: () => void }) {
+function AdminLayout({ onLogout, onViewPortal }: { onLogout: () => void; onViewPortal?: () => void }) {
   const { state, setActiveTab, toggleSidebar, setPreSelectedGradeId } = useAdminContext();
   const { activeTab, isSidebarCollapsed } = state;
 
@@ -39,26 +39,20 @@ function AdminLayout({ onLogout }: { onLogout: () => void }) {
       {/* Sidebar */}
       <motion.div
         animate={{ width: isSidebarCollapsed ? 80 : 300 }}
-        className="sticky top-0 h-screen bg-white flex flex-col py-8 shadow-[10px_0_40px_rgba(0,0,0,0.02)] relative z-20 border-r border-outline-variant/5"
+        className="sticky top-0 h-screen bg-white flex flex-col py-6 shadow-[10px_0_40px_rgba(0,0,0,0.02)] relative z-20 border-r border-outline-variant/5"
       >
-        {/* Logo + collapse button */}
-        <div className={`flex items-center justify-between mb-12 px-6 ${isSidebarCollapsed ? 'flex-col gap-4' : ''}`}>
-          <div className="flex items-center gap-3">
-            <img
-              src="/kianda-school-logo-removebg-preview.png"
-              alt="Logo"
-              className={`transition-all duration-300 ${isSidebarCollapsed ? 'w-8 h-8' : 'w-10 h-10'}`}
-            />
-            {!isSidebarCollapsed && (
-              <div className="font-headline font-black text-lg text-primary tracking-tight">Admissions Portal</div>
-            )}
-          </div>
-          <button
-            onClick={toggleSidebar}
-            className="p-2 hover:bg-secondary-container rounded-lg text-primary transition-colors"
-          >
-            {isSidebarCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
-          </button>
+        {/* Logo */}
+        <div className={`flex items-center mb-8 px-6 ${isSidebarCollapsed ? 'justify-center' : 'gap-3'}`}>
+          <img
+            src="/kianda-school-logo-removebg-preview.png"
+            alt="Logo"
+            className={`transition-all duration-300 ${isSidebarCollapsed ? 'w-9 h-9' : 'w-10 h-10'}`}
+          />
+          {!isSidebarCollapsed && (
+            <div className="font-headline font-black text-lg text-primary tracking-tight whitespace-nowrap">
+              Admissions Portal
+            </div>
+          )}
         </div>
 
         {/* Nav items */}
@@ -67,7 +61,7 @@ function AdminLayout({ onLogout }: { onLogout: () => void }) {
             <div key={item.id} className="relative group/tooltip">
               <button
                 onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center gap-4 px-5 py-4 rounded-xl transition-all duration-300 font-bold group ${
+                className={`w-full flex items-center gap-4 px-5 py-3.5 rounded-xl transition-all duration-300 font-bold group cursor-pointer ${
                   activeTab === item.id
                     ? 'bg-secondary text-primary shadow-lg shadow-secondary/20'
                     : 'text-on-surface-variant/40 hover:bg-secondary-container/30 hover:text-primary'
@@ -81,47 +75,75 @@ function AdminLayout({ onLogout }: { onLogout: () => void }) {
                 )}
               </button>
               {isSidebarCollapsed && (
-                <div className="absolute left-[calc(100%+12px)] top-1/2 -translate-y-1/2 px-3 py-2 bg-white text-primary text-[10px] font-black uppercase tracking-widest rounded-xl opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-all duration-200 whitespace-nowrap z-50 shadow-xl border border-outline-variant/10 group-hover/tooltip:translate-x-1">
+                <div className="absolute left-[calc(100%+12px)] top-1/2 -translate-y-1/2 px-3 py-2 bg-white text-primary text-[10px] font-black uppercase tracking-widest rounded-xl opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-all duration-200 whitespace-nowrap z-50 shadow-2xl border border-outline-variant/10 group-hover/tooltip:translate-x-1">
                   {item.label}
                 </div>
               )}
             </div>
           ))}
         </nav>
-
-        {/* Sign out */}
-        <div className="px-3 pt-6 border-t border-outline-variant/10">
-          <div className="relative group/tooltip">
-            <button
-              onClick={handleLogout}
-              className="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-on-surface-variant/30 hover:text-red-600 hover:bg-red-50 transition-all font-bold group"
-            >
-              <LogOut size={20} className="group-hover:rotate-12 transition-transform" />
-              {!isSidebarCollapsed && <span className="text-[13px] tracking-wide">Sign Out</span>}
-            </button>
-            {isSidebarCollapsed && (
-              <div className="absolute left-[calc(100%+12px)] top-1/2 -translate-y-1/2 px-3 py-2 bg-white text-red-600 text-[10px] font-black uppercase tracking-widest rounded-xl opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-all duration-200 whitespace-nowrap z-50 shadow-xl border border-red-100 group-hover/tooltip:translate-x-1">
-                Sign Out
-              </div>
-            )}
-          </div>
-        </div>
       </motion.div>
 
-      {/* Content area — views are kept mounted with CSS visibility to preserve local state */}
-      <div className="flex-grow p-12 overflow-y-auto bg-surface-container-lowest/30">
-        <div style={{ display: activeTab === 'dashboard'    ? 'block' : 'none' }}><DashboardView /></div>
-        <div style={{ display: activeTab === 'applications' ? 'block' : 'none' }}><ApplicationsView /></div>
-        <div style={{ display: activeTab === 'grades'       ? 'block' : 'none' }}>
-          <GradesView onGoToAssessments={(gradeId) => {
-            setPreSelectedGradeId(gradeId);
-            setActiveTab('assessments');
-          }} />
+      {/* Main column with persistent Top Navigation Bar */}
+      <div className="flex-grow flex flex-col h-screen overflow-hidden">
+        {/* Admin Top Navigation Bar */}
+        <header className="h-16 px-6 md:px-8 bg-white/90 backdrop-blur-md border-b border-outline-variant/10 flex items-center justify-between shrink-0 z-30 shadow-sm">
+          <div className="flex items-center gap-4">
+            {/* Collapse toggle button */}
+            <button
+              onClick={toggleSidebar}
+              className="p-2.5 hover:bg-surface-container-low text-primary/70 hover:text-primary rounded-xl transition-all cursor-pointer flex items-center justify-center border border-outline-variant/10 hover:border-outline-variant/25 shadow-xs"
+              title={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              {isSidebarCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+            </button>
+
+            {/* Academic Year display */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold tracking-wide text-primary/80 font-headline">
+                Academic Year 2026
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {/* Button 1: View Application Form */}
+            {onViewPortal && (
+              <button
+                onClick={onViewPortal}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-extrabold uppercase tracking-wider text-primary bg-primary/5 hover:bg-primary/10 border border-primary/15 transition-all shadow-sm hover:shadow cursor-pointer group"
+              >
+                <FileText size={15} className="text-secondary flex-shrink-0 group-hover:scale-110 transition-transform" />
+                <span>View Application Form</span>
+              </button>
+            )}
+
+            {/* Button 2: Sign Out */}
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[11px] font-extrabold uppercase tracking-wider text-red-600 bg-red-50 hover:bg-red-100/80 border border-red-200/60 transition-all shadow-sm hover:shadow cursor-pointer"
+            >
+              <LogOut size={15} className="flex-shrink-0" />
+              <span>Sign Out</span>
+            </button>
+          </div>
+        </header>
+
+        {/* Content area — views are kept mounted with CSS visibility to preserve local state */}
+        <div className="flex-grow p-8 md:p-12 overflow-y-auto bg-surface-container-lowest/30">
+          <div style={{ display: activeTab === 'dashboard'    ? 'block' : 'none' }}><DashboardView /></div>
+          <div style={{ display: activeTab === 'applications' ? 'block' : 'none' }}><ApplicationsView /></div>
+          <div style={{ display: activeTab === 'grades'       ? 'block' : 'none' }}>
+            <GradesView onGoToAssessments={(gradeId) => {
+              setPreSelectedGradeId(gradeId);
+              setActiveTab('assessments');
+            }} />
+          </div>
+          <div style={{ display: activeTab === 'assessments'  ? 'block' : 'none' }}><AssessmentBookView initialGradeId={state.preSelectedGradeId} /></div>
+          <div style={{ display: activeTab === 'interviews'   ? 'block' : 'none' }}><InterviewsView /></div>
+          <div style={{ display: activeTab === 'documents'    ? 'block' : 'none' }}><ProcessDocumentsView /></div>
+          <div style={{ display: activeTab === 'payments'     ? 'block' : 'none' }}><PaymentsView /></div>
         </div>
-        <div style={{ display: activeTab === 'assessments'  ? 'block' : 'none' }}><AssessmentBookView initialGradeId={state.preSelectedGradeId} /></div>
-        <div style={{ display: activeTab === 'interviews'   ? 'block' : 'none' }}><InterviewsView /></div>
-        <div style={{ display: activeTab === 'documents'    ? 'block' : 'none' }}><ProcessDocumentsView /></div>
-        <div style={{ display: activeTab === 'payments'     ? 'block' : 'none' }}><PaymentsView /></div>
       </div>
     </div>
   );
@@ -129,10 +151,10 @@ function AdminLayout({ onLogout }: { onLogout: () => void }) {
 
 // ── Public export — wraps with Provider ──────────────────────────────────────
 
-export function AdminDashboard({ onLogout }: { onLogout: () => void }) {
+export function AdminDashboard({ onLogout, onViewPortal }: { onLogout: () => void; onViewPortal?: () => void }) {
   return (
     <AdminProvider>
-      <AdminLayout onLogout={onLogout} />
+      <AdminLayout onLogout={onLogout} onViewPortal={onViewPortal} />
     </AdminProvider>
   );
 }

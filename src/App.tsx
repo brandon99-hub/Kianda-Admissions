@@ -15,7 +15,7 @@ import PaymentPolling from './components/PaymentPolling';
 import { ApplicationState, Step } from './types';
 import { LayoutDashboard, Users, GraduationCap, Calendar, LogOut, Search, Filter, ArrowUpRight, Clock, MapPin, ListChecks, FileText, CreditCard } from 'lucide-react';
 import { AdminDashboard } from './components/AdminViews';
-import { checkSession, adminLogout, applicantLogout } from './utils/auth';
+import { checkSession, adminLogout, applicantLogout, getSessionUser, SessionUser } from './utils/auth';
 import ApplicantLogin from './components/ApplicantLogin';
 import ApplicantDashboard from './components/ApplicantDashboard';
 
@@ -56,6 +56,7 @@ const INITIAL_STATE: ApplicationState = {
 
 export default function App() {
   const [view, setView] = useState<'portal' | 'login' | 'admin' | 'applicant-login' | 'applicant-dashboard'>('portal');
+  const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
   const [state, setState] = useState<ApplicationState>(() => {
     const saved = localStorage.getItem('kianda_admission_state');
     if (saved) {
@@ -87,9 +88,10 @@ export default function App() {
 
   // Session persistence check — ask the server if a valid cookie session exists
   useEffect(() => {
-    checkSession().then(role => {
-      if (role === 'admin') setView('admin');
-      else if (role === 'applicant') setView('applicant-dashboard');
+    getSessionUser().then(user => {
+      setSessionUser(user);
+      if (user?.role === 'admin') setView('admin');
+      else if (user?.role === 'applicant') setView('applicant-dashboard');
     });
   }, []);
 
@@ -207,6 +209,7 @@ export default function App() {
       const data = await response.json();
       if (response.ok) {
         // Server sets the HttpOnly cookie — no client-side token storage needed
+        setSessionUser({ role: 'admin', email: loginForm.email });
         toast.success(`Welcome back!`, { icon: '👋' });
         setView('admin');
       } else {
@@ -217,6 +220,18 @@ export default function App() {
     } finally {
       setIsLoggingIn(false);
     }
+  };
+
+  const handleAdminLogout = async () => {
+    await adminLogout();
+    setSessionUser(null);
+    setView('portal');
+  };
+
+  const handleApplicantLogout = async () => {
+    await applicantLogout();
+    setSessionUser(null);
+    setView('portal');
   };
 
   const [showPassword, setShowPassword] = useState(false);
@@ -308,33 +323,59 @@ export default function App() {
 
   if (view === 'applicant-login') return (
     <ApplicantLogin
-      onLoginSuccess={() => setView('applicant-dashboard')}
+      onLoginSuccess={async () => {
+        const user = await getSessionUser();
+        setSessionUser(user || { role: 'applicant' });
+        setView('applicant-dashboard');
+      }}
       onBack={() => setView('portal')}
     />
   );
 
   if (view === 'applicant-dashboard') return (
     <ApplicantDashboard
-      onLogout={async () => { await applicantLogout(); setView('portal'); }}
+      onLogout={handleApplicantLogout}
       onNewApplication={() => { confirmResetApplication(); setView('portal'); }}
     />
   );
 
   if (view === 'admin') return (
-    <AdminDashboard onLogout={async () => { await adminLogout(); setView('portal'); }} />
+    <AdminDashboard 
+      onLogout={handleAdminLogout} 
+      onViewPortal={() => setView('portal')} 
+    />
   );
 
   return (
     <div className="min-h-screen flex flex-col bg-surface">
       <Header 
-        onAdminClick={() => setView('login')} 
+        userRole={sessionUser?.role || null}
+        userEmail={sessionUser?.email || null}
+        onAdminClick={() => {
+          if (sessionUser?.role === 'admin') {
+            setView('admin');
+          } else {
+            setView('login');
+          }
+        }} 
         onApplicantLoginClick={() => {
-          checkSession().then(role => {
-            if (role === 'applicant') setView('applicant-dashboard');
-            else setView('applicant-login');
-          });
+          if (sessionUser?.role === 'applicant') {
+            setView('applicant-dashboard');
+          } else {
+            setView('applicant-login');
+          }
         }}
-        isApplicantLoggedIn={false}
+        onDashboardClick={() => setView('applicant-dashboard')}
+        onReturnToAdmin={() => setView('admin')}
+        onLogout={async () => {
+          if (sessionUser?.role === 'admin') {
+            await handleAdminLogout();
+          } else {
+            await handleApplicantLogout();
+          }
+        }}
+        onLogoClick={() => setView('portal')}
+        isApplicantLoggedIn={sessionUser?.role === 'applicant'}
       />
       
       <main className="flex-grow max-w-5xl mx-auto px-4 md:px-8 mt-16 w-full pb-20">
@@ -439,8 +480,9 @@ export default function App() {
                     toast.success('Application submitted successfully! Please check your email for the next steps.');
                     setState(INITIAL_STATE);
                     localStorage.removeItem('kianda_admission_state');
-                    checkSession().then(role => {
-                      if (role === 'applicant') setView('applicant-dashboard');
+                    getSessionUser().then(user => {
+                      setSessionUser(user);
+                      if (user?.role === 'applicant') setView('applicant-dashboard');
                     });
                   }}
                   onBack={() => jumpToStep('payment')}

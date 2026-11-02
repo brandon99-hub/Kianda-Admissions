@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Clock, MapPin, Calendar, Plus, Search, Loader2, Check, X, ChevronDown, ChevronRight, Mail, LayoutGrid, CalendarCheck, UserMinus, UserPlus, Phone, RefreshCw, CheckCircle2, AlertTriangle, XCircle } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { useQueryClient } from '@tanstack/react-query';
+import { Clock, MapPin, Calendar, Plus, Search, Loader2, Check, X, ChevronDown, ChevronUp, ChevronRight, Mail, LayoutGrid, CalendarCheck, UserMinus, UserPlus, Phone, RefreshCw, CheckCircle2, AlertTriangle, XCircle, CheckSquare, Square } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import AdminPageHeader from '../AdminPageHeader';
 import DatePicker from '../../DatePicker';
@@ -21,9 +23,11 @@ interface ScheduledInterviewRowProps {
   isProcessing: boolean;
   vacantSpots: number;
   index: number;
+  isSelected: boolean;
+  onToggleSelect: (e: React.MouseEvent) => void;
 }
 
-function ScheduledInterviewRow({ slot, marks, onAccept, onReject, onResync, onViewDetails, isProcessing, vacantSpots, index }: ScheduledInterviewRowProps) {
+function ScheduledInterviewRow({ slot, marks, onAccept, onReject, onResync, onViewDetails, isProcessing, vacantSpots, index, isSelected, onToggleSelect }: ScheduledInterviewRowProps) {
   const [parentToggle, setParentToggle] = useState<'mother' | 'father'>('mother');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -42,12 +46,22 @@ function ScheduledInterviewRow({ slot, marks, onAccept, onReject, onResync, onVi
 
   return (
     <tr 
-      className="hover:bg-primary/[0.02] transition-colors group cursor-pointer hover:relative hover:z-[100]"
+      className="hover:bg-primary/[0.02] transition-colors group cursor-pointer hover:relative hover:z-10"
       onClick={() => onViewDetails(slot.application)}
     >
+       <td className="pl-6 pr-2 py-6 w-10" onClick={(e) => e.stopPropagation()}>
+          <button onClick={onToggleSelect} className="text-primary transition-colors">
+            {isSelected
+              ? <CheckSquare size={18} className="text-secondary" />
+              : <Square size={18} className="text-primary/20 hover:text-primary/50" />}
+          </button>
+       </td>
        <td className="px-8 py-6">
           <div className="font-bold text-primary text-sm flex items-center gap-2">{slot.application?.candidate?.fullName}</div>
           <div className="text-[10px] font-medium text-on-surface-variant/40 uppercase tracking-widest">APP-{slot.applicationId.toString().padStart(4, '0')}</div>
+       </td>
+       <td className="px-8 py-6 text-sm font-black text-secondary">
+          {slot.application?.candidate?.grade || '—'}
        </td>
        <td className="px-8 py-6">
          <div className="flex flex-col">
@@ -184,9 +198,11 @@ interface AwaitingInterviewRowProps {
   isProcessing: boolean;
   vacantSpots: number;
   index: number;
+  isSelected: boolean;
+  onToggleSelect: (e: React.MouseEvent) => void;
 }
 
-function AwaitingInterviewRow({ app, marks, onSchedule, onAccept, onReject, onResync, onViewDetails, isProcessing, vacantSpots, index }: AwaitingInterviewRowProps) {
+function AwaitingInterviewRow({ app, marks, onSchedule, onAccept, onReject, onResync, onViewDetails, isProcessing, vacantSpots, index, isSelected, onToggleSelect }: AwaitingInterviewRowProps) {
   const [parentToggle, setParentToggle] = useState<'mother' | 'father'>('mother');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -205,13 +221,21 @@ function AwaitingInterviewRow({ app, marks, onSchedule, onAccept, onReject, onRe
 
   return (
     <tr 
-      className="hover:bg-primary/[0.02] transition-colors group cursor-pointer hover:relative hover:z-[100]"
+      className="hover:bg-primary/[0.02] transition-colors group cursor-pointer hover:relative hover:z-10"
       onClick={() => onViewDetails(app)}
     >
+       <td className="pl-6 pr-2 py-6 w-10" onClick={(e) => e.stopPropagation()}>
+          <button onClick={onToggleSelect} className="text-primary transition-colors">
+            {isSelected
+              ? <CheckSquare size={18} className="text-secondary" />
+              : <Square size={18} className="text-primary/20 hover:text-primary/50" />}
+          </button>
+       </td>
        <td className="px-8 py-6">
           <div className="font-bold text-primary text-sm">{app.candidate?.fullName}</div>
           <div className="text-[10px] font-medium text-on-surface-variant/40 uppercase tracking-widest">APP-{app.id.toString().padStart(4, '0')}</div>
        </td>
+       <td className="px-8 py-6 text-sm font-black text-secondary">{app.candidate?.grade}</td>
        <td className="px-8 py-6">
          <div className="flex flex-col">
             <div className="font-bold text-primary text-sm whitespace-nowrap">
@@ -237,7 +261,6 @@ function AwaitingInterviewRow({ app, marks, onSchedule, onAccept, onReject, onRe
        <td className="px-8 py-6">
           <AssessmentMarksSwitcher marks={marks} />
        </td>
-       <td className="px-8 py-6 text-sm font-black text-secondary">{app.candidate?.grade}</td>
        <td className="px-8 py-6">
           <div className="flex flex-col gap-2">
             <div className="flex bg-primary/5 rounded-full p-0.5 border border-primary/10 w-fit">
@@ -351,13 +374,14 @@ function OutcomeRow({ app, marks, onResync, onViewDetails, isResyncing }: any) {
 
   return (
     <tr 
-      className="hover:bg-primary/[0.02] transition-colors group cursor-pointer hover:relative hover:z-[100]"
+      className="hover:bg-primary/[0.02] transition-colors group cursor-pointer hover:relative hover:z-10"
       onClick={() => onViewDetails(app)}
     >
        <td className="px-8 py-6">
           <div className="font-bold text-primary text-sm">{app.candidate?.fullName}</div>
           <div className="text-[10px] font-medium text-on-surface-variant/40 uppercase tracking-widest">APP-{app.id.toString().padStart(4, '0')}</div>
        </td>
+       <td className="px-8 py-6 text-sm font-black text-secondary">{app.candidate?.grade}</td>
        <td className="px-8 py-6">
          <div className="flex flex-col">
             <div className="font-bold text-primary text-sm whitespace-nowrap">
@@ -383,7 +407,6 @@ function OutcomeRow({ app, marks, onResync, onViewDetails, isResyncing }: any) {
        <td className="px-8 py-6">
           <AssessmentMarksSwitcher marks={marks} />
        </td>
-       <td className="px-8 py-6 text-sm font-black text-secondary">{app.candidate?.grade}</td>
        <td className="px-8 py-6">
           <div className="flex flex-col gap-2">
             <div className="flex bg-primary/5 rounded-full p-0.5 border border-primary/10 w-fit">
@@ -468,6 +491,7 @@ function OutcomeRow({ app, marks, onResync, onViewDetails, isResyncing }: any) {
 
 
 export default function InterviewsView() {
+  const queryClient = useQueryClient();
   const { data: applications = [], isLoading: appsLoading, refetch: refetchApps } = useApplications();
   const { data: grades = [] } = useGrades();
   const { data: interviews = [], isLoading: interviewsLoading, refetch: refetchInterviews } = useInterviews();
@@ -495,6 +519,57 @@ export default function InterviewsView() {
   const [selectedApp, setSelectedApp] = useState<any | null>(null);
   const [showAcceptProgress, setShowAcceptProgress] = useState(false);
 
+  // Bulk interview selection state
+  const [bulkInterviewIds, setBulkInterviewIds] = useState<Set<number>>(new Set());
+  const [bulkProgress, setBulkProgress] = useState<{ current: number; total: number; accepted: number; waitlisted: number } | null>(null);
+  const [showBulkConfirmModal, setShowBulkConfirmModal] = useState<'accept' | 'reject' | null>(null);
+  const [bulkRejectReason, setBulkRejectReason] = useState('');
+  const [isBulkRejecting, setIsBulkRejecting] = useState(false);
+  const [customAcceptOrder, setCustomAcceptOrder] = useState<number[]>([]);
+
+  const openBulkAcceptModal = () => {
+    const ids: number[] = Array.from(bulkInterviewIds);
+    if (ids.length === 0) return;
+
+    // Compile assessment scores for each selected candidate to establish a merit-first default
+    const candidateScores = ids.map(id => {
+      const app = applications.find((a: any) => a.id === id);
+      const appResults = results.filter((r: any) => r.applicationId === id);
+      const totalMarksObtained = appResults.reduce((acc: number, r: any) => acc + (Number(r.marksObtained) || 0), 0);
+      const totalMaxMarks = appResults.reduce((acc: number, r: any) => {
+        const ass = assessments.find((a: any) => a.id === r.assessmentId);
+        return acc + (ass?.maxMarks || 100);
+      }, 0) || (appResults.length > 0 ? appResults.length * 100 : 100);
+      const percentage = totalMaxMarks > 0 ? Math.round((totalMarksObtained / totalMaxMarks) * 100) : 0;
+      const grade = app?.candidate?.grade || '';
+      return { id, grade, percentage };
+    });
+
+    // Sort by Grade first, then descending by exam score (merit-first default)
+    candidateScores.sort((a, b) => {
+      if (a.grade !== b.grade) return a.grade.localeCompare(b.grade);
+      return b.percentage - a.percentage;
+    });
+
+    setCustomAcceptOrder(candidateScores.map(c => c.id));
+    setShowBulkConfirmModal('accept');
+  };
+
+  const moveCandidate = (id: number, direction: 'up' | 'down') => {
+    setCustomAcceptOrder(prev => {
+      const index = prev.indexOf(id);
+      if (index === -1) return prev;
+      const targetIndex = direction === 'up' ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= prev.length) return prev;
+
+      const next = [...prev];
+      const temp = next[index];
+      next[index] = next[targetIndex];
+      next[targetIndex] = temp;
+      return next;
+    });
+  };
+
   const [selectedSlot, setSelectedSlot] = useState<string>('All Slots');
   const [outcomeFilter, setOutcomeFilter] = useState<'All Outcomes' | 'accepted' | 'rejected' | 'waitlisted'>('All Outcomes');
 
@@ -505,6 +580,8 @@ export default function InterviewsView() {
   // Reset pagination on tab or filter changes
   useEffect(() => {
     setCurrentPage(1);
+    setBulkInterviewIds(new Set());
+    setCustomAcceptOrder([]);
   }, [activeTab, searchQuery, selectedSlot, outcomeFilter]);
 
   // Schedule Form State
@@ -585,6 +662,120 @@ export default function InterviewsView() {
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
+
+  const toggleBulkInterview = (id: number) => {
+    setBulkInterviewIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const allCurrentSelected = (() => {
+    const currentList = activeTab === 'scheduled' ? paginatedInterviews : paginatedAwaiting;
+    return currentList.length > 0 && currentList.every((item: any) => {
+      const id = activeTab === 'scheduled' ? item.applicationId : item.id;
+      return bulkInterviewIds.has(id);
+    });
+  })();
+
+  const toggleSelectAllInterviews = () => {
+    const currentList = activeTab === 'scheduled' ? paginatedInterviews : paginatedAwaiting;
+    if (allCurrentSelected) {
+      setBulkInterviewIds(new Set());
+    } else {
+      const ids = currentList.map((item: any) => activeTab === 'scheduled' ? item.applicationId : item.id);
+      setBulkInterviewIds(new Set(ids));
+    }
+  };
+
+  const handleBulkAccept = async () => {
+    setShowBulkConfirmModal(null);
+    const ids: number[] = customAcceptOrder.length > 0 ? customAcceptOrder : Array.from(bulkInterviewIds);
+
+    setBulkProgress({ current: 0, total: ids.length, accepted: 0, waitlisted: 0 });
+    setShowAcceptProgress(true);
+
+    // Track running vacancies per grade so spots are properly decremented
+    const remainingSpots: Record<string, number> = {};
+    grades.forEach((g: any) => {
+      const key = g.gradeName?.toLowerCase()?.trim();
+      if (key) remainingSpots[key] = Math.max(0, g.vacantSpots ?? 0);
+    });
+
+    let acceptedCount = 0;
+    let waitlistedCount = 0;
+
+    for (const appId of ids) {
+      const app = applications.find((a: any) => a.id === appId);
+      const gradeKey = app?.candidate?.grade?.toLowerCase()?.trim();
+      const spots = remainingSpots[gradeKey] ?? 0;
+      const desiredOutcome = spots > 0 ? 'accepted' : 'waitlisted';
+      if (spots > 0) {
+        remainingSpots[gradeKey] = spots - 1;
+      }
+
+      try {
+        const res: any = await recordOutcomeMutation.mutateAsync({
+          applicationId: appId,
+          outcome: desiredOutcome,
+          reason: undefined
+        });
+
+        const actualStatus = res?.status || desiredOutcome;
+        if (actualStatus === 'accepted') {
+          acceptedCount++;
+        } else {
+          waitlistedCount++;
+        }
+      } catch (e) {
+        // continue processing
+      }
+
+      setBulkProgress(prev => prev ? {
+        ...prev,
+        current: prev.current + 1,
+        accepted: acceptedCount,
+        waitlisted: waitlistedCount,
+      } : null);
+    }
+
+    setTimeout(() => {
+      setShowAcceptProgress(false);
+      setBulkProgress(null);
+      setBulkInterviewIds(new Set());
+      setCustomAcceptOrder([]);
+      refetchApps();
+      refetchInterviews();
+      queryClient.invalidateQueries({ queryKey: ['grades'] });
+      toast.success(`✓ ${acceptedCount} Accepted · ${waitlistedCount} Waitlisted`);
+    }, 2000);
+  };
+
+  const handleBulkReject = async () => {
+    if (!bulkRejectReason.trim()) return;
+    setIsBulkRejecting(true);
+    const ids: number[] = Array.from(bulkInterviewIds);
+    try {
+      for (const appId of ids) {
+        await recordOutcomeMutation.mutateAsync({
+          applicationId: appId,
+          outcome: 'rejected',
+          reason: bulkRejectReason
+        });
+      }
+      setBulkInterviewIds(new Set());
+      setShowBulkConfirmModal(null);
+      setBulkRejectReason('');
+      refetchApps();
+      refetchInterviews();
+      toast.success(`${ids.length} candidate${ids.length > 1 ? 's' : ''} rejected.`);
+    } catch (e) {
+      toast.error('One or more rejections failed.');
+    } finally {
+      setIsBulkRejecting(false);
+    }
+  };
 
   const handleSchedule = (e: React.FormEvent) => {
     e.preventDefault();
@@ -692,27 +883,51 @@ export default function InterviewsView() {
       </AdminPageHeader>
 
       {/* Tabs */}
-      <div className="flex flex-wrap gap-4 border-b border-outline-variant/10 pb-4">
+      <div className="flex flex-wrap justify-center items-center gap-4 border-b border-outline-variant/10 pb-4">
         <button 
           onClick={() => setActiveTab('scheduled')}
-          className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-2 ${activeTab === 'scheduled' ? 'bg-primary text-secondary shadow-lg shadow-primary/10' : 'text-primary/40 hover:text-primary'}`}
+          className={`px-6 py-3 rounded-xl text-[11px] font-black uppercase tracking-[0.15em] transition-all flex items-center gap-2.5 ${
+            activeTab === 'scheduled' 
+              ? 'bg-primary text-secondary shadow-lg shadow-primary/20 scale-100 ring-2 ring-primary/20' 
+              : 'bg-white text-primary/75 hover:text-primary hover:bg-primary/5 border border-outline-variant/20 shadow-sm'
+          }`}
         >
-          <CalendarCheck size={14} /> Scheduled
-          <span className={`px-2 py-0.5 rounded-full text-[8px] ${activeTab === 'scheduled' ? 'bg-white/20' : 'bg-primary/5'}`}>{filteredInterviews.length}</span>
+          <CalendarCheck size={15} /> Scheduled
+          <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black ${
+            activeTab === 'scheduled' ? 'bg-white/20 text-secondary' : 'bg-primary/10 text-primary'
+          }`}>
+            {filteredInterviews.length}
+          </span>
         </button>
         <button 
           onClick={() => setActiveTab('awaiting')}
-          className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-2 ${activeTab === 'awaiting' ? 'bg-secondary text-primary shadow-lg shadow-secondary/10' : 'text-primary/40 hover:text-primary'}`}
+          className={`px-6 py-3 rounded-xl text-[11px] font-black uppercase tracking-[0.15em] transition-all flex items-center gap-2.5 ${
+            activeTab === 'awaiting' 
+              ? 'bg-secondary text-primary shadow-lg shadow-secondary/20 scale-100 ring-2 ring-secondary/30' 
+              : 'bg-white text-primary/75 hover:text-primary hover:bg-primary/5 border border-outline-variant/20 shadow-sm'
+          }`}
         >
-          <LayoutGrid size={14} /> Awaiting Scheduling
-          <span className={`px-2 py-0.5 rounded-full text-[8px] ${activeTab === 'awaiting' ? 'bg-primary/10' : 'bg-primary/5'}`}>{filteredAwaiting.length}</span>
+          <LayoutGrid size={15} /> Awaiting Scheduling
+          <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black ${
+            activeTab === 'awaiting' ? 'bg-primary/15 text-primary' : 'bg-primary/10 text-primary'
+          }`}>
+            {filteredAwaiting.length}
+          </span>
         </button>
         <button 
           onClick={() => setActiveTab('outcomes')}
-          className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-2 ${activeTab === 'outcomes' ? 'bg-green-100 text-green-700 shadow-lg shadow-green-100/50' : 'text-primary/40 hover:text-primary'}`}
+          className={`px-6 py-3 rounded-xl text-[11px] font-black uppercase tracking-[0.15em] transition-all flex items-center gap-2.5 ${
+            activeTab === 'outcomes' 
+              ? 'bg-green-600 text-white shadow-lg shadow-green-600/20 scale-100 ring-2 ring-green-600/30' 
+              : 'bg-white text-primary/75 hover:text-primary hover:bg-primary/5 border border-outline-variant/20 shadow-sm'
+          }`}
         >
-          <CheckCircle2 size={14} /> Outcomes
-          <span className={`px-2 py-0.5 rounded-full text-[8px] ${activeTab === 'outcomes' ? 'bg-green-700/10' : 'bg-primary/5'}`}>{filteredOutcomes.length}</span>
+          <CheckCircle2 size={15} /> Outcomes
+          <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black ${
+            activeTab === 'outcomes' ? 'bg-white/25 text-white' : 'bg-primary/10 text-primary'
+          }`}>
+            {filteredOutcomes.length}
+          </span>
         </button>
       </div>
 
@@ -726,7 +941,21 @@ export default function InterviewsView() {
           <table className="w-full text-left whitespace-nowrap min-w-[1000px]">
              <thead className="bg-surface-container-low/50 border-b border-outline-variant/10">
                 <tr>
+                   {activeTab !== 'outcomes' && (
+                     <th className="pl-6 pr-2 py-6 w-10">
+                       <button
+                         onClick={toggleSelectAllInterviews}
+                         className="text-primary/40 hover:text-primary transition-colors"
+                         title={allCurrentSelected ? 'Deselect all' : 'Select all visible'}
+                       >
+                         {allCurrentSelected
+                           ? <CheckSquare size={16} className="text-secondary" />
+                           : <Square size={16} />}
+                       </button>
+                     </th>
+                   )}
                    <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-primary/40">Candidate Dossier</th>
+                   <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-primary/40">Grade Applied</th>
                    <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-primary/40">DOB / Age</th>
                    <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-primary/40">Religion</th>
                    <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-primary/40">Ass. Marks</th>
@@ -739,14 +968,12 @@ export default function InterviewsView() {
                      </>
                    ) : activeTab === 'awaiting' ? (
                      <>
-                        <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-primary/40">Grade Applied</th>
                         <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-primary/40">Parent Info</th>
                         <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-primary/40">Exam Status</th>
                         <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-primary/40 text-right">Actions</th>
                      </>
                    ) : (
                      <>
-                        <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-primary/40">Grade Applied</th>
                         <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-primary/40">Parent Info</th>
                         <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-primary/40">Status</th>
                         <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-primary/40 text-right">Actions</th>
@@ -768,6 +995,8 @@ export default function InterviewsView() {
                       index={i}
                       slot={slot} 
                       marks={marks}
+                      isSelected={bulkInterviewIds.has(slot.applicationId)}
+                      onToggleSelect={(e) => { e.stopPropagation(); toggleBulkInterview(slot.applicationId); }}
                       isProcessing={recordOutcomeMutation.isPending}
                       vacantSpots={grades.find((g: any) => g.gradeName === slot.application?.candidate?.grade)?.vacantSpots || 0}
                       onAccept={handleOutcome.bind(null, slot.applicationId, 'accepted')}
@@ -794,6 +1023,8 @@ export default function InterviewsView() {
                       index={i}
                       app={app} 
                       marks={marks}
+                      isSelected={bulkInterviewIds.has(app.id)}
+                      onToggleSelect={(e) => { e.stopPropagation(); toggleBulkInterview(app.id); }}
                       isProcessing={recordOutcomeMutation.isPending}
                       vacantSpots={grades.find((g: any) => g.gradeName === app.candidate?.grade)?.vacantSpots || 0}
                       onAccept={handleOutcome.bind(null, app.id, 'accepted')}
@@ -835,7 +1066,7 @@ export default function InterviewsView() {
                 
                 {!isLoading && ((activeTab === 'scheduled' && filteredInterviews.length === 0) || (activeTab === 'awaiting' && filteredAwaiting.length === 0) || (activeTab === 'outcomes' && filteredOutcomes.length === 0)) && (
                   <tr>
-                    <td colSpan={5} className="px-8 py-24 text-center">
+                    <td colSpan={activeTab !== 'outcomes' ? 10 : 9} className="px-8 py-24 text-center">
                        <div className="flex flex-col items-center gap-3 opacity-20">
                           <Calendar size={48} />
                           <p className="font-bold text-primary italic">No records found for this section.</p>
@@ -856,7 +1087,43 @@ export default function InterviewsView() {
         </div>
       </div>
 
-      {/* Schedule Modal */}
+      {/* Bulk Interview Selection Bar */}
+      <AnimatePresence>
+        {bulkInterviewIds.size > 0 && activeTab !== 'outcomes' && (
+          <motion.div
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[90] flex items-center gap-2.5 bg-white/95 backdrop-blur-md text-primary px-4 py-3 rounded-2xl shadow-[0_20px_50px_rgba(24,33,109,0.15)] border border-outline-variant/15"
+          >
+            <span className="text-[10px] font-black uppercase tracking-widest text-primary/70 px-2.5 py-1 bg-primary/5 rounded-xl border border-primary/10 mr-1">
+              {bulkInterviewIds.size} selected
+            </span>
+            <button
+              onClick={openBulkAcceptModal}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-green-50 text-green-700 hover:bg-green-600 hover:text-white border border-green-200 transition-all shadow-sm cursor-pointer"
+            >
+              <Check size={13} /> Bulk Accept / Waitlist
+            </button>
+            <button
+              onClick={() => setShowBulkConfirmModal('reject')}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-red-50 text-red-600 hover:bg-red-500 hover:text-white border border-red-200 transition-all shadow-sm"
+            >
+              <X size={13} /> Bulk Reject
+            </button>
+            <button
+              onClick={() => setBulkInterviewIds(new Set())}
+              className="w-8 h-8 flex items-center justify-center rounded-xl text-primary/40 hover:text-primary hover:bg-primary/5 transition-all ml-1"
+              title="Clear selection"
+            >
+              <X size={15} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Accept Progress Modal */}
       <AnimatePresence>
         {showAcceptProgress && (
           <div className="fixed inset-0 z-[110] flex items-center justify-center p-6">
@@ -877,13 +1144,17 @@ export default function InterviewsView() {
                   )}
                </div>
                
-               <h3 className="text-xl font-black text-primary mb-2 tracking-tight">Processing Acceptance</h3>
+               <h3 className="text-xl font-black text-primary mb-2 tracking-tight">
+                 {bulkProgress ? 'Processing Bulk Acceptance' : 'Processing Acceptance'}
+               </h3>
                <p className="text-xs font-medium text-on-surface-variant/70 mb-8 max-w-[250px] mx-auto">
-                 {recordOutcomeMutation.isPending 
-                   ? "Updating local database, sending parent emails, and synchronizing with Business Central..." 
-                   : recordOutcomeMutation.isError 
-                     ? "An error occurred during acceptance." 
-                     : "Application successfully accepted!"}
+                 {bulkProgress
+                   ? `Processing ${bulkProgress.current} of ${bulkProgress.total}… ${bulkProgress.accepted > 0 ? `${bulkProgress.accepted} Accepted` : ''}${bulkProgress.waitlisted > 0 ? ` · ${bulkProgress.waitlisted} Waitlisted` : ''}`
+                   : recordOutcomeMutation.isPending 
+                     ? "Updating local database, sending parent emails, and synchronizing with Business Central..." 
+                     : recordOutcomeMutation.isError 
+                       ? "An error occurred during acceptance." 
+                       : "Application successfully accepted!"}
                </p>
 
                <div className="w-full space-y-3">
@@ -906,6 +1177,327 @@ export default function InterviewsView() {
                    <span className={`text-xs font-bold ${recordOutcomeMutation.isSuccess ? 'text-primary' : recordOutcomeMutation.isPending ? 'text-amber-600' : 'text-primary/40'}`}>ERP Synchronization</span>
                  </div>
                </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Bulk Accept Confirm Modal with Interactive Candidate Reorder/Swap Controls */}
+      <AnimatePresence>
+        {showBulkConfirmModal === 'accept' && (() => {
+          const ids: number[] = customAcceptOrder.length > 0 ? customAcceptOrder : Array.from(bulkInterviewIds);
+          
+          // Map each candidate with exam scores
+          const orderedApps = ids.map(id => {
+            const app = applications.find((a: any) => a.id === id);
+            if (!app) return null;
+            const appResults = results.filter((r: any) => r.applicationId === id);
+            const totalMarksObtained = appResults.reduce((acc: number, r: any) => acc + (Number(r.marksObtained) || 0), 0);
+            const totalMaxMarks = appResults.reduce((acc: number, r: any) => {
+              const ass = assessments.find((a: any) => a.id === r.assessmentId);
+              return acc + (ass?.maxMarks || 100);
+            }, 0) || (appResults.length > 0 ? appResults.length * 100 : 100);
+            const percentage = totalMaxMarks > 0 ? Math.round((totalMarksObtained / totalMaxMarks) * 100) : 0;
+            return {
+              id,
+              app,
+              candidate: app.candidate,
+              totalMarksObtained,
+              totalMaxMarks,
+              percentage,
+              hasResults: appResults.length > 0
+            };
+          }).filter(Boolean);
+
+          // Track running vacancies per grade to classify into Offer vs Waitlist
+          const remainingSpots: Record<string, number> = {};
+          grades.forEach((g: any) => {
+            const key = g.gradeName?.toLowerCase()?.trim();
+            if (key) remainingSpots[key] = Math.max(0, g.vacantSpots ?? 0);
+          });
+
+          const enrichedCandidates = orderedApps.map((item: any) => {
+            const gradeKey = item.candidate?.grade?.toLowerCase()?.trim();
+            const available = remainingSpots[gradeKey] ?? 0;
+            const isOffer = available > 0;
+            if (isOffer) {
+              remainingSpots[gradeKey] = available - 1;
+            }
+            return {
+              ...item,
+              isOffer,
+              gradeName: item.candidate?.grade || 'Unassigned'
+            };
+          });
+
+          const offerCandidates = enrichedCandidates.filter((c: any) => c.isOffer);
+          const waitlistCandidates = enrichedCandidates.filter((c: any) => !c.isOffer);
+
+          return (
+            <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 md:p-6">
+              <motion.div 
+                initial={{ opacity: 0 }} 
+                animate={{ opacity: 1 }} 
+                exit={{ opacity: 0 }} 
+                className="absolute inset-0 bg-primary/40 backdrop-blur-md" 
+                onClick={() => setShowBulkConfirmModal(null)} 
+              />
+              <motion.div 
+                initial={{ scale: 0.95, opacity: 0, y: 20 }} 
+                animate={{ scale: 1, opacity: 1, y: 0 }} 
+                exit={{ scale: 0.95, opacity: 0, y: 20 }} 
+                className="bg-white w-full max-w-2xl rounded-[36px] p-6 md:p-8 shadow-2xl relative z-10 border border-outline-variant/10 max-h-[90vh] flex flex-col"
+              >
+                {/* Header */}
+                <div className="flex items-start justify-between pb-4 border-b border-outline-variant/10 shrink-0">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-green-50 rounded-2xl flex items-center justify-center text-green-600 shrink-0 shadow-sm border border-green-100">
+                      <UserPlus size={22} />
+                    </div>
+                    <div>
+                      <h3 className="text-2xl font-black text-primary italic leading-tight">Confirm Bulk Acceptance</h3>
+                      <p className="text-xs text-on-surface-variant/60 font-medium mt-0.5">
+                        Sorted by assessment merit. Use arrows to swap who receives available spots.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <div className="px-3 py-1.5 bg-green-50 rounded-xl border border-green-200 text-center">
+                      <div className="text-base font-black text-green-700 leading-none">{offerCandidates.length}</div>
+                      <div className="text-[8px] font-black uppercase tracking-wider text-green-600/70 mt-0.5">Will Accept</div>
+                    </div>
+                    <div className="px-3 py-1.5 bg-amber-50 rounded-xl border border-amber-200 text-center">
+                      <div className="text-base font-black text-amber-700 leading-none">{waitlistCandidates.length}</div>
+                      <div className="text-[8px] font-black uppercase tracking-wider text-amber-600/70 mt-0.5">Will Waitlist</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Candidate Breakdown & Reorder List */}
+                <div className="my-4 overflow-y-auto pr-1 space-y-4 flex-grow custom-scrollbar">
+                  {/* Offers Section */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between px-1">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse" />
+                        <span className="text-[11px] font-black uppercase tracking-wider text-green-800">
+                          Will Receive Offer ({offerCandidates.length})
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-bold text-on-surface-variant/50">
+                        Within Grade Vacancies
+                      </span>
+                    </div>
+
+                    {offerCandidates.length === 0 ? (
+                      <div className="p-4 bg-surface-container-low rounded-2xl text-center text-xs text-on-surface-variant/50 font-bold">
+                        No vacancies currently available. All candidates will be waitlisted.
+                      </div>
+                    ) : (
+                      offerCandidates.map((c: any, idx: number) => {
+                        const globalIdx = ids.indexOf(c.id);
+                        return (
+                          <div 
+                            key={c.id} 
+                            className="p-3.5 bg-green-50/70 rounded-2xl border border-green-200/80 flex items-center justify-between gap-3 shadow-xs hover:border-green-300 transition-colors"
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <span className="w-6 h-6 rounded-lg bg-green-600 text-white font-black text-[10px] flex items-center justify-center shrink-0 shadow-xs">
+                                #{idx + 1}
+                              </span>
+                              <div className="min-w-0">
+                                <div className="text-xs font-bold text-primary truncate">{c.candidate?.fullName}</div>
+                                <div className="text-[10px] text-on-surface-variant/70 font-medium flex items-center gap-2">
+                                  <span>APP-{c.id.toString().padStart(4, '0')}</span>
+                                  <span>•</span>
+                                  <span className="font-bold text-primary">{c.gradeName}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              {c.hasResults ? (
+                                <span className="px-2.5 py-1 bg-white rounded-xl text-[10px] font-black text-green-700 border border-green-200 shadow-xs">
+                                  {c.percentage}% ({c.totalMarksObtained}/{c.totalMaxMarks})
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 bg-white/70 rounded-lg text-[9px] font-bold text-primary/40">
+                                  No Exam Score
+                                </span>
+                              )}
+
+                              {/* Reorder Buttons */}
+                              <div className="flex items-center gap-0.5 bg-white/90 rounded-xl p-0.5 border border-green-200 shadow-xs">
+                                <button
+                                  type="button"
+                                  onClick={() => moveCandidate(c.id, 'up')}
+                                  disabled={globalIdx === 0}
+                                  className="p-1 hover:bg-green-100 rounded-lg text-primary/70 hover:text-primary transition-all disabled:opacity-20 cursor-pointer disabled:cursor-not-allowed"
+                                  title="Move Up"
+                                >
+                                  <ChevronUp size={14} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => moveCandidate(c.id, 'down')}
+                                  disabled={globalIdx === ids.length - 1}
+                                  className="p-1 hover:bg-green-100 rounded-lg text-primary/70 hover:text-primary transition-all disabled:opacity-20 cursor-pointer disabled:cursor-not-allowed"
+                                  title="Move Down / Demote"
+                                >
+                                  <ChevronDown size={14} />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  {/* Cutoff Line */}
+                  {waitlistCandidates.length > 0 && (
+                    <div className="relative py-2 flex items-center justify-center my-1">
+                      <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t-2 border-dashed border-amber-300" />
+                      </div>
+                      <div className="relative bg-white px-3 py-1 rounded-full border border-amber-300 text-[9px] font-extrabold uppercase tracking-widest text-amber-700 shadow-xs flex items-center gap-1.5">
+                        <AlertTriangle size={11} className="text-amber-500 shrink-0" />
+                        Grade Quota Cutoff — Below Will Be Waitlisted
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Waitlist Section */}
+                  {waitlistCandidates.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between px-1">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                          <span className="text-[11px] font-black uppercase tracking-wider text-amber-800">
+                            Will Be Waitlisted ({waitlistCandidates.length})
+                          </span>
+                        </div>
+                        <span className="text-[10px] font-bold text-on-surface-variant/50">
+                          Capacity Exceeded
+                        </span>
+                      </div>
+
+                      {waitlistCandidates.map((c: any, idx: number) => {
+                        const globalIdx = ids.indexOf(c.id);
+                        return (
+                          <div 
+                            key={c.id} 
+                            className="p-3.5 bg-amber-50/70 rounded-2xl border border-amber-200/80 flex items-center justify-between gap-3 shadow-xs hover:border-amber-300 transition-colors"
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <span className="w-6 h-6 rounded-lg bg-amber-500 text-white font-black text-[10px] flex items-center justify-center shrink-0 shadow-xs">
+                                #{offerCandidates.length + idx + 1}
+                              </span>
+                              <div className="min-w-0">
+                                <div className="text-xs font-bold text-primary truncate">{c.candidate?.fullName}</div>
+                                <div className="text-[10px] text-on-surface-variant/70 font-medium flex items-center gap-2">
+                                  <span>APP-{c.id.toString().padStart(4, '0')}</span>
+                                  <span>•</span>
+                                  <span className="font-bold text-primary">{c.gradeName}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              {c.hasResults ? (
+                                <span className="px-2.5 py-1 bg-white rounded-xl text-[10px] font-black text-amber-700 border border-amber-200 shadow-xs">
+                                  {c.percentage}% ({c.totalMarksObtained}/{c.totalMaxMarks})
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 bg-white/70 rounded-lg text-[9px] font-bold text-primary/40">
+                                  No Exam Score
+                                </span>
+                              )}
+
+                              {/* Reorder Buttons */}
+                              <div className="flex items-center gap-0.5 bg-white/90 rounded-xl p-0.5 border border-amber-200 shadow-xs">
+                                <button
+                                  type="button"
+                                  onClick={() => moveCandidate(c.id, 'up')}
+                                  disabled={globalIdx === 0}
+                                  className="p-1 hover:bg-amber-100 rounded-lg text-primary/70 hover:text-primary transition-all disabled:opacity-20 cursor-pointer disabled:cursor-not-allowed"
+                                  title="Promote Up"
+                                >
+                                  <ChevronUp size={14} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => moveCandidate(c.id, 'down')}
+                                  disabled={globalIdx === ids.length - 1}
+                                  className="p-1 hover:bg-amber-100 rounded-lg text-primary/70 hover:text-primary transition-all disabled:opacity-20 cursor-pointer disabled:cursor-not-allowed"
+                                  title="Move Down"
+                                >
+                                  <ChevronDown size={14} />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer Actions */}
+                <div className="flex gap-3 pt-4 border-t border-outline-variant/10 shrink-0">
+                  <button 
+                    type="button"
+                    onClick={() => setShowBulkConfirmModal(null)} 
+                    className="flex-1 py-3.5 rounded-xl font-black text-[9px] uppercase tracking-widest text-primary/40 hover:bg-primary/5 transition-all cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={handleBulkAccept} 
+                    className="flex-[2] py-3.5 bg-primary text-secondary rounded-xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <Check size={14} />
+                    Confirm & Process ({offerCandidates.length} Offers • {waitlistCandidates.length} Waitlist)
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          );
+        })()}
+      </AnimatePresence>
+
+      {/* Bulk Reject Modal */}
+      <AnimatePresence>
+        {showBulkConfirmModal === 'reject' && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-6">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-red-900/20 backdrop-blur-md" onClick={() => !isBulkRejecting && setShowBulkConfirmModal(null)} />
+            <motion.div initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }} className="bg-white max-w-lg w-full rounded-[40px] p-10 relative z-10 shadow-2xl border border-outline-variant/10">
+              <div className="mb-8">
+                <div className="w-16 h-16 bg-red-50 rounded-[20px] flex items-center justify-center text-red-500 mb-6">
+                  <X size={32} strokeWidth={3} />
+                </div>
+                <h3 className="text-3xl font-black text-primary italic leading-none mb-2">Bulk Reject</h3>
+                <p className="text-sm font-medium text-on-surface-variant/60">Provide a rejection reason for <span className="font-bold text-primary">{bulkInterviewIds.size}</span> selected candidate{bulkInterviewIds.size > 1 ? 's' : ''}.</p>
+              </div>
+              <textarea
+                value={bulkRejectReason}
+                onChange={e => setBulkRejectReason(e.target.value)}
+                disabled={isBulkRejecting}
+                placeholder="e.g., Candidates did not meet Kianda's benchmark requirements..."
+                className="w-full h-32 p-6 bg-surface-container-lowest border border-outline-variant/20 rounded-[24px] resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-medium text-primary text-sm mb-8"
+              />
+              <div className="flex gap-4">
+                <button onClick={() => { setShowBulkConfirmModal(null); setBulkRejectReason(''); }} disabled={isBulkRejecting} className="flex-1 py-5 text-[10px] font-black uppercase tracking-widest text-primary/40 hover:bg-primary/5 rounded-2xl transition-colors">Cancel</button>
+                <button
+                  onClick={handleBulkReject}
+                  disabled={!bulkRejectReason.trim() || isBulkRejecting}
+                  className="flex-[2] py-5 bg-red-500 text-white shadow-xl shadow-red-500/20 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-red-600 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {isBulkRejecting ? <><Loader2 size={14} className="animate-spin" /> Processing...</> : `Reject ${bulkInterviewIds.size} Candidates`}
+                </button>
+              </div>
             </motion.div>
           </div>
         )}

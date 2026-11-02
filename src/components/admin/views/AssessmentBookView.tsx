@@ -20,6 +20,7 @@ export default function AssessmentBookView({ initialGradeId }: Props) {
 
   const [activeGradeId, setActiveGradeId] = useState<number | null>(initialGradeId || null);
   const [syncStatus, setSyncStatus] = useState<{ qualified: number, rejected: number } | null>(null);
+  const [sendNotificationEmails, setSendNotificationEmails] = useState<boolean>(true);
   const [editingAppId, setEditingAppId] = useState<number | null>(null);
   const [draftMarks, setDraftMarks] = useState<Record<number, string>>({});
   const [draftPassed, setDraftPassed] = useState<boolean>(true);
@@ -99,7 +100,7 @@ export default function AssessmentBookView({ initialGradeId }: Props) {
       };
     });
 
-    saveResultsMutation.mutate(payload, {
+    saveResultsMutation.mutate({ results: payload, sendEmails: true }, {
       onSuccess: () => {
         setEditingAppId(null);
         setDraftMarks({});
@@ -221,11 +222,11 @@ export default function AssessmentBookView({ initialGradeId }: Props) {
     const pending = (window as any).pendingSync;
     if (!pending) return;
 
-    bulkSyncMutation.mutate(pending, {
+    bulkSyncMutation.mutate({ results: pending, sendEmails: sendNotificationEmails }, {
       onSuccess: () => {
         // Close modal immediately
         setSyncStatus(null);
-        toast.success('Assessment results synced successfully!');
+        toast.success(sendNotificationEmails ? 'Assessment results synced & outcome emails dispatched!' : 'Assessment results synced successfully!');
       },
       onError: () => {
         toast.error('Failed to sync assessment results.');
@@ -311,9 +312,16 @@ export default function AssessmentBookView({ initialGradeId }: Props) {
                      }`}
                    >
                      <td className="px-8 py-6">
-                        <div className="font-bold text-primary text-sm flex items-center gap-2">
+                        <div className="font-bold text-primary text-sm flex items-center gap-2.5">
+                           {app.assessmentEmailSent && (
+                             <span
+                               className={`inline-block w-2 h-2 rounded-full flex-shrink-0 ${
+                                 !isPending && isPassed ? 'bg-green-500' : 'bg-red-500'
+                               }`}
+                               title={`${!isPending && isPassed ? 'Pass' : 'Rejection'} outcome email sent${app.assessmentEmailSentAt ? ' on ' + new Date(app.assessmentEmailSentAt).toLocaleDateString() : ''}`}
+                             />
+                           )}
                            {app.candidate?.fullName}
-                           {app.status === 'rejected' && <Mail size={12} className="text-red-400" title="Rejection Sent" />}
                         </div>
                         <div className="text-[10px] font-medium text-on-surface-variant/40 uppercase tracking-widest">APP-{app.id.toString().padStart(4, '0')}</div>
                      </td>
@@ -474,7 +482,7 @@ export default function AssessmentBookView({ initialGradeId }: Props) {
                   <p className="text-xs text-on-surface-variant font-medium opacity-60">Results from teacher sheet mapped successfully.</p>
                </div>
 
-               <div className="grid grid-cols-2 gap-3 mb-6">
+               <div className="grid grid-cols-2 gap-3 mb-4">
                   <div className="p-4 bg-green-50 rounded-2xl border border-green-100 text-center">
                      <div className="text-xl font-black text-green-600 mb-0.5">{syncStatus.qualified}</div>
                      <div className="text-[8px] font-black uppercase tracking-widest text-green-600/60">Pass / Qualify</div>
@@ -484,6 +492,45 @@ export default function AssessmentBookView({ initialGradeId }: Props) {
                      <div className="text-[8px] font-black uppercase tracking-widest text-red-400/60">Fail / Reject</div>
                   </div>
                </div>
+
+               {(() => {
+                 const pendingList = (window as any).pendingSync || [];
+                 const pendingAppIds: number[] = Array.from(new Set(pendingList.map((p: any) => p.applicationId)));
+                 const alreadyNotified = gradeApps.filter(a => pendingAppIds.includes(a.id) && (a as any).assessmentEmailSent).length;
+
+                 return (
+                   <div className="p-3.5 bg-primary/5 rounded-2xl mb-6 border border-primary/10 text-left">
+                     <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                       <input 
+                         type="checkbox" 
+                         checked={sendNotificationEmails}
+                         onChange={(e) => setSendNotificationEmails(e.target.checked)}
+                         className="mt-0.5 w-4 h-4 rounded text-secondary focus:ring-secondary/20 accent-secondary cursor-pointer"
+                       />
+                       <div className="flex-1">
+                         <div className="flex items-center gap-1.5 text-[10px] font-black text-primary uppercase tracking-wider">
+                           <Mail size={12} className="text-secondary" />
+                           <span>Dispatch outcome emails</span>
+                         </div>
+                         <p className="text-[9px] text-on-surface-variant/70 font-medium leading-tight mt-0.5">
+                           {sendNotificationEmails ? (
+                             <>
+                               Send pass/fail outcome emails to parents.
+                               {alreadyNotified > 0 && (
+                                 <span className="block mt-1 font-bold text-amber-700">
+                                   {alreadyNotified} already notified candidate{alreadyNotified > 1 ? 's' : ''} will be skipped.
+                                 </span>
+                               )}
+                             </>
+                           ) : (
+                             'Save results only without emailing parents.'
+                           )}
+                         </p>
+                       </div>
+                     </label>
+                   </div>
+                 );
+               })()}
 
                <div className="flex gap-3">
                   <button 
@@ -498,7 +545,13 @@ export default function AssessmentBookView({ initialGradeId }: Props) {
                     disabled={bulkSyncMutation.isPending}
                     className="flex-[2] py-3.5 bg-primary text-secondary rounded-xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all relative overflow-hidden"
                   >
-                    {bulkSyncMutation.isPending ? <><Loader2 size={14} className="animate-spin inline mr-2" /> Syncing...</> : 'Finalize Sync'}
+                    {bulkSyncMutation.isPending ? (
+                      <><Loader2 size={14} className="animate-spin inline mr-2" /> Syncing...</>
+                    ) : sendNotificationEmails ? (
+                      'Finalize & Send Emails'
+                    ) : (
+                      'Finalize Sync'
+                    )}
                   </button>
                 </div>
             </motion.div>

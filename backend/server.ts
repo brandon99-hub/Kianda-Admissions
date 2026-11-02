@@ -6,7 +6,7 @@ import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import { db } from './db';
 import * as schema from './db/schema';
-import { eq, and, inArray } from 'drizzle-orm';
+import { eq, and, inArray, sql } from 'drizzle-orm';
 import nodemailer from 'nodemailer';
 import bcrypt from 'bcrypt';
 import multer from 'multer';
@@ -24,6 +24,7 @@ import { generateApplicationPDFBuffer } from './utils/pdfGenerator';
 import {
   getSuccessEmail,
   getAssessmentInvitationEmail,
+  getAssessmentPassEmail,
   getInterviewInviteEmail,
   getAdmissionOfferEmail,
   getWaitlistEmail,
@@ -33,6 +34,16 @@ import {
 } from '../src/utils/emailTemplates';
 
 dotenv.config();
+
+// Ensure assessment email tracking columns exist in database
+db.execute(sql`
+  ALTER TABLE applications ADD COLUMN IF NOT EXISTS assessment_email_sent BOOLEAN DEFAULT FALSE;
+  ALTER TABLE applications ADD COLUMN IF NOT EXISTS assessment_email_sent_at TIMESTAMP;
+`).then(() => {
+  console.log('[DB] Assessment email tracking columns verified.');
+}).catch(err => {
+  console.error('[DB] Failed to verify assessment email tracking columns:', err);
+});
 
 const app = express();
 const port = process.env.PORT || 8095;
@@ -131,11 +142,44 @@ const authenticateAdmin = (req: any, res: any, next: any) => {
   }
 };
 
-// Secure uploads - only admins can view documents
+// Secure uploads - accessible by authenticated admins and logged-in applicants
+const authenticateFileAccess = (req: any, res: any, next: any) => {
+  const adminToken = req.cookies?.kianda_admin_token;
+  const applicantToken = req.cookies?.kianda_applicant_token;
+
+  if (adminToken) {
+    try {
+      req.admin = jwt.verify(adminToken, JWT_SECRET);
+      return next();
+    } catch {}
+  }
+
+  if (applicantToken) {
+    try {
+      req.applicant = jwt.verify(applicantToken, JWT_SECRET);
+      return next();
+    } catch {}
+  }
+
+  // Also check Bearer Authorization header if present
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const bearerToken = authHeader.split(' ')[1];
+    try {
+      const decoded = jwt.verify(bearerToken, JWT_SECRET) as any;
+      if (decoded.role === 'admin') req.admin = decoded;
+      else req.applicant = decoded;
+      return next();
+    } catch {}
+  }
+
+  return res.status(401).json({ error: 'Unauthorized: Access to uploaded files requires login' });
+};
+
 // Mount on /api/uploads so NGINX proxies it directly
-app.use('/api/uploads', authenticateAdmin, express.static(path.join(process.cwd(), 'uploads')));
+app.use('/api/uploads', authenticateFileAccess, express.static(path.join(process.cwd(), 'uploads')));
 // Keep legacy route for fallback if needed
-app.use('/uploads', authenticateAdmin, express.static(path.join(process.cwd(), 'uploads')));
+app.use('/uploads', authenticateFileAccess, express.static(path.join(process.cwd(), 'uploads')));
 
 
 // Multer Config
@@ -1110,8 +1154,8 @@ app.post('/api/admin/applications/status', authenticateAdmin, async (req, res) =
         }
       }
 
-      // Only dispatch emails for final decision outcomes (accepted, rejected, waitlisted) — assessment emails remain disabled
-      if (emailContent && ['accepted', 'rejected', 'waitlisted'].includes(status)) {
+      // Dispatch emails for status changes (accepted, rejected, waitlisted, assessment_scheduled)
+      if (emailContent && ['accepted', 'rejected', 'waitlisted', 'assessment_scheduled'].includes(status)) {
         if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
           try {
             await transporter.sendMail({
@@ -1475,10 +1519,14 @@ app.post('/api/admin/results', authenticateAdmin, async (req, res) => {
   }
 });
 
-// BULK Sync Results
+// BULK & Single Sync Results with optional Email Dispatch
 app.post('/api/admin/results/bulk', authenticateAdmin, async (req, res) => {
   try {
-    const { results } = req.body; // Array of { applicationId, assessmentId, marksObtained, passed }
+    const { results, sendEmails = false, isSingleRow = false } = req.body; // results: Array of { applicationId, assessmentId, marksObtained, passed }
+
+    if (!Array.isArray(results)) {
+      return res.status(400).json({ error: 'Results must be an array' });
+    }
 
     for (const item of results) {
       const [existing] = await db.select().from(schema.assessmentResults)
@@ -1499,20 +1547,85 @@ app.post('/api/admin/results/bulk', authenticateAdmin, async (req, res) => {
           passed: item.passed
         });
       }
+    }
 
-      // Update Application status ONLY if it hasn't progressed yet
-      const [currentApp] = await db.select().from(schema.applications).where(eq(schema.applications.id, item.applicationId));
-      if (currentApp && ['pending', 'assessment_scheduled', 'passed_assessment', 'failed'].includes(currentApp.status || '')) {
-        if (item.passed) {
-          await db.update(schema.applications).set({ status: 'passed_assessment' }).where(eq(schema.applications.id, item.applicationId));
-        } else {
-          await db.update(schema.applications).set({ status: 'failed' }).where(eq(schema.applications.id, item.applicationId));
+    // Process unique applications for status update & email dispatch
+    const uniqueAppIds = Array.from(new Set(results.map((r: any) => r.applicationId)));
+
+    for (const appId of uniqueAppIds) {
+      const appItems = results.filter((r: any) => r.applicationId === appId);
+      const isPassed = appItems.every((r: any) => r.passed);
+
+      const currentApp = await db.query.applications.findFirst({
+        where: eq(schema.applications.id, appId),
+        with: {
+          candidate: true,
+          parentDetails: true
+        }
+      });
+
+      if (!currentApp) continue;
+
+      // Update Application status if in early or assessment stages
+      if (['pending', 'assessment_scheduled', 'passed_assessment', 'failed'].includes(currentApp.status || '')) {
+        await db.update(schema.applications)
+          .set({ status: isPassed ? 'passed_assessment' : 'failed' })
+          .where(eq(schema.applications.id, appId));
+      }
+
+      // Handle Automated Emails
+      if (sendEmails) {
+        const alreadySent = Boolean((currentApp as any).assessmentEmailSent);
+
+        // If bulk import and already received email, skip duplicate dispatch!
+        if (!isSingleRow && alreadySent) {
+          console.log(`[ASSESSMENT EMAIL SKIPPED] Application ${appId} parents already received assessment outcome email.`);
+          continue;
+        }
+
+        if (currentApp.candidate && currentApp.parentDetails) {
+          const parentEmails = [currentApp.parentDetails.fatherEmail, currentApp.parentDetails.motherEmail].filter(Boolean).join(', ');
+          if (parentEmails) {
+            const emailData = isPassed
+              ? getAssessmentPassEmail(currentApp.candidate.fullName)
+              : getRejectionEmail(currentApp.candidate.fullName, currentApp.academicYear || new Date().getFullYear());
+
+            if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+              try {
+                await transporter.sendMail({
+                  from: `"Kianda Admissions" <${process.env.EMAIL_USER}>`,
+                  to: parentEmails,
+                  subject: emailData.subject,
+                  html: emailData.body,
+                  attachments: [{
+                    filename: 'kianda-school-logo-removebg-preview.png',
+                    path: path.resolve(__dirname, '../public/kianda-school-logo-removebg-preview.png'),
+                    cid: 'kiandalogo'
+                  }]
+                });
+                console.log(`[ASSESSMENT EMAIL SENT] To: ${parentEmails} | Result: ${isPassed ? 'PASSED' : 'FAILED'} | SingleRow: ${isSingleRow}`);
+              } catch (emailErr) {
+                console.error(`[EMAIL ERROR] Failed to send assessment email for app ${appId}:`, emailErr);
+              }
+            } else {
+              console.log(`[MOCK ASSESSMENT EMAIL] To: ${parentEmails} | Subject: ${emailData.subject} | SingleRow: ${isSingleRow}`);
+            }
+
+            // Mark as sent in DB
+            await db.update(schema.applications)
+              .set({
+                assessmentEmailSent: true,
+                assessmentEmailSentAt: new Date()
+              } as any)
+              .where(eq(schema.applications.id, appId));
+          }
         }
       }
     }
 
     res.json({ success: true });
   } catch (error) {
+    console.error('Results sync error:', error);
     res.status(500).json({ error: 'Bulk sync failed' });
   }
 });
@@ -1657,7 +1770,7 @@ app.post('/api/admin/interviews/outcome', authenticateAdmin, async (req, res) =>
 
       if (outcome === 'accepted') {
         const grade = await db.query.gradeManagement.findFirst({
-          where: eq(schema.gradeManagement.gradeName, appData.candidate.grade)
+          where: sql`lower(trim(${schema.gradeManagement.gradeName})) = lower(trim(${appData.candidate.grade}))`
         });
 
         if (grade && grade.vacantSpots > 0) {
@@ -1698,6 +1811,11 @@ app.post('/api/admin/interviews/outcome', authenticateAdmin, async (req, res) =>
             .set({ status: 'waitlisted' })
             .where(eq(schema.applications.id, applicationId));
         }
+      } else if (outcome === 'waitlisted') {
+        emailContent = getWaitlistEmail(appData.candidate.fullName);
+        await db.update(schema.applications)
+          .set({ status: 'waitlisted' })
+          .where(eq(schema.applications.id, applicationId));
       } else {
         emailContent = getRejectionEmail(appData.candidate.fullName, appData.academicYear || new Date().getFullYear());
       }
@@ -1722,14 +1840,16 @@ app.post('/api/admin/interviews/outcome', authenticateAdmin, async (req, res) =>
       }
     }
 
-    let responseData: any = { success: true };
-    if (outcome === 'accepted') {
-      const updatedApp = await db.query.applications.findFirst({
-        where: eq(schema.applications.id, applicationId)
-      });
-      responseData.erpSyncStatus = (updatedApp as any)?.erpSyncStatus;
-      responseData.erpAdmissionNo = (updatedApp as any)?.erpAdmissionNo;
-    }
+    const updatedApp = await db.query.applications.findFirst({
+      where: eq(schema.applications.id, applicationId)
+    });
+
+    let responseData: any = { 
+      success: true,
+      status: updatedApp?.status || outcome,
+      erpSyncStatus: (updatedApp as any)?.erpSyncStatus,
+      erpAdmissionNo: (updatedApp as any)?.erpAdmissionNo
+    };
 
     res.json(responseData);
   } catch (error) {

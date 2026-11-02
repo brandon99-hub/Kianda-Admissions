@@ -19,37 +19,29 @@ import { authFetch } from '../../../utils/auth';
 const ApplicationRow: React.FC<{
   app: any;
   onViewDetails: () => void;
-  isSelectMode: boolean;
   isSelected: boolean;
   onToggleSelect: (e: React.MouseEvent) => void;
   onSendPdf: (id: number) => void;
   onEdit: (app: any) => void;
   onDelete: (id: number) => void;
-}> = ({ app, onViewDetails, isSelectMode, isSelected, onToggleSelect, onSendPdf, onEdit, onDelete }) => {
+}> = ({ app, onViewDetails, isSelected, onToggleSelect, onSendPdf, onEdit, onDelete }) => {
   const [parentToggle, setParentToggle] = useState<'mother' | 'father'>('mother');
 
   return (
     <tr
-      className={`hover:bg-primary/5 transition-colors group cursor-pointer hover:relative hover:z-[100] ${isSelected ? 'bg-secondary/5' : ''}`}
-      onClick={isSelectMode ? onToggleSelect : onViewDetails}
+      className={`hover:bg-primary/5 transition-colors group cursor-pointer ${isSelected ? 'bg-secondary/5' : ''}`}
+      onClick={onViewDetails}
     >
       {/* Checkbox cell */}
       <td className="pl-6 pr-2 py-6 w-10" onClick={(e) => e.stopPropagation()}>
-        <AnimatePresence>
-          {isSelectMode && (
-            <motion.button
-              initial={{ opacity: 0, scale: 0.7 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.7 }}
-              onClick={onToggleSelect}
-              className="text-primary transition-colors"
-            >
-              {isSelected
-                ? <CheckSquare size={18} className="text-secondary" />
-                : <Square size={18} className="text-primary/30 hover:text-primary/60" />}
-            </motion.button>
-          )}
-        </AnimatePresence>
+        <button
+          onClick={onToggleSelect}
+          className="text-primary transition-colors"
+        >
+          {isSelected
+            ? <CheckSquare size={18} className="text-secondary" />
+            : <Square size={18} className="text-primary/20 hover:text-primary/50" />}
+        </button>
       </td>
 
       <td className="px-6 py-6">
@@ -141,8 +133,7 @@ const ApplicationRow: React.FC<{
         </div>
       </td>
       <td className="px-6 py-6 text-right">
-        {!isSelectMode && (
-          <div className="flex flex-col items-end gap-2">
+        <div className="flex flex-col items-end gap-2">
             <button
                onClick={(e) => { e.stopPropagation(); onSendPdf(app.id); }}
                className="w-8 h-8 inline-flex items-center justify-center bg-primary/5 rounded-full text-primary hover:bg-secondary hover:text-primary transition-all shadow-inner group-hover:-translate-x-1"
@@ -168,7 +159,6 @@ const ApplicationRow: React.FC<{
               <ChevronRight size={16} />
             </div>
           </div>
-        )}
       </td>
     </tr>
   );
@@ -214,7 +204,7 @@ const BulkExportModal: React.FC<{
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
       <motion.div
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
         className="absolute inset-0 bg-primary/30 backdrop-blur-sm"
@@ -222,7 +212,7 @@ const BulkExportModal: React.FC<{
       />
       <motion.div
         initial={{ scale: 0.95, opacity: 0, y: 10 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0 }}
-        className="bg-white max-w-lg w-full rounded-[32px] p-8 relative z-10 shadow-2xl border border-outline-variant/10"
+        className="bg-white max-w-lg w-full min-h-[530px] rounded-[32px] p-8 relative z-10 shadow-2xl border border-outline-variant/10 flex flex-col justify-between"
       >
         <button onClick={onClose} className="absolute top-6 right-6 p-2 rounded-full hover:bg-primary/5 text-primary/40 hover:text-primary transition-colors">
           <X size={20} />
@@ -230,7 +220,7 @@ const BulkExportModal: React.FC<{
 
         {step === 1 ? (
           <>
-            <div className="mb-6">
+            <div className="mb-4">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-10 h-10 bg-primary rounded-2xl flex items-center justify-center">
                   <FileDown size={18} className="text-secondary" />
@@ -242,55 +232,53 @@ const BulkExportModal: React.FC<{
               </div>
             </div>
             
-            <div className="space-y-4 mb-8 overflow-y-auto custom-scrollbar max-h-[50vh] pr-2">
+            <div className="space-y-3.5 mb-2">
               <button
-                onClick={() => setExportType('zip')}
-                className={`w-full text-left p-6 rounded-[24px] border-2 transition-all flex items-center gap-4 ${exportType === 'zip' ? 'border-primary bg-primary/5 shadow-md' : 'border-outline-variant/10 hover:border-primary/30 hover:bg-surface-container-lowest'}`}
+                onClick={() => { setExportType('zip'); setStep(2); }}
+                className="w-full text-left p-5 rounded-[24px] border-2 border-outline-variant/10 hover:border-primary/40 hover:bg-surface-container-lowest transition-all flex items-center justify-between gap-4 group"
               >
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${exportType === 'zip' ? 'bg-primary text-secondary' : 'bg-surface-variant text-on-surface-variant'}`}>
-                  <Archive size={20} />
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-primary/10 text-primary group-hover:bg-primary group-hover:text-secondary transition-all flex-shrink-0">
+                    <Archive size={20} />
+                  </div>
+                  <div>
+                    <div className="font-black text-primary mb-0.5">Zip Application PDF</div>
+                    <div className="text-xs text-primary/60 font-semibold leading-relaxed">Generates individual PDF dossiers for each candidate, packaged into a single ZIP file.</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="font-black text-primary mb-1">Zip Application PDF</div>
-                  <div className="text-xs text-primary/60 font-semibold leading-relaxed">Generates individual PDF dossiers for each candidate, packaged into a single ZIP file.</div>
-                </div>
+                <ChevronRight size={18} className="text-primary/30 group-hover:text-primary group-hover:translate-x-1 transition-all flex-shrink-0" />
               </button>
               
               <button
-                onClick={() => setExportType('excel')}
-                className={`w-full text-left p-6 rounded-[24px] border-2 transition-all flex items-center gap-4 ${exportType === 'excel' ? 'border-primary bg-primary/5 shadow-md' : 'border-outline-variant/10 hover:border-primary/30 hover:bg-surface-container-lowest'}`}
+                onClick={() => { setExportType('excel'); setStep(2); }}
+                className="w-full text-left p-5 rounded-[24px] border-2 border-outline-variant/10 hover:border-primary/40 hover:bg-surface-container-lowest transition-all flex items-center justify-between gap-4 group"
               >
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${exportType === 'excel' ? 'bg-green-600 text-white' : 'bg-surface-variant text-on-surface-variant'}`}>
-                  <FileText size={20} />
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-green-50 text-green-600 group-hover:bg-green-600 group-hover:text-white transition-all flex-shrink-0">
+                    <FileText size={20} />
+                  </div>
+                  <div>
+                    <div className="font-black text-primary mb-0.5">Excel Spreadsheet</div>
+                    <div className="text-xs text-primary/60 font-semibold leading-relaxed">Generates a flat .xlsx file containing all structured data fields for analysis and reporting.</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="font-black text-primary mb-1">Excel Spreadsheet</div>
-                  <div className="text-xs text-primary/60 font-semibold leading-relaxed">Generates a flat .xlsx file containing all structured data fields for analysis and reporting.</div>
-                </div>
+                <ChevronRight size={18} className="text-primary/30 group-hover:text-primary group-hover:translate-x-1 transition-all flex-shrink-0" />
               </button>
+              
               <button
-                onClick={() => setExportType('documents_zip')}
-                className={`w-full text-left p-6 rounded-[24px] border-2 transition-all flex items-center gap-4 ${exportType === 'documents_zip' ? 'border-primary bg-primary/5 shadow-md' : 'border-outline-variant/10 hover:border-primary/30 hover:bg-surface-container-lowest'}`}
+                onClick={() => { setExportType('documents_zip'); setStep(2); }}
+                className="w-full text-left p-5 rounded-[24px] border-2 border-outline-variant/10 hover:border-primary/40 hover:bg-surface-container-lowest transition-all flex items-center justify-between gap-4 group"
               >
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${exportType === 'documents_zip' ? 'bg-amber-600 text-white' : 'bg-surface-variant text-on-surface-variant'}`}>
-                  <Archive size={20} />
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-amber-50 text-amber-600 group-hover:bg-amber-600 group-hover:text-white transition-all flex-shrink-0">
+                    <Archive size={20} />
+                  </div>
+                  <div>
+                    <div className="font-black text-primary mb-0.5">Zip Documents</div>
+                    <div className="text-xs text-primary/60 font-semibold leading-relaxed">Downloads all submitted documents organized in folders per application.</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="font-black text-primary mb-1">Zip Documents</div>
-                  <div className="text-xs text-primary/60 font-semibold leading-relaxed">Downloads all submitted documents organized in folders per application.</div>
-                </div>
-              </button>
-            </div>
-            
-            <div className="flex justify-end gap-3">
-              <button onClick={onClose} className="py-4 px-6 text-[11px] font-black uppercase tracking-widest text-primary/60 hover:bg-primary/5 rounded-2xl transition-colors">
-                Cancel
-              </button>
-              <button
-                onClick={() => setStep(2)}
-                className="py-4 px-8 bg-primary text-secondary font-black text-[11px] uppercase tracking-widest rounded-2xl hover:opacity-90 transition-all flex items-center gap-2 shadow-lg shadow-primary/20"
-              >
-                Next Step <ChevronRight size={14} />
+                <ChevronRight size={18} className="text-primary/30 group-hover:text-primary group-hover:translate-x-1 transition-all flex-shrink-0" />
               </button>
             </div>
           </>
@@ -435,10 +423,11 @@ export default function ApplicationsView() {
   const itemsPerPage = 10;
 
   // Bulk select state
-  const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const [isBulkExporting, setIsBulkExporting] = useState(false);
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   const [pdfEmailAppId, setPdfEmailAppId] = useState<number | null>(null);
   const [isSendingPdf, setIsSendingPdf] = useState(false);
@@ -501,6 +490,28 @@ export default function ApplicationsView() {
     }
   };
 
+  const handleBulkDelete = async () => {
+    setIsBulkDeleting(true);
+    const ids: number[] = Array.from(selectedIds);
+    try {
+      for (const id of ids) {
+        await deleteMutation.mutateAsync(id);
+      }
+      setSelectedIds(new Set());
+      setShowBulkDeleteModal(false);
+      toast.success(`${ids.length} application${ids.length > 1 ? 's' : ''} deleted.`);
+    } catch (e) {
+      toast.error('One or more deletions failed.');
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
+
+  const handleSelectionExport = async (type: 'zip' | 'excel' | 'documents_zip') => {
+    const selectedApps = apps.filter((a: any) => selectedIds.has(a.id));
+    await runBulkExport(selectedApps, type);
+  };
+
   const totalPages = Math.ceil(filteredApps.length / itemsPerPage);
   const paginatedApps = filteredApps.slice(
     (currentPage - 1) * itemsPerPage,
@@ -526,18 +537,7 @@ export default function ApplicationsView() {
   };
 
   const handleExportDataClick = () => {
-    if (selectedIds.size > 0) {
-      // Has selections — skip modal, export immediately as Excel by default or ZIP. Let's just open the modal to let them choose type, but pass filtered apps!
-      // Actually, since they have selections, we can open a stripped down modal or just default to ZIP.
-      // Wait, let's just open the modal so they can choose. But BulkExportModal applies filters.
-      // If we want to support selectedIds, we'd need to pass them to the modal or just let them choose.
-      // For simplicity, if they select rows, we'll export Excel automatically, or ZIP. 
-      // Actually, let's always open the modal for bulk actions, or if selected, just open a quick type selector.
-      // To keep it simple: Let's just use the modal for everything. We'll ignore selectedIds for bulk export modal.
-      setIsBulkModalOpen(true);
-    } else {
-      setIsBulkModalOpen(true);
-    }
+    setIsBulkModalOpen(true);
   };
 
   const runBulkExport = async (appsToExport: any[], type: 'zip' | 'excel' | 'documents_zip') => {
@@ -636,7 +636,6 @@ export default function ApplicationsView() {
       }
       // Reset selection
       setSelectedIds(new Set());
-      setIsSelectMode(false);
     } catch (err) {
       console.error('Bulk export failed', err);
     } finally {
@@ -651,15 +650,15 @@ export default function ApplicationsView() {
         description="Manage and review student submissions."
         icon={Users}
       >
-        <div className="flex flex-col gap-4 w-full lg:w-auto">
-          {/* Row 1: Year, Search, Bulk controls */}
-          <div className="flex flex-col md:flex-row items-center gap-3 w-full">
+        <div className="flex flex-col items-stretch sm:items-end gap-3 w-full lg:w-auto">
+          {/* Row 1: Year, Search, Export */}
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
             {/* Year selector */}
-            <div className="relative group/year w-full md:w-48">
+            <div className="relative group/year w-full sm:w-44">
               <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                className="appearance-none w-full bg-white px-5 py-4 rounded-2xl font-black text-primary border border-outline-variant/10 focus:ring-4 focus:ring-primary/5 cursor-pointer transition-all pr-10 shadow-sm text-xs"
+                className="appearance-none w-full bg-white px-5 py-3.5 rounded-2xl font-black text-primary border border-outline-variant/10 focus:ring-4 focus:ring-primary/5 cursor-pointer transition-all pr-10 shadow-sm text-xs"
               >
                 {sortedCycles.length === 0 && <option value={selectedYear}>Academic Year {selectedYear}</option>}
                 {sortedCycles.map((c: any) => (
@@ -670,34 +669,21 @@ export default function ApplicationsView() {
             </div>
 
             {/* Search */}
-            <div className="relative group/search flex-1">
+            <div className="relative group/search w-full sm:w-60">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/20 group-focus-within/search:text-primary transition-colors" size={16} />
               <input
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="pl-12 pr-6 py-4 bg-white border border-outline-variant/10 rounded-2xl text-xs font-black placeholder:text-primary/20 focus:ring-4 focus:ring-primary/5 transition-all w-full shadow-sm"
-                placeholder="Find a student by name or Application ID..."
+                className="pl-12 pr-6 py-3.5 bg-white border border-outline-variant/10 rounded-2xl text-xs font-black placeholder:text-primary/20 focus:ring-4 focus:ring-primary/5 transition-all w-full shadow-sm"
+                placeholder="Find student by name or ID..."
               />
             </div>
-
-            {/* Select toggle */}
-            <button
-              onClick={() => { setIsSelectMode(v => !v); setSelectedIds(new Set()); }}
-              className={`flex items-center gap-2 px-5 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all whitespace-nowrap shadow-sm ${
-                isSelectMode
-                  ? 'bg-primary text-white border-primary'
-                  : 'bg-white text-primary/60 border-outline-variant/10 hover:border-primary/30 hover:text-primary'
-              }`}
-            >
-              <CheckSquare size={14} />
-              {isSelectMode ? `${selectedIds.size} Selected` : 'Select'}
-            </button>
 
             {/* Export Data */}
             <button
               onClick={handleExportDataClick}
               disabled={isBulkExporting}
-              className="flex items-center gap-2 px-5 py-4 bg-primary text-secondary rounded-2xl text-[10px] font-black uppercase tracking-widest border border-transparent hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary/20 whitespace-nowrap"
+              className="flex items-center gap-2 px-5 py-3.5 bg-primary text-secondary rounded-2xl text-[10px] font-black uppercase tracking-widest border border-transparent hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary/20 whitespace-nowrap"
             >
               {isBulkExporting
                 ? <Loader2 size={14} className="animate-spin" />
@@ -707,7 +693,7 @@ export default function ApplicationsView() {
           </div>
 
           {/* Row 2: Status filter pills */}
-          <div className="flex items-center gap-2 bg-primary/5 p-1.5 rounded-2xl border border-primary/10 overflow-x-auto max-w-full hide-scrollbar">
+          <div className="flex items-center gap-1.5 bg-primary/5 p-1 rounded-2xl border border-primary/10 overflow-x-auto max-w-full hide-scrollbar">
             {[
               { id: 'all', label: 'All' },
               { id: 'pending', label: 'Pending' },
@@ -720,15 +706,15 @@ export default function ApplicationsView() {
               <button
                 key={f.id}
                 onClick={() => setStatusFilter(f.id)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
+                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
                   statusFilter === f.id
                     ? 'bg-white shadow-lg text-primary scale-105'
-                    : 'text-primary/40 hover:text-primary hover:bg-white/50'
+                    : 'text-primary/50 hover:text-primary hover:bg-white/50'
                 }`}
               >
                 {f.label}
                 {statusMetrics[f.id] > 0 && (
-                  <span className={`min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[8px] font-black ${statusFilter === f.id ? 'bg-primary text-white' : 'bg-primary/10 text-primary/40'}`}>
+                  <span className={`min-w-[17px] h-[17px] px-1 flex items-center justify-center rounded-full text-[8px] font-black ${statusFilter === f.id ? 'bg-primary text-white' : 'bg-primary/10 text-primary/60'}`}>
                     {statusMetrics[f.id]}
                   </span>
                 )}
@@ -749,20 +735,15 @@ export default function ApplicationsView() {
             <thead className="bg-surface-container-low/50 border-b border-outline-variant/10">
               <tr>
                 <th className="pl-6 pr-2 py-5 w-10">
-                  <AnimatePresence>
-                    {isSelectMode && (
-                      <motion.button
-                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                        onClick={toggleSelectAll}
-                        className="text-primary/40 hover:text-primary transition-colors whitespace-normal"
-                        title={allVisibleSelected ? 'Deselect all' : 'Select all visible'}
-                      >
-                        {allVisibleSelected
-                          ? <CheckSquare size={16} className="text-secondary" />
-                          : <Square size={16} />}
-                      </motion.button>
-                    )}
-                  </AnimatePresence>
+                  <button
+                    onClick={toggleSelectAll}
+                    className="text-primary/40 hover:text-primary transition-colors"
+                    title={allVisibleSelected ? 'Deselect all' : 'Select all visible'}
+                  >
+                    {allVisibleSelected
+                      ? <CheckSquare size={16} className="text-secondary" />
+                      : <Square size={16} />}
+                  </button>
                 </th>
                 <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-primary/40">Candidate</th>
                 <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-primary/40">DOB (Age)</th>
@@ -826,7 +807,6 @@ export default function ApplicationsView() {
                 <ApplicationRow
                   key={app.id}
                   app={app}
-                  isSelectMode={isSelectMode}
                   isSelected={selectedIds.has(app.id)}
                   onToggleSelect={(e) => { e.stopPropagation(); toggleSelectApp(app.id); }}
                   onViewDetails={() => setSelectedApp(app)}
@@ -837,7 +817,7 @@ export default function ApplicationsView() {
               ))}
               {!isLoading && filteredApps.length === 0 && (
                 <tr>
-                  <td colSpan={isSelectMode ? 11 : 10} className="px-8 py-20 text-center text-sm font-bold text-primary opacity-20 italic">
+                  <td colSpan={10} className="px-8 py-20 text-center text-sm font-bold text-primary opacity-20 italic">
                     No applications match the current filter.
                   </td>
                 </tr>
@@ -855,6 +835,61 @@ export default function ApplicationsView() {
         </div>
       </div>
 
+      {/* Floating Selection Action Bar */}
+      <AnimatePresence>
+        {selectedIds.size > 0 && (
+          <motion.div
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[90] flex items-center gap-2.5 bg-white/95 backdrop-blur-md text-primary px-4 py-3 rounded-2xl shadow-[0_20px_50px_rgba(24,33,109,0.15)] border border-outline-variant/15"
+          >
+            <span className="text-[10px] font-black uppercase tracking-widest text-primary/70 px-2.5 py-1 bg-primary/5 rounded-xl border border-primary/10 mr-1">
+              {selectedIds.size} selected
+            </span>
+            <button
+              onClick={() => handleSelectionExport('zip')}
+              disabled={isBulkExporting}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-primary/5 hover:bg-primary hover:text-secondary text-primary transition-all disabled:opacity-50 border border-primary/10 shadow-sm"
+              title="Export selected as PDF ZIPs"
+            >
+              <Archive size={13} /> PDF ZIP
+            </button>
+            <button
+              onClick={() => handleSelectionExport('excel')}
+              disabled={isBulkExporting}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-primary/5 hover:bg-primary hover:text-secondary text-primary transition-all disabled:opacity-50 border border-primary/10 shadow-sm"
+              title="Export selected as Excel"
+            >
+              <FileText size={13} /> Excel
+            </button>
+            <button
+              onClick={() => handleSelectionExport('documents_zip')}
+              disabled={isBulkExporting}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-primary/5 hover:bg-primary hover:text-secondary text-primary transition-all disabled:opacity-50 border border-primary/10 shadow-sm"
+              title="Export selected documents as ZIP"
+            >
+              <FileDown size={13} /> Docs ZIP
+            </button>
+            <button
+              onClick={() => setShowBulkDeleteModal(true)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-red-50 text-red-600 hover:bg-red-500 hover:text-white border border-red-200 transition-all shadow-sm"
+              title="Delete selected applications"
+            >
+              <Trash2 size={13} /> Delete
+            </button>
+            <button
+              onClick={() => setSelectedIds(new Set())}
+              className="w-8 h-8 flex items-center justify-center rounded-xl text-primary/40 hover:text-primary hover:bg-primary/5 transition-all ml-1"
+              title="Clear selection"
+            >
+              <X size={15} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Bulk Export Modal */}
       <AnimatePresence>
         {isBulkModalOpen && (
@@ -870,7 +905,7 @@ export default function ApplicationsView() {
       {/* Send PDF Confirm Modal */}
       <AnimatePresence>
         {pdfEmailAppId !== null && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-primary/40 backdrop-blur-sm" onClick={() => !isSendingPdf && setPdfEmailAppId(null)} />
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-white max-w-sm w-full rounded-[32px] p-8 relative z-10 shadow-2xl border border-outline-variant/10 text-center">
                <div className="w-16 h-16 bg-primary/5 rounded-full flex items-center justify-center text-primary mx-auto mb-6">
@@ -896,7 +931,7 @@ export default function ApplicationsView() {
       {/* Delete Confirm Modal */}
       <AnimatePresence>
         {deleteAppId !== null && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-primary/40 backdrop-blur-sm" onClick={() => !deleteMutation.isPending && setDeleteAppId(null)} />
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-white max-w-sm w-full rounded-[32px] p-8 relative z-10 shadow-2xl border border-outline-variant/10 text-center">
                <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -912,6 +947,32 @@ export default function ApplicationsView() {
                    className="flex-[2] py-4 bg-red-500 text-white shadow-lg shadow-red-500/20 text-[11px] font-black uppercase tracking-widest rounded-xl hover:opacity-90 disabled:opacity-50 disabled:shadow-none transition-all flex justify-center items-center gap-2"
                   >
                     {deleteMutation.isPending ? <><Loader2 size={14} className="animate-spin" /> Deleting</> : 'Delete'}
+                  </button>
+               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Bulk Delete Confirm Modal */}
+      <AnimatePresence>
+        {showBulkDeleteModal && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-primary/40 backdrop-blur-sm" onClick={() => !isBulkDeleting && setShowBulkDeleteModal(false)} />
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-white max-w-sm w-full rounded-[32px] p-8 relative z-10 shadow-2xl border border-outline-variant/10 text-center">
+               <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <AlertTriangle size={28} />
+               </div>
+               <h3 className="text-xl font-black text-primary mb-2">Delete {selectedIds.size} Application{selectedIds.size > 1 ? 's' : ''}?</h3>
+               <p className="text-sm font-medium text-on-surface-variant/70 leading-relaxed mb-8">This will permanently delete <span className="font-bold text-primary">{selectedIds.size}</span> selected application{selectedIds.size > 1 ? 's' : ''}. This action cannot be undone.</p>
+               <div className="flex gap-4">
+                  <button disabled={isBulkDeleting} onClick={() => setShowBulkDeleteModal(false)} className="flex-1 py-4 text-[11px] font-black uppercase tracking-widest text-primary/60 hover:bg-primary/5 rounded-xl disabled:opacity-50 transition-colors">Cancel</button>
+                  <button
+                   disabled={isBulkDeleting}
+                   onClick={handleBulkDelete}
+                   className="flex-[2] py-4 bg-red-500 text-white shadow-lg shadow-red-500/20 text-[11px] font-black uppercase tracking-widest rounded-xl hover:opacity-90 disabled:opacity-50 disabled:shadow-none transition-all flex justify-center items-center gap-2"
+                  >
+                    {isBulkDeleting ? <><Loader2 size={14} className="animate-spin" /> Deleting...</> : `Delete ${selectedIds.size}`}
                   </button>
                </div>
             </motion.div>
