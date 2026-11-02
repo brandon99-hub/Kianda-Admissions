@@ -1110,8 +1110,8 @@ app.post('/api/admin/applications/status', authenticateAdmin, async (req, res) =
         }
       }
 
-      /*
-      if (emailContent) {
+      // Only dispatch emails for final decision outcomes (accepted, rejected, waitlisted) — assessment emails remain disabled
+      if (emailContent && ['accepted', 'rejected', 'waitlisted'].includes(status)) {
         if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
           try {
             await transporter.sendMail({
@@ -1121,6 +1121,7 @@ app.post('/api/admin/applications/status', authenticateAdmin, async (req, res) =
               html: emailContent.body,
               attachments: [{ filename: 'kianda-school-logo-removebg-preview.png', path: path.resolve(__dirname, '../public/kianda-school-logo-removebg-preview.png'), cid: 'kiandalogo' }]
             });
+            console.log(`[STATUS EMAIL SENT] ${status.toUpperCase()} email sent to ${parentEmails}`);
           } catch (e) {
             console.error('[EMAIL ERROR]', e);
           }
@@ -1128,7 +1129,6 @@ app.post('/api/admin/applications/status', authenticateAdmin, async (req, res) =
           console.log(`[MOCK STATUS EMAIL] To: ${parentEmails}\nSubject: ${emailContent.subject}\nBody:\n${emailContent.body}`);
         }
       }
-      */
     }
 
     let responseData: any = { success: true, status };
@@ -1702,7 +1702,6 @@ app.post('/api/admin/interviews/outcome', authenticateAdmin, async (req, res) =>
         emailContent = getRejectionEmail(appData.candidate.fullName, appData.academicYear || new Date().getFullYear());
       }
 
-      /*
       if (emailContent) {
         if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
           try {
@@ -1713,6 +1712,7 @@ app.post('/api/admin/interviews/outcome', authenticateAdmin, async (req, res) =>
               html: emailContent.body,
               attachments: [{ filename: 'kianda-school-logo-removebg-preview.png', path: path.resolve(__dirname, '../public/kianda-school-logo-removebg-preview.png'), cid: 'kiandalogo' }]
             });
+            console.log(`[OUTCOME EMAIL SENT] ${outcome.toUpperCase()} email sent to ${parentEmails}`);
           } catch (e) {
             console.error('[EMAIL ERROR]', e);
           }
@@ -1720,7 +1720,6 @@ app.post('/api/admin/interviews/outcome', authenticateAdmin, async (req, res) =>
           console.log(`[MOCK OUTCOME EMAIL] To: ${parentEmails}\nSubject: ${emailContent.subject}\nBody:\n${emailContent.body}`);
         }
       }
-      */
     }
 
     let responseData: any = { success: true };
