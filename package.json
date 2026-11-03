@@ -15,6 +15,7 @@
     "db:clear": "tsx backend/scripts/clear-data.ts",
     "seed:admin": "tsx backend/scripts/seed-admin.ts",
     "seed:grade5": "tsx backend/scripts/seed-grade5.ts",
+    "convert:2027": "tsx backend/scripts/convert-applicants-2027.ts",
     "backup": "tsx backend/scripts/backupToDrive.ts"
   },
   "dependencies": {

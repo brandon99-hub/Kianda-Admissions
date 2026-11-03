@@ -10,6 +10,7 @@ import ProcessDocumentsView from './admin/views/ProcessDocumentsView';
 import PaymentsView from './admin/views/PaymentsView';
 import { AdminProvider, useAdminContext, AdminTab } from '../context/AdminContext';
 import { adminLogout } from '../utils/auth';
+import { useCycles } from '../hooks/useAdminData';
 
 // ── Sidebar nav items ─────────────────────────────────────────────────────────
 
@@ -28,6 +29,19 @@ const NAV_ITEMS: { id: AdminTab; label: string; icon: React.ElementType }[] = [
 function AdminLayout({ onLogout, onViewPortal }: { onLogout: () => void; onViewPortal?: () => void }) {
   const { state, setActiveTab, toggleSidebar, setPreSelectedGradeId } = useAdminContext();
   const { activeTab, isSidebarCollapsed } = state;
+  const { data: cycles = [] } = useCycles();
+
+  const activeAcademicYear = React.useMemo(() => {
+    if (!cycles || cycles.length === 0) return new Date().getFullYear();
+    const now = new Date();
+    // Prioritize active cycle within current date range, then any active cycle, then most recent cycle
+    const currentActive = cycles.find((c: any) => c.isActive && now >= new Date(c.startDate) && now <= new Date(c.endDate));
+    if (currentActive) return currentActive.academicYear;
+    const active = cycles.find((c: any) => c.isActive);
+    if (active) return active.academicYear;
+    const sorted = [...cycles].sort((a: any, b: any) => b.academicYear - a.academicYear);
+    return sorted[0]?.academicYear || new Date().getFullYear();
+  }, [cycles]);
 
   const handleLogout = async () => {
     await adminLogout();
@@ -64,11 +78,11 @@ function AdminLayout({ onLogout, onViewPortal }: { onLogout: () => void; onViewP
                 className={`w-full flex items-center gap-4 px-5 py-3.5 rounded-xl transition-all duration-300 font-bold group cursor-pointer ${
                   activeTab === item.id
                     ? 'bg-secondary text-primary shadow-lg shadow-secondary/20'
-                    : 'text-on-surface-variant/40 hover:bg-secondary-container/30 hover:text-primary'
+                    : 'text-primary/75 hover:bg-secondary-container/30 hover:text-primary'
                 }`}
               >
                 <div className="flex-shrink-0">
-                  <item.icon size={20} className={activeTab === item.id ? 'opacity-100' : 'opacity-40 group-hover:opacity-100'} />
+                  <item.icon size={20} className={activeTab === item.id ? 'opacity-100' : 'opacity-70 group-hover:opacity-100 text-primary'} />
                 </div>
                 {!isSidebarCollapsed && (
                   <span className="text-[13px] tracking-wide whitespace-nowrap">{item.label}</span>
@@ -101,7 +115,7 @@ function AdminLayout({ onLogout, onViewPortal }: { onLogout: () => void; onViewP
             {/* Academic Year display */}
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold tracking-wide text-primary/80 font-headline">
-                Academic Year 2026
+                Academic Year {activeAcademicYear}
               </span>
             </div>
           </div>

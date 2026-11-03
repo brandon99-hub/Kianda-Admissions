@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import toast from 'react-hot-toast';
-import { Users, Search, User, Mail, ChevronRight, Loader2, ChevronDown, Archive, CheckSquare, Square, X, Filter, FileDown, FileText, ArrowLeft, Send, Edit2, Trash2, AlertTriangle } from 'lucide-react';
+import { Users, Search, User, Mail, ChevronRight, Loader2, ChevronDown, Archive, CheckSquare, Square, X, Filter, FileDown, FileText, ArrowLeft, Send, Edit2, Trash2, AlertTriangle, Check, GraduationCap, Calendar } from 'lucide-react';
 import AdminPageHeader from '../AdminPageHeader';
 import ApplicationDetailsView from './ApplicationDetailsView';
 import TablePagination from '../TablePagination';
@@ -168,30 +168,124 @@ const ApplicationRow: React.FC<{
 
 const BulkExportModal: React.FC<{
   apps: any[];
+  cycles: any[];
   onClose: () => void;
   onExport: (filtered: any[], type: 'zip' | 'excel' | 'documents_zip') => void;
   isBulkExporting: boolean;
-}> = ({ apps, onClose, onExport, isBulkExporting }) => {
+}> = ({ apps, cycles, onClose, onExport, isBulkExporting }) => {
   const [step, setStep] = useState<1 | 2>(1);
   const [exportType, setExportType] = useState<'zip' | 'excel' | 'documents_zip'>('zip');
   
-  const [filterYear, setFilterYear] = useState<number | 'all'>('all');
+  // Sourced strictly from admin-defined cycles
+  const adminCycleYears = React.useMemo(() => {
+    return Array.from(new Set(cycles.map((c: any) => c.academicYear).filter(Boolean)))
+      .sort((a: any, b: any) => b - a) as number[];
+  }, [cycles]);
+
+  // Determine current active cycle
+  const activeCycleYear = React.useMemo(() => {
+    const now = new Date();
+    const current = cycles.find((c: any) => c.isActive && now >= new Date(c.startDate) && now <= new Date(c.endDate));
+    if (current) return current.academicYear;
+    const active = cycles.find((c: any) => c.isActive);
+    if (active) return active.academicYear;
+    return adminCycleYears[0] ?? null;
+  }, [cycles, adminCycleYears]);
+
+  const [filterYear, setFilterYear] = useState<number | 'all'>(() => activeCycleYear ?? 'all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterGrade, setFilterGrade] = useState('all');
 
-  const uniqueGrades = Array.from(new Set(apps.map((a: any) => a.candidate?.grade).filter(Boolean))) as string[];
-  const uniqueYears = Array.from(new Set(apps.map((a: any) => a.academicYear).filter(Boolean))).sort() as number[];
+  const [isYearDropdownOpen, setIsYearDropdownOpen] = useState(false);
+  const [isGradeDropdownOpen, setIsGradeDropdownOpen] = useState(false);
+  const yearDropdownRef = useRef<HTMLDivElement>(null);
+  const gradeDropdownRef = useRef<HTMLDivElement>(null);
 
-  const filtered = apps.filter((a: any) => {
-    const y = filterYear === 'all' || a.academicYear === filterYear;
-    const g = filterGrade === 'all' || a.candidate?.grade === filterGrade;
-    
-    let matchesStatus = filterStatus === 'all' || a.status === filterStatus;
-    if (filterStatus === 'pending') matchesStatus = ['pending', 'assessment_scheduled'].includes(a.status);
-    if (filterStatus === 'passed_assessment') matchesStatus = ['passed_assessment', 'interview_scheduled'].includes(a.status);
-    
-    return y && g && matchesStatus;
-  });
+  // Close dropdowns on click outside
+  React.useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (yearDropdownRef.current && !yearDropdownRef.current.contains(e.target as Node)) {
+        setIsYearDropdownOpen(false);
+      }
+      if (gradeDropdownRef.current && !gradeDropdownRef.current.contains(e.target as Node)) {
+        setIsGradeDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Update default year if activeCycleYear becomes available
+  React.useEffect(() => {
+    if (filterYear === 'all' && activeCycleYear && adminCycleYears.length > 0) {
+      setFilterYear(activeCycleYear);
+    }
+  }, [activeCycleYear, adminCycleYears]);
+
+  // Natural grade sort helper: Playgroup/PP1/PP2 -> Grade 1 -> Grade 2 ... -> Grade 10...
+  const getGradeOrder = (gradeName: string): number => {
+    const clean = gradeName.toLowerCase().trim();
+    if (clean.includes('playgroup') || clean.includes('daycare')) return 0;
+    if (clean.includes('pp1') || clean.includes('pre-primary 1') || clean.includes('kg1')) return 0.1;
+    if (clean.includes('pp2') || clean.includes('pre-primary 2') || clean.includes('kg2')) return 0.2;
+    const match = clean.match(/\d+/);
+    if (match) return parseInt(match[0], 10);
+    return 999;
+  };
+
+  // Applications scoped exclusively to admin-defined cycles
+  // Any orphan/historical record (e.g. 2026 when 2026 is not defined by admin) is ignored
+  const cycleScopedApps = React.useMemo(() => {
+    return apps.filter((a: any) => {
+      if (filterYear === 'all') {
+        return adminCycleYears.includes(a.academicYear);
+      }
+      return a.academicYear === filterYear;
+    });
+  }, [apps, filterYear, adminCycleYears]);
+
+  // Available grades with submissions during the selected cycle, naturally sorted
+  const availableGrades = React.useMemo(() => {
+    const gradeCounts: Record<string, number> = {};
+    cycleScopedApps.forEach((a: any) => {
+      const g = a.candidate?.grade?.trim();
+      if (g) {
+        gradeCounts[g] = (gradeCounts[g] || 0) + 1;
+      }
+    });
+
+    return Object.keys(gradeCounts)
+      .sort((a, b) => {
+        const orderA = getGradeOrder(a);
+        const orderB = getGradeOrder(b);
+        if (orderA !== orderB) return orderA - orderB;
+        return a.localeCompare(b);
+      })
+      .map(grade => ({
+        name: grade,
+        count: gradeCounts[grade]
+      }));
+  }, [cycleScopedApps]);
+
+  // Reset grade filter if selected grade has no submissions in the newly selected cycle
+  React.useEffect(() => {
+    if (filterGrade !== 'all' && !availableGrades.some(g => g.name === filterGrade)) {
+      setFilterGrade('all');
+    }
+  }, [availableGrades, filterGrade]);
+
+  // Filtered applications based on Year, Grade, and Status
+  const filtered = React.useMemo(() => {
+    return cycleScopedApps.filter((a: any) => {
+      const matchesGrade = filterGrade === 'all' || a.candidate?.grade === filterGrade;
+      
+      let matchesStatus = filterStatus === 'all' || a.status === filterStatus;
+      if (filterStatus === 'pending') matchesStatus = ['pending', 'assessment_scheduled'].includes(a.status);
+      if (filterStatus === 'passed_assessment') matchesStatus = ['passed_assessment', 'interview_scheduled'].includes(a.status);
+      
+      return matchesGrade && matchesStatus;
+    });
+  }, [cycleScopedApps, filterGrade, filterStatus]);
 
   const statusOptions = [
     { id: 'all', label: 'All' },
@@ -214,7 +308,7 @@ const BulkExportModal: React.FC<{
         initial={{ scale: 0.95, opacity: 0, y: 10 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0 }}
         className="bg-white max-w-lg w-full min-h-[530px] rounded-[32px] p-8 relative z-10 shadow-2xl border border-outline-variant/10 flex flex-col justify-between"
       >
-        <button onClick={onClose} className="absolute top-6 right-6 p-2 rounded-full hover:bg-primary/5 text-primary/40 hover:text-primary transition-colors">
+        <button onClick={onClose} className="absolute top-6 right-6 p-2 rounded-full hover:bg-primary/5 text-primary/60 hover:text-primary transition-colors cursor-pointer">
           <X size={20} />
         </button>
 
@@ -227,7 +321,7 @@ const BulkExportModal: React.FC<{
                 </div>
                 <div>
                   <h3 className="text-xl font-black text-primary">Export Data</h3>
-                  <p className="text-xs font-bold text-primary/40">Step 1: Choose Export Format</p>
+                  <p className="text-xs font-semibold text-primary/70">Step 1: Choose Export Format</p>
                 </div>
               </div>
             </div>
@@ -235,7 +329,7 @@ const BulkExportModal: React.FC<{
             <div className="space-y-3.5 mb-2">
               <button
                 onClick={() => { setExportType('zip'); setStep(2); }}
-                className="w-full text-left p-5 rounded-[24px] border-2 border-outline-variant/10 hover:border-primary/40 hover:bg-surface-container-lowest transition-all flex items-center justify-between gap-4 group"
+                className="w-full text-left p-5 rounded-[24px] border-2 border-outline-variant/10 hover:border-primary/40 hover:bg-surface-container-lowest transition-all flex items-center justify-between gap-4 group cursor-pointer"
               >
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-primary/10 text-primary group-hover:bg-primary group-hover:text-secondary transition-all flex-shrink-0">
@@ -243,7 +337,7 @@ const BulkExportModal: React.FC<{
                   </div>
                   <div>
                     <div className="font-black text-primary mb-0.5">Zip Application PDF</div>
-                    <div className="text-xs text-primary/60 font-semibold leading-relaxed">Generates individual PDF dossiers for each candidate, packaged into a single ZIP file.</div>
+                    <div className="text-xs text-primary/75 font-medium leading-relaxed">Generates individual PDF dossiers for each candidate, packaged into a single ZIP file.</div>
                   </div>
                 </div>
                 <ChevronRight size={18} className="text-primary/30 group-hover:text-primary group-hover:translate-x-1 transition-all flex-shrink-0" />
@@ -251,7 +345,7 @@ const BulkExportModal: React.FC<{
               
               <button
                 onClick={() => { setExportType('excel'); setStep(2); }}
-                className="w-full text-left p-5 rounded-[24px] border-2 border-outline-variant/10 hover:border-primary/40 hover:bg-surface-container-lowest transition-all flex items-center justify-between gap-4 group"
+                className="w-full text-left p-5 rounded-[24px] border-2 border-outline-variant/10 hover:border-primary/40 hover:bg-surface-container-lowest transition-all flex items-center justify-between gap-4 group cursor-pointer"
               >
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-green-50 text-green-600 group-hover:bg-green-600 group-hover:text-white transition-all flex-shrink-0">
@@ -259,7 +353,7 @@ const BulkExportModal: React.FC<{
                   </div>
                   <div>
                     <div className="font-black text-primary mb-0.5">Excel Spreadsheet</div>
-                    <div className="text-xs text-primary/60 font-semibold leading-relaxed">Generates a flat .xlsx file containing all structured data fields for analysis and reporting.</div>
+                    <div className="text-xs text-primary/75 font-medium leading-relaxed">Generates a flat .xlsx file containing all structured data fields for analysis and reporting.</div>
                   </div>
                 </div>
                 <ChevronRight size={18} className="text-primary/30 group-hover:text-primary group-hover:translate-x-1 transition-all flex-shrink-0" />
@@ -267,7 +361,7 @@ const BulkExportModal: React.FC<{
               
               <button
                 onClick={() => { setExportType('documents_zip'); setStep(2); }}
-                className="w-full text-left p-5 rounded-[24px] border-2 border-outline-variant/10 hover:border-primary/40 hover:bg-surface-container-lowest transition-all flex items-center justify-between gap-4 group"
+                className="w-full text-left p-5 rounded-[24px] border-2 border-outline-variant/10 hover:border-primary/40 hover:bg-surface-container-lowest transition-all flex items-center justify-between gap-4 group cursor-pointer"
               >
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-amber-50 text-amber-600 group-hover:bg-amber-600 group-hover:text-white transition-all flex-shrink-0">
@@ -275,7 +369,7 @@ const BulkExportModal: React.FC<{
                   </div>
                   <div>
                     <div className="font-black text-primary mb-0.5">Zip Documents</div>
-                    <div className="text-xs text-primary/60 font-semibold leading-relaxed">Downloads all submitted documents organized in folders per application.</div>
+                    <div className="text-xs text-primary/75 font-medium leading-relaxed">Downloads all submitted documents organized in folders per application.</div>
                   </div>
                 </div>
                 <ChevronRight size={18} className="text-primary/30 group-hover:text-primary group-hover:translate-x-1 transition-all flex-shrink-0" />
@@ -291,56 +385,191 @@ const BulkExportModal: React.FC<{
                 </div>
                 <div>
                   <h3 className="text-xl font-black text-primary">Filter Records</h3>
-                  <p className="text-xs font-bold text-primary/40">Step 2: Apply filters for {exportType === 'zip' ? 'ZIP Export' : exportType === 'documents_zip' ? 'Documents ZIP' : 'Excel Export'}</p>
+                  <p className="text-xs font-semibold text-primary/70">Step 2: Apply filters for {exportType === 'zip' ? 'ZIP Export' : exportType === 'documents_zip' ? 'Documents ZIP' : 'Excel Export'}</p>
                 </div>
               </div>
             </div>
 
             <div className="space-y-5">
               {/* Year filter */}
-              <div>
-                <label className="text-[10px] font-black uppercase tracking-widest text-primary/40 block mb-2">Academic Year</label>
-                <div className="relative">
-                  <select
-                    value={filterYear}
-                    onChange={e => setFilterYear(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
-                    className="w-full appearance-none bg-surface-container-lowest border border-outline-variant/10 rounded-2xl px-4 py-3 text-sm font-bold text-primary focus:outline-none focus:ring-2 focus:ring-primary/10 pr-10"
-                  >
-                    <option value="all">All Years</option>
-                    {uniqueYears.map(y => <option key={y} value={y}>{y}</option>)}
-                  </select>
-                  <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-primary/30 pointer-events-none" />
-                </div>
+              <div ref={yearDropdownRef} className="relative">
+                <label className="text-[11px] font-black uppercase tracking-widest text-primary/80 block mb-2">Academic Year</label>
+                <button
+                  type="button"
+                  onClick={() => { setIsYearDropdownOpen(!isYearDropdownOpen); setIsGradeDropdownOpen(false); }}
+                  className="w-full bg-surface-container-lowest border border-outline-variant/15 hover:border-primary/30 rounded-2xl px-4 py-3 text-sm font-bold text-primary flex items-center justify-between transition-all focus:outline-none focus:ring-2 focus:ring-primary/10 cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Calendar size={16} className="text-primary/50" />
+                    <span>
+                      {filterYear === 'all'
+                        ? 'All Defined Cycles'
+                        : `Academic Year ${filterYear}`}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-lg bg-primary/5 text-primary/70">
+                      {filterYear === 'all'
+                        ? `${apps.filter((a: any) => adminCycleYears.includes(a.academicYear)).length} apps`
+                        : `${apps.filter((a: any) => a.academicYear === filterYear).length} apps`}
+                    </span>
+                    <ChevronDown size={15} className={`text-primary/50 transition-transform duration-200 ${isYearDropdownOpen ? 'rotate-180' : ''}`} />
+                  </div>
+                </button>
+
+                <AnimatePresence>
+                  {isYearDropdownOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -4, scale: 0.98 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -4, scale: 0.98 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-outline-variant/20 rounded-2xl shadow-xl z-50 p-1.5 space-y-1 overflow-hidden"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => { setFilterYear('all'); setIsYearDropdownOpen(false); }}
+                        className={`w-full px-3.5 py-2.5 rounded-xl text-xs font-bold transition-colors flex items-center justify-between cursor-pointer ${
+                          filterYear === 'all'
+                            ? 'bg-primary text-secondary'
+                            : 'text-primary hover:bg-surface-container-low'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          {filterYear === 'all' && <Check size={14} className="text-secondary" />}
+                          <span>All Defined Cycles</span>
+                        </div>
+                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${filterYear === 'all' ? 'bg-secondary/20 text-secondary' : 'bg-primary/5 text-primary/60'}`}>
+                          {apps.filter((a: any) => adminCycleYears.includes(a.academicYear)).length}
+                        </span>
+                      </button>
+
+                      {adminCycleYears.map(year => {
+                        const count = apps.filter((a: any) => a.academicYear === year).length;
+                        const isCurrentActive = year === activeCycleYear;
+                        return (
+                          <button
+                            key={year}
+                            type="button"
+                            onClick={() => { setFilterYear(year); setIsYearDropdownOpen(false); }}
+                            className={`w-full px-3.5 py-2.5 rounded-xl text-xs font-bold transition-colors flex items-center justify-between cursor-pointer ${
+                              filterYear === year
+                                ? 'bg-primary text-secondary'
+                                : 'text-primary hover:bg-surface-container-low'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              {filterYear === year && <Check size={14} className="text-secondary" />}
+                              <span>Academic Year {year}</span>
+                              {isCurrentActive && (
+                                <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md ${filterYear === year ? 'bg-secondary/20 text-secondary' : 'bg-green-100 text-green-700'}`}>
+                                  Current
+                                </span>
+                              )}
+                            </div>
+                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${filterYear === year ? 'bg-secondary/20 text-secondary' : 'bg-primary/5 text-primary/60'}`}>
+                              {count}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
               {/* Grade filter */}
-              <div>
-                <label className="text-[10px] font-black uppercase tracking-widest text-primary/40 block mb-2">Grade</label>
-                <div className="relative">
-                  <select
-                    value={filterGrade}
-                    onChange={e => setFilterGrade(e.target.value)}
-                    className="w-full appearance-none bg-surface-container-lowest border border-outline-variant/10 rounded-2xl px-4 py-3 text-sm font-bold text-primary focus:outline-none focus:ring-2 focus:ring-primary/10 pr-10"
-                  >
-                    <option value="all">All Grades</option>
-                    {uniqueGrades.map(g => <option key={g} value={g}>{g}</option>)}
-                  </select>
-                  <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-primary/30 pointer-events-none" />
-                </div>
+              <div ref={gradeDropdownRef} className="relative">
+                <label className="text-[11px] font-black uppercase tracking-widest text-primary/80 block mb-2">Grade</label>
+                <button
+                  type="button"
+                  onClick={() => { setIsGradeDropdownOpen(!isGradeDropdownOpen); setIsYearDropdownOpen(false); }}
+                  className="w-full bg-surface-container-lowest border border-outline-variant/15 hover:border-primary/30 rounded-2xl px-4 py-3 text-sm font-bold text-primary flex items-center justify-between transition-all focus:outline-none focus:ring-2 focus:ring-primary/10 cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <GraduationCap size={16} className="text-primary/50" />
+                    <span>{filterGrade === 'all' ? 'All Grades' : filterGrade}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-lg bg-primary/5 text-primary/70">
+                      {filterGrade === 'all'
+                        ? `${cycleScopedApps.length} candidates`
+                        : `${availableGrades.find(g => g.name === filterGrade)?.count || 0} candidates`}
+                    </span>
+                    <ChevronDown size={15} className={`text-primary/50 transition-transform duration-200 ${isGradeDropdownOpen ? 'rotate-180' : ''}`} />
+                  </div>
+                </button>
+
+                <AnimatePresence>
+                  {isGradeDropdownOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -4, scale: 0.98 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -4, scale: 0.98 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-outline-variant/20 rounded-2xl shadow-xl z-50 p-1.5 space-y-1 max-h-56 overflow-y-auto"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => { setFilterGrade('all'); setIsGradeDropdownOpen(false); }}
+                        className={`w-full px-3.5 py-2.5 rounded-xl text-xs font-bold transition-colors flex items-center justify-between cursor-pointer ${
+                          filterGrade === 'all'
+                            ? 'bg-primary text-secondary'
+                            : 'text-primary hover:bg-surface-container-low'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          {filterGrade === 'all' && <Check size={14} className="text-secondary" />}
+                          <span>All Grades</span>
+                        </div>
+                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${filterGrade === 'all' ? 'bg-secondary/20 text-secondary' : 'bg-primary/5 text-primary/60'}`}>
+                          {cycleScopedApps.length}
+                        </span>
+                      </button>
+
+                      {availableGrades.length === 0 ? (
+                        <div className="p-3 text-center text-xs font-semibold text-primary/40">
+                          No submissions recorded for this cycle
+                        </div>
+                      ) : (
+                        availableGrades.map(g => (
+                          <button
+                            key={g.name}
+                            type="button"
+                            onClick={() => { setFilterGrade(g.name); setIsGradeDropdownOpen(false); }}
+                            className={`w-full px-3.5 py-2.5 rounded-xl text-xs font-bold transition-colors flex items-center justify-between cursor-pointer ${
+                              filterGrade === g.name
+                                ? 'bg-primary text-secondary'
+                                : 'text-primary hover:bg-surface-container-low'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              {filterGrade === g.name && <Check size={14} className="text-secondary" />}
+                              <span>{g.name}</span>
+                            </div>
+                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${filterGrade === g.name ? 'bg-secondary/20 text-secondary' : 'bg-primary/5 text-primary/60'}`}>
+                              {g.count}
+                            </span>
+                          </button>
+                        ))
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
               {/* Status filter */}
               <div>
-                <label className="text-[10px] font-black uppercase tracking-widest text-primary/40 block mb-2">Application Status</label>
+                <label className="text-[11px] font-black uppercase tracking-widest text-primary/80 block mb-2">Application Status</label>
                 <div className="flex flex-wrap gap-2">
                   {statusOptions.map(opt => (
                     <button
                       key={opt.id}
                       onClick={() => setFilterStatus(opt.id)}
-                      className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${
+                      className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all cursor-pointer ${
                         filterStatus === opt.id
-                          ? 'bg-primary text-white border-primary'
-                          : 'bg-surface-container-lowest text-primary/50 border-outline-variant/10 hover:border-primary/30 hover:text-primary'
+                          ? 'bg-primary text-white border-primary shadow-sm'
+                          : 'bg-surface-container-lowest text-primary/75 font-bold border-outline-variant/15 hover:border-primary/40 hover:text-primary hover:bg-primary/5'
                       }`}
                     >
                       {opt.label}
@@ -352,19 +581,19 @@ const BulkExportModal: React.FC<{
 
             {/* Preview count */}
             <div className="mt-6 p-4 bg-primary/5 rounded-2xl border border-primary/10 flex items-center justify-between">
-              <span className="text-xs font-bold text-primary/60">Applications to export</span>
-              <span className="text-xl font-black text-primary">{filtered.length}</span>
+              <span className="text-xs font-extrabold text-primary/85">Applications to export</span>
+              <span className="text-2xl font-black text-primary">{filtered.length}</span>
             </div>
 
             {/* Action buttons */}
             <div className="flex gap-3 mt-6">
-              <button onClick={() => setStep(1)} className="flex-1 py-4 text-[11px] font-black uppercase tracking-widest text-primary/60 hover:bg-primary/5 rounded-2xl transition-colors">
+              <button onClick={() => setStep(1)} className="flex-1 py-4 text-[11px] font-black uppercase tracking-widest text-primary/70 hover:text-primary hover:bg-primary/5 rounded-2xl transition-colors cursor-pointer">
                 Back
               </button>
               <button
                 onClick={() => onExport(filtered, exportType)}
                 disabled={filtered.length === 0 || isBulkExporting}
-                className="flex-[2] py-4 bg-primary text-secondary font-black text-[11px] uppercase tracking-widest rounded-2xl hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
+                className="flex-[2] py-4 bg-primary text-secondary font-black text-[11px] uppercase tracking-widest rounded-2xl hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/20 cursor-pointer"
               >
                 {isBulkExporting
                   ? <><Loader2 size={14} className="animate-spin" /> Generating...</>
@@ -895,6 +1124,7 @@ export default function ApplicationsView() {
         {isBulkModalOpen && (
           <BulkExportModal
             apps={apps}
+            cycles={cycles}
             onClose={() => setIsBulkModalOpen(false)}
             onExport={runBulkExport}
             isBulkExporting={isBulkExporting}
