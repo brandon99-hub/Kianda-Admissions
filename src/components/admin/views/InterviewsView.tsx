@@ -523,7 +523,6 @@ export default function InterviewsView() {
   const [bulkInterviewIds, setBulkInterviewIds] = useState<Set<number>>(new Set());
   const [bulkProgress, setBulkProgress] = useState<{ current: number; total: number; accepted: number; waitlisted: number } | null>(null);
   const [showBulkConfirmModal, setShowBulkConfirmModal] = useState<'accept' | 'reject' | null>(null);
-  const [bulkRejectReason, setBulkRejectReason] = useState('');
   const [isBulkRejecting, setIsBulkRejecting] = useState(false);
   const [customAcceptOrder, setCustomAcceptOrder] = useState<number[]>([]);
 
@@ -594,7 +593,6 @@ export default function InterviewsView() {
   });
 
   // Outcome Form State
-  const [outcomeReason, setOutcomeReason] = useState('');
 
   if (selectedApp) {
     return (
@@ -753,7 +751,6 @@ export default function InterviewsView() {
   };
 
   const handleBulkReject = async () => {
-    if (!bulkRejectReason.trim()) return;
     setIsBulkRejecting(true);
     const ids: number[] = Array.from(bulkInterviewIds);
     try {
@@ -761,12 +758,11 @@ export default function InterviewsView() {
         await recordOutcomeMutation.mutateAsync({
           applicationId: appId,
           outcome: 'rejected',
-          reason: bulkRejectReason
+          reason: undefined
         });
       }
       setBulkInterviewIds(new Set());
       setShowBulkConfirmModal(null);
-      setBulkRejectReason('');
       refetchApps();
       refetchInterviews();
       toast.success(`${ids.length} candidate${ids.length > 1 ? 's' : ''} rejected.`);
@@ -805,11 +801,10 @@ export default function InterviewsView() {
     recordOutcomeMutation.mutate({
       applicationId,
       outcome,
-      reason: outcome === 'rejected' ? outcomeReason : undefined
+      reason: undefined
     }, {
       onSuccess: () => {
         setShowOutcomeModal(null);
-        setOutcomeReason('');
         if (outcome === 'accepted') {
           setTimeout(() => setShowAcceptProgress(false), 2000);
         }
@@ -1479,27 +1474,20 @@ export default function InterviewsView() {
                   <X size={32} strokeWidth={3} />
                 </div>
                 <h3 className="text-3xl font-black text-primary italic leading-none mb-2">Bulk Reject</h3>
-                <p className="text-sm font-medium text-on-surface-variant/70">Provide an internal rejection reason for <span className="font-bold text-primary">{bulkInterviewIds.size}</span> selected candidate{bulkInterviewIds.size > 1 ? 's' : ''}.</p>
+                <p className="text-sm font-medium text-on-surface-variant/70">You are about to reject <span className="font-bold text-primary">{bulkInterviewIds.size}</span> selected candidate{bulkInterviewIds.size > 1 ? 's' : ''}. A regret email will be sent to their parents.</p>
                 <div className="mt-4 p-4 rounded-2xl bg-amber-50 border border-amber-200/70 flex items-start gap-3">
                   <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
                   <div className="text-xs text-amber-900/90 leading-relaxed space-y-1">
-                    <p><strong>Shared Remark:</strong> The exact same rejection description will be saved for all {bulkInterviewIds.size} selected candidate{bulkInterviewIds.size > 1 ? 's' : ''}. Reject individually if candidates require distinct remarks.</p>
-                    <p><strong>Internal Only:</strong> This description stays inside the system for administrative records and will not be sent in the regret email to parents.</p>
+                    <p><strong>No rejection reason required</strong> — if needed, add an internal note later in each candidate's application card.</p>
+                    <p><strong>Internal Only:</strong> Regret emails are sent without any internal remarks.</p>
                   </div>
                 </div>
               </div>
-              <textarea
-                value={bulkRejectReason}
-                onChange={e => setBulkRejectReason(e.target.value)}
-                disabled={isBulkRejecting}
-                placeholder="e.g., Candidates did not meet Kianda's benchmark requirements..."
-                className="w-full h-32 p-6 bg-surface-container-lowest border border-outline-variant/20 rounded-[24px] resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-medium text-primary text-sm mb-8"
-              />
               <div className="flex gap-4">
-                <button onClick={() => { setShowBulkConfirmModal(null); setBulkRejectReason(''); }} disabled={isBulkRejecting} className="flex-1 py-5 text-[10px] font-black uppercase tracking-widest text-primary/40 hover:bg-primary/5 rounded-2xl transition-colors">Cancel</button>
+                <button onClick={() => setShowBulkConfirmModal(null)} disabled={isBulkRejecting} className="flex-1 py-5 text-[10px] font-black uppercase tracking-widest text-primary/40 hover:bg-primary/5 rounded-2xl transition-colors">Cancel</button>
                 <button
                   onClick={handleBulkReject}
-                  disabled={!bulkRejectReason.trim() || isBulkRejecting}
+                  disabled={isBulkRejecting}
                   className="flex-[2] py-5 bg-red-500 text-white shadow-xl shadow-red-500/20 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-red-600 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   {isBulkRejecting ? <><Loader2 size={14} className="animate-spin" /> Processing...</> : `Reject ${bulkInterviewIds.size} Candidates`}
@@ -1609,22 +1597,14 @@ export default function InterviewsView() {
                     <X size={32} strokeWidth={3} />
                   </div>
                   <h3 className="text-3xl font-black text-primary italic leading-none mb-2">Reject Candidate</h3>
-                  <p className="text-sm font-medium text-on-surface-variant/70">Provide a clear reason for rejecting <span className="font-bold text-primary">{showOutcomeModal.name}</span> after the oral interview. This note is kept strictly internal in the system and will not be included in the regret email sent to the parents.</p>
+                  <p className="text-sm font-medium text-on-surface-variant/70">This will record <span className="font-bold text-primary">{showOutcomeModal.name}</span> as rejected and send a regret email to their parents. You can add an internal note afterwards in the application card.</p>
                </div>
-
-               <textarea 
-                  value={outcomeReason}
-                  onChange={e => setOutcomeReason(e.target.value)}
-                  disabled={recordOutcomeMutation.isPending}
-                  placeholder="e.g., The candidate's proficiency in core communicative areas did not meet Kianda's benchmark requirements..."
-                  className="w-full h-32 p-6 bg-surface-container-lowest border border-outline-variant/20 rounded-[24px] resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all font-medium text-primary text-sm mb-8"
-               ></textarea>
 
                <div className="flex gap-4">
                   <button onClick={() => setShowOutcomeModal(null)} disabled={recordOutcomeMutation.isPending} className="flex-1 py-5 text-[10px] font-black uppercase tracking-widest text-primary/40 hover:bg-primary/5 rounded-2xl transition-colors">Cancel</button>
                   <button 
                     onClick={() => handleOutcome(showOutcomeModal.id, 'rejected')} 
-                    disabled={!outcomeReason.trim() || recordOutcomeMutation.isPending}
+                    disabled={recordOutcomeMutation.isPending}
                     className="flex-[2] py-5 bg-red-500 text-white shadow-xl shadow-red-500/20 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-red-600 transition-all flex items-center justify-center gap-2"
                   >
                     {recordOutcomeMutation.isPending ? 'Processing...' : 'Confirm Rejection'}

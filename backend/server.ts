@@ -1063,6 +1063,21 @@ app.put('/api/admin/applications/:id', authenticateAdmin, async (req, res) => {
   }
 });
 
+// PATCH /api/admin/applications/:id/remarks — update rejection remarks only (no email, no status change)
+app.patch('/api/admin/applications/:id/remarks', authenticateAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { rejectionRemarks } = req.body; // null or string; empty string → null
+    await db.update(schema.applications)
+      .set({ rejectionRemarks: rejectionRemarks?.trim() || null })
+      .where(eq(schema.applications.id, id));
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Update Remarks Error:', err);
+    res.status(500).json({ error: 'Failed to update remarks' });
+  }
+});
+
 // Update Application Status (Accept / Reject)
 app.post('/api/admin/applications/status', authenticateAdmin, async (req, res) => {
   try {
@@ -1071,7 +1086,7 @@ app.post('/api/admin/applications/status', authenticateAdmin, async (req, res) =
     // Update Application record
     const updateData: any = { status };
     if (status === 'rejected') {
-      updateData.rejectionRemarks = reason;
+      updateData.rejectionRemarks = reason ?? null;
       updateData.rejectionDate = new Date();
     } else if (status === 'passed_assessment') {
       // Clear rejection info if re-accepted
@@ -1748,7 +1763,7 @@ app.post('/api/admin/interviews/outcome', authenticateAdmin, async (req, res) =>
     // 1. Update Application Status & Persistence
     const updateData: any = { status: outcome };
     if (outcome === 'rejected') {
-      updateData.rejectionRemarks = reason;
+      updateData.rejectionRemarks = reason ?? null;
       updateData.rejectionDate = new Date();
     } else if (outcome === 'accepted') {
       updateData.rejectionRemarks = null;

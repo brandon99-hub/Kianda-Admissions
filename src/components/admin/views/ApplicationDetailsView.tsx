@@ -19,11 +19,16 @@ interface Props {
 export default function ApplicationDetailsView({ app, onBack, onUpdate, showResults }: Props) {
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [isAcceptModalOpen, setIsAcceptModalOpen] = useState(false);
-  const [rejectReason, setRejectReason] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [currentAppStatus, setCurrentAppStatus] = useState(app.status);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  // Inline rejection remarks state
+  const [currentRemarks, setCurrentRemarks] = useState<string | null>(app.rejectionRemarks ?? null);
+  const [isEditingRemarks, setIsEditingRemarks] = useState(false);
+  const [remarksInput, setRemarksInput] = useState('');
+  const [isSavingRemarks, setIsSavingRemarks] = useState(false);
 
   const candidate = app.candidate || {};
   const parent = app.parentDetails || {};
@@ -51,7 +56,6 @@ export default function ApplicationDetailsView({ app, onBack, onUpdate, showResu
       toast.success(status === 'rejected' ? 'Application formally rejected.' : 'Application accepted & emails sent!', { id: toastId });
       setIsRejectModalOpen(false);
       setIsAcceptModalOpen(false);
-      setRejectReason('');
       if (onUpdate) onUpdate();
     } catch (e) {
       toast.error('Network Error. Could not update.', { id: toastId });
@@ -406,24 +410,89 @@ export default function ApplicationDetailsView({ app, onBack, onUpdate, showResu
               </div>
             </div>
 
-            {/* Rejection / Administrative Record */}
-            {app.rejectionRemarks && (
-              <div className="bg-red-50/30 rounded-[32px] p-8 shadow-sm border border-red-100/50 animate-in fade-in slide-in-from-top-4 duration-500">
-                <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-red-500 mb-6 border-b border-red-500/10 pb-4 flex items-center gap-3 w-fit pr-12">
-                  <X size={14} strokeWidth={3} /> Rejection Remarks
-                </h3>
-                <div className="pl-4">
-                  <div className="text-[13px] leading-relaxed font-bold text-primary italic bg-white/50 p-6 rounded-2xl border border-red-100 shadow-inner">
-                    "{app.rejectionRemarks}"
-                  </div>
-                  {app.rejectionDate && (
-                    <div className="mt-4 text-[10px] font-black uppercase tracking-widest text-primary/30 flex items-center gap-2">
-                      <Clock size={12} /> Recorded on {new Date(app.rejectionDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+            {/* Internal Rejection Note */}
+            {(currentAppStatus === 'rejected' || currentAppStatus === 'failed') && (() => {
+              const defaultRemark = currentAppStatus === 'failed' ? 'Failed Assessment' : null;
+              const displayRemarks = currentRemarks ?? defaultRemark;
+
+              return (
+                <div className="bg-red-50/30 rounded-[32px] p-8 shadow-sm border border-red-100/50 animate-in fade-in slide-in-from-top-4 duration-500">
+                  <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-red-500 mb-6 border-b border-red-500/10 pb-4 flex items-center gap-3 w-fit pr-12">
+                    <X size={14} strokeWidth={3} /> Internal Rejection Note
+                  </h3>
+
+                  {isEditingRemarks ? (
+                    /* ── Edit mode ── */
+                    <div className="pl-4 space-y-3">
+                      <textarea
+                        value={remarksInput}
+                        onChange={e => setRemarksInput(e.target.value)}
+                        disabled={isSavingRemarks}
+                        rows={4}
+                        placeholder="Add an internal note (optional)…"
+                        className="w-full p-4 bg-white border border-red-200/60 rounded-2xl resize-none focus:outline-none focus:ring-2 focus:ring-red-300/40 font-medium text-primary text-sm"
+                      />
+                      <div className="flex gap-3">
+                        <button
+                          disabled={isSavingRemarks}
+                          onClick={() => setIsEditingRemarks(false)}
+                          className="flex-1 py-3 text-[10px] font-black uppercase tracking-widest text-primary/50 hover:bg-primary/5 rounded-xl transition-colors"
+                        >Cancel</button>
+                        <button
+                          disabled={isSavingRemarks}
+                          onClick={async () => {
+                            setIsSavingRemarks(true);
+                            try {
+                              const r = await authFetch(`/api/admin/applications/${app.id}/remarks`, {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ rejectionRemarks: remarksInput || null }),
+                              });
+                              if (!r.ok) throw new Error();
+                              setCurrentRemarks(remarksInput.trim() || null);
+                              setIsEditingRemarks(false);
+                              toast.success('Note saved.');
+                            } catch {
+                              toast.error('Failed to save note.');
+                            } finally {
+                              setIsSavingRemarks(false);
+                            }
+                          }}
+                          className="flex-[2] py-3 bg-red-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-red-600 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                        >
+                          {isSavingRemarks ? <><Loader2 size={12} className="animate-spin" /> Saving…</> : 'Save Note'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    /* ── View mode ── */
+                    <div className="pl-4">
+                      {displayRemarks ? (
+                        <div className="text-[13px] leading-relaxed font-bold text-primary italic bg-white/50 p-6 rounded-2xl border border-red-100 shadow-inner">
+                          "{displayRemarks}"
+                        </div>
+                      ) : (
+                        <p className="text-[12px] text-primary/30 italic">No internal note added yet.</p>
+                      )}
+                      {app.rejectionDate && (
+                        <div className="mt-4 text-[10px] font-black uppercase tracking-widest text-primary/30 flex items-center gap-2">
+                          <Clock size={12} /> Recorded on {new Date(app.rejectionDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+                        </div>
+                      )}
+                      <button
+                        onClick={() => {
+                          setRemarksInput(currentRemarks ?? (currentAppStatus === 'failed' ? 'Failed Assessment' : ''));
+                          setIsEditingRemarks(true);
+                        }}
+                        className="mt-4 text-[10px] font-black uppercase tracking-widest text-red-400 hover:text-red-600 transition-colors"
+                      >
+                        {displayRemarks ? 'Edit Note' : 'Add Note'}
+                      </button>
                     </div>
                   )}
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
           </div>
 
@@ -613,22 +682,14 @@ export default function ApplicationDetailsView({ app, onBack, onUpdate, showResu
 
                 <div className="mb-6 pr-8">
                   <h3 className="text-2xl font-black text-primary font-headline mb-2">Reject Application</h3>
-                  <p className="text-sm font-medium text-on-surface-variant/70 leading-relaxed">Please provide a clear reason for rejecting <span className="font-bold text-primary">{candidate.fullName}</span>. This reason is kept strictly internal within the system for administrative records and will not be included in the regret email sent to the parents.</p>
+                  <p className="text-sm font-medium text-on-surface-variant/70 leading-relaxed">This will send a regret email to the parents of <span className="font-bold text-primary">{candidate.fullName}</span>. You can add an internal note afterwards in the application card.</p>
                 </div>
-
-                <textarea
-                  value={rejectReason}
-                  onChange={e => setRejectReason(e.target.value)}
-                  disabled={isProcessing}
-                  placeholder="e.g., The candidate did not meet the required cutoff marks for the entrance examination..."
-                  className="w-full h-32 p-4 bg-surface-container-lowest border border-outline-variant/20 rounded-2xl resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all font-medium text-primary text-sm mb-6"
-                ></textarea>
 
                 <div className="flex gap-4">
                   <button disabled={isProcessing} onClick={() => setIsRejectModalOpen(false)} className="flex-1 py-4 text-[11px] font-black uppercase tracking-widest text-primary/60 hover:bg-primary/5 rounded-xl disabled:opacity-50 transition-colors">Cancel</button>
                   <button
-                    disabled={!rejectReason.trim() || isProcessing}
-                    onClick={() => handleUpdateStatus('rejected', rejectReason)}
+                    disabled={isProcessing}
+                    onClick={() => handleUpdateStatus('rejected')}
                     className="flex-[2] py-4 bg-red-500 text-white shadow-lg shadow-red-500/20 text-[11px] font-black uppercase tracking-widest rounded-xl hover:bg-red-600 disabled:opacity-50 disabled:shadow-none transition-all flex justify-center items-center gap-2"
                   >
                     {isProcessing ? <><Loader2 size={14} className="animate-spin" /> Processing</> : 'Confirm & Send Email'}
