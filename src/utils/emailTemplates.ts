@@ -75,6 +75,17 @@ export const getRejectionEmail = (candidateName: string, academicYear: number) =
   return { subject, body: getBaseLayout(subject, content) };
 };
 
+export const getInterviewRejectionEmail = (candidateName: string, academicYear: number) => {
+  const subject = `Admission Decision - ${candidateName} (${academicYear})`;
+  const content = `
+    <p>Dear Parents,</p>
+    <p>Thank you for attending the oral interview with your daughter, <strong>${candidateName}</strong>, and for your continued interest in Kianda School.</p>
+    <p>Owing to the large number of applicants and the limited number of available places, we regret to inform you that we are unable to offer her admission at this time.</p>
+    <p>We sincerely appreciate your interest in Kianda School and wish <strong>${candidateName}</strong> every success in her future academic endeavours.</p>
+  `;
+  return { subject, body: getBaseLayout(subject, content) };
+};
+
 export const getAssessmentPassEmail = (candidateName: string) => {
   const subject = `Assessment Stage Cleared - ${candidateName}`;
   const content = `

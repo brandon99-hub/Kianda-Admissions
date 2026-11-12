@@ -29,6 +29,7 @@ import {
   getAdmissionOfferEmail,
   getWaitlistEmail,
   getRejectionEmail,
+  getInterviewRejectionEmail,
   getAssessmentScheduleEmail,
   getApplicationPdfEmail
 } from '../src/utils/emailTemplates';
@@ -1832,7 +1833,7 @@ app.post('/api/admin/interviews/outcome', authenticateAdmin, async (req, res) =>
           .set({ status: 'waitlisted' })
           .where(eq(schema.applications.id, applicationId));
       } else {
-        emailContent = getRejectionEmail(appData.candidate.fullName, appData.academicYear || new Date().getFullYear());
+        emailContent = getInterviewRejectionEmail(appData.candidate.fullName, appData.academicYear || new Date().getFullYear());
       }
 
       if (emailContent) {
