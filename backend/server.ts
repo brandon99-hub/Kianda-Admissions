@@ -2001,7 +2001,9 @@ app.get('/api/applicants/my-applications', authenticateApplicant, async (req, re
       },
       orderBy: (apps, { desc }) => [desc(apps.createdAt)],
     });
-    res.json(apps);
+    // Strip internal admin-only rejection remarks before sending to applicant
+    const sanitizedApps = apps.map(({ rejectionRemarks, rejectionDate, ...safeApp }) => safeApp);
+    res.json(sanitizedApps);
   } catch (error) {
     console.error('Fetch My Applications Error:', error);
     res.status(500).json({ error: 'Failed to fetch applications' });

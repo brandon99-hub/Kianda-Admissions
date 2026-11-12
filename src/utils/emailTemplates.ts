@@ -68,10 +68,9 @@ export const getRejectionEmail = (candidateName: string, academicYear: number) =
   const content = `
     <p>Dear Parents,</p>
     <p>I hope this message finds you well.</p>
-    <p>Thank you for applying for a place for your daughter and for bringing her for the Assessment for the ${academicYear} academic year. We truly appreciate the time and effort you invested in the process.</p>
-    <p>Thank you for your interest in Kianda School. We appreciate the time and effort you invested in the application and assessment process for the ${academicYear} academic year.</p>
+    <p>Thank you for your interest in Kianda School and for applying for a place for your daughter for the ${academicYear} academic year. We sincerely appreciate the time and effort you invested in the application and assessment process, as well as bringing your daughter to sit the assessment.</p>
     <p>After careful consideration, we regret to inform you that we are unable to offer your daughter a place at Kianda School at this time.</p>
-    <p>We are grateful for the interest you have shown in our school and wish your daughter every success in her future endeavours.</p>
+    <p>We are grateful for the interest and confidence you have shown in our school. We wish your daughter every success in her future academic journey and endeavours.</p>
   `;
   return { subject, body: getBaseLayout(subject, content) };
 };

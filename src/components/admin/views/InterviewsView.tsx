@@ -1474,12 +1474,19 @@ export default function InterviewsView() {
           <div className="fixed inset-0 z-[110] flex items-center justify-center p-6">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-red-900/20 backdrop-blur-md" onClick={() => !isBulkRejecting && setShowBulkConfirmModal(null)} />
             <motion.div initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }} className="bg-white max-w-lg w-full rounded-[40px] p-10 relative z-10 shadow-2xl border border-outline-variant/10">
-              <div className="mb-8">
+              <div className="mb-6">
                 <div className="w-16 h-16 bg-red-50 rounded-[20px] flex items-center justify-center text-red-500 mb-6">
                   <X size={32} strokeWidth={3} />
                 </div>
                 <h3 className="text-3xl font-black text-primary italic leading-none mb-2">Bulk Reject</h3>
-                <p className="text-sm font-medium text-on-surface-variant/60">Provide a rejection reason for <span className="font-bold text-primary">{bulkInterviewIds.size}</span> selected candidate{bulkInterviewIds.size > 1 ? 's' : ''}.</p>
+                <p className="text-sm font-medium text-on-surface-variant/70">Provide an internal rejection reason for <span className="font-bold text-primary">{bulkInterviewIds.size}</span> selected candidate{bulkInterviewIds.size > 1 ? 's' : ''}.</p>
+                <div className="mt-4 p-4 rounded-2xl bg-amber-50 border border-amber-200/70 flex items-start gap-3">
+                  <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                  <div className="text-xs text-amber-900/90 leading-relaxed space-y-1">
+                    <p><strong>Shared Remark:</strong> The exact same rejection description will be saved for all {bulkInterviewIds.size} selected candidate{bulkInterviewIds.size > 1 ? 's' : ''}. Reject individually if candidates require distinct remarks.</p>
+                    <p><strong>Internal Only:</strong> This description stays inside the system for administrative records and will not be sent in the regret email to parents.</p>
+                  </div>
+                </div>
               </div>
               <textarea
                 value={bulkRejectReason}
@@ -1602,7 +1609,7 @@ export default function InterviewsView() {
                     <X size={32} strokeWidth={3} />
                   </div>
                   <h3 className="text-3xl font-black text-primary italic leading-none mb-2">Reject Candidate</h3>
-                  <p className="text-sm font-medium text-on-surface-variant/60">Provide a professional reason for rejecting <span className="font-bold text-primary">{showOutcomeModal.name}</span> after the oral interview.</p>
+                  <p className="text-sm font-medium text-on-surface-variant/70">Provide a clear reason for rejecting <span className="font-bold text-primary">{showOutcomeModal.name}</span> after the oral interview. This note is kept strictly internal in the system and will not be included in the regret email sent to the parents.</p>
                </div>
 
                <textarea 

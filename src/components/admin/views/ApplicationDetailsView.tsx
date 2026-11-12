@@ -613,7 +613,7 @@ export default function ApplicationDetailsView({ app, onBack, onUpdate, showResu
 
                 <div className="mb-6 pr-8">
                   <h3 className="text-2xl font-black text-primary font-headline mb-2">Reject Application</h3>
-                  <p className="text-sm font-medium text-on-surface-variant/70 leading-relaxed">Please provide a clear reason for rejecting <span className="font-bold text-primary">{candidate.fullName}</span>. This reason will be automatically included in the regret email dispatched to the parents.</p>
+                  <p className="text-sm font-medium text-on-surface-variant/70 leading-relaxed">Please provide a clear reason for rejecting <span className="font-bold text-primary">{candidate.fullName}</span>. This reason is kept strictly internal within the system for administrative records and will not be included in the regret email sent to the parents.</p>
                 </div>
 
                 <textarea
